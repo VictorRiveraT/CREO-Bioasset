@@ -35,6 +35,20 @@ app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (Man
     await db.SaveChangesAsync();
     return Results.Created($"/mantenimientos/{dto.Id}", dto);
 });
+app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, Mantenimiento dto, MantDb db) => {
+    var m = await db.Mantenimientos.FindAsync(id);
+    if (m == null) return Results.NotFound();
+    m.Estado = dto.Estado;
+    m.Descripcion = dto.Descripcion;
+    m.ProximaFecha = dto.ProximaFecha;
+    m.Fecha = dto.Fecha;
+    m.Observaciones = dto.Observaciones;
+    if (!string.IsNullOrEmpty(dto.ArchivoBase64)) {
+        m.ArchivoBase64 = dto.ArchivoBase64;
+    }
+    await db.SaveChangesAsync();
+    return Results.NoContent();
+});
 
 app.MapGet("/incidencias", [Authorize] async (MantDb db) => Results.Ok(new { incidencias = await db.Incidencias.ToListAsync() }));
 app.MapPost("/incidencias", [Authorize] async (Incidencia dto, MantDb db) => {
@@ -42,6 +56,13 @@ app.MapPost("/incidencias", [Authorize] async (Incidencia dto, MantDb db) => {
     db.Incidencias.Add(dto);
     await db.SaveChangesAsync();
     return Results.Created($"/incidencias/{dto.Id}", dto);
+});
+app.MapPut("/incidencias/{id}", [Authorize] async (Guid id, Incidencia dto, MantDb db) => {
+    var i = await db.Incidencias.FindAsync(id);
+    if (i == null) return Results.NotFound();
+    i.Estado = dto.Estado;
+    await db.SaveChangesAsync();
+    return Results.NoContent();
 });
 
 using (var scope = app.Services.CreateScope()) { 
@@ -52,6 +73,21 @@ using (var scope = app.Services.CreateScope()) {
         relationalCreator.EnsureCreated();
         relationalCreator.CreateTables();
     } catch {}
+    
+    // Auto-migrate new columns
+    try {
+        dbContext.Database.ExecuteSqlRaw(@"
+            IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'Fecha' AND Object_ID = Object_ID(N'[mantenimiento].[Mantenimientos]'))
+            BEGIN
+                ALTER TABLE [mantenimiento].[Mantenimientos] ADD Fecha NVARCHAR(MAX) NULL
+                ALTER TABLE [mantenimiento].[Mantenimientos] ADD Observaciones NVARCHAR(MAX) NULL
+                ALTER TABLE [mantenimiento].[Mantenimientos] ADD ArchivoBase64 NVARCHAR(MAX) NULL
+                ALTER TABLE [mantenimiento].[Mantenimientos] ADD IncidenciaId UNIQUEIDENTIFIER NULL
+            END
+        ");
+    } catch (Exception e) {
+        Console.WriteLine(e);
+    }
 }
 app.Run();
 
@@ -68,7 +104,12 @@ public class Mantenimiento {
     [Column("biomedico_id"), JsonPropertyName("biomedico_id")] public Guid BiomedicoId { get; set; }
     public string Tipo { get; set; } = "";
     public string Estado { get; set; } = "";
+    public string Descripcion { get; set; } = "";
     [Column("proxima_fecha"), JsonPropertyName("proxima_fecha")] public string? ProximaFecha { get; set; }
+    public string? Fecha { get; set; }
+    public string? Observaciones { get; set; }
+    public string? ArchivoBase64 { get; set; }
+    [Column("incidencia_id"), JsonPropertyName("incidencia_id")] public Guid? IncidenciaId { get; set; }
 }
 
 public class Incidencia {

@@ -1,5 +1,23 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState, useMemo } from "react";
-import type { DB, Equipment, Location, MaintenanceRecord, Movement, User, UserPermissions, ModulePermissions, Role } from "./types";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+} from "react";
+import type {
+  DB,
+  Equipment,
+  Location,
+  MaintenanceRecord,
+  Movement,
+  User,
+  UserPermissions,
+  ModulePermissions,
+  Role,
+} from "./types";
 import { fetchApi } from "./apiClient";
 import { toast } from "sonner";
 
@@ -97,15 +115,17 @@ interface Ctx {
   updateEquipment: (id: string, patch: Partial<Equipment>) => Promise<void>;
   addMovement: (m: Omit<Movement, "id" | "usuarioId">) => Promise<void>;
   addMaintenance: (m: Omit<MaintenanceRecord, "id">) => Promise<void>;
+  updateMaintenance: (id: string, m: Partial<MaintenanceRecord>) => Promise<void>;
   saveLocation: (l: Omit<Location, "id"> & { id?: string | undefined }) => Promise<void>;
   toggleLocation: (id: string) => Promise<void>;
   deleteLocation: (id: string) => Promise<void>;
   toggleUser: (id: string) => Promise<void>;
   addUser: (u: any) => Promise<void>;
-  updateUser: (id: string, u: any) => Promise<void>;
+  updateUser: (id: string, u: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
-  addIncident: (i: any) => Promise<void>;
-  locationName: (id: string | null) => string;
+  addIncident: (i: Partial<Incident>) => Promise<void>;
+  updateIncident: (id: string, i: Partial<Incident>) => Promise<void>;
+  locationName: (id: string) => string;
   userName: (id: string) => string;
   equipmentById: (id: string) => Equipment | undefined;
 }
@@ -113,11 +133,21 @@ interface Ctx {
 const BioContext = createContext<Ctx | null>(null);
 
 export function BioAssetProvider({ children }: { children: ReactNode }) {
-  const [db, setDb] = useState<DB>({ users: [], locations: [], equipment: [], movements: [], maintenance: [] });
+  const [db, setDb] = useState<DB>({
+    users: [],
+    locations: [],
+    equipment: [],
+    movements: [],
+    maintenance: [],
+    incidents: [],
+  });
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
   const [theme, setThemeState] = useState<"light" | "dark">(
-    () => (typeof window !== "undefined" ? localStorage.getItem("bioasset.theme") as "light" | "dark" : "light") || "light"
+    () =>
+      (typeof window !== "undefined"
+        ? (localStorage.getItem("bioasset.theme") as "light" | "dark")
+        : "light") || "light",
   );
 
   const setTheme = useCallback((t: "light" | "dark") => {
@@ -149,16 +179,26 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
   const fetchDb = useCallback(async () => {
     try {
-      const [usersRes, locsRes, equiposRes, movsRes, mantsRes, marcasRes] = await Promise.all([
-        fetchApi("/auth/usuarios"),
-        fetchApi("/inventario/ubicaciones"),
-        fetchApi("/inventario/activos"),
-        fetchApi("/inventario/movimientos"),
-        fetchApi("/mantenimiento/mantenimientos"),
-        fetchApi("/inventario/marcas").catch(() => ({ marcas: [] }))
-      ]);
+      const [usersRes, locsRes, equiposRes, movsRes, mantsRes, marcasRes, incidenciasRes] =
+        await Promise.all([
+          fetchApi("/auth/usuarios"),
+          fetchApi("/inventario/ubicaciones"),
+          fetchApi("/inventario/activos"),
+          fetchApi("/inventario/movimientos"),
+          fetchApi("/mantenimiento/mantenimientos"),
+          fetchApi("/inventario/marcas").catch(() => ({ marcas: [] })),
+          fetchApi("/mantenimiento/incidencias").catch(() => ({ incidencias: [] })),
+        ]);
       setDb({
-        users: (usersRes.usuarios || []).map((u: any) => ({ ...u, email: u.email, permisos: parseUserPermisos(u), sede: u.sede, accesoHasta: u.accesoHasta, sedeTemporal: u.sedeTemporal, sedeTemporalHasta: u.sedeTemporalHasta })),
+        users: (usersRes.usuarios || []).map((u: any) => ({
+          ...u,
+          email: u.email,
+          permisos: parseUserPermisos(u),
+          sede: u.sede,
+          accesoHasta: u.accesoHasta,
+          sedeTemporal: u.sedeTemporal,
+          sedeTemporalHasta: u.sedeTemporalHasta,
+        })),
         locations: (locsRes.ubicaciones || []).map((l: any) => ({
           ...l,
           sede: l.sede || "Sede Principal",
@@ -184,8 +224,14 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           fecha: m.fecha ? m.fecha.substring(0, 10) : new Date().toISOString().substring(0, 10),
           equipoId: m.activo_id || m.equipoId,
           proximaFecha: m.proxima_fecha ? m.proxima_fecha.substring(0, 10) : "",
-          tecnicoId: m.tecnico_id || m.tecnicoId,
+          biomedicoId: m.biomedico_id || m.biomedicoId || m.tecnico_id || m.tecnicoId,
           resultado: m.estado || m.resultado,
+          archivoBase64: m.archivoBase64,
+          incidenciaId: m.incidencia_id || m.incidenciaId,
+        })),
+        incidents: (incidenciasRes.incidencias || []).map((i: any) => ({
+          ...i,
+          activoId: i.activo_id || i.activoId,
         })),
       });
     } catch (e) {
@@ -212,33 +258,44 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchDb]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    try {
-      const res = await fetchApi("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-      localStorage.setItem(TOKEN_KEY, res.token);
-      setUser({ ...res.user, permisos: parseUserPermisos(res.user) });
-      await fetchDb();
-      return null;
-    } catch (err: any) {
-      return err.message;
-    }
-  }, [fetchDb]);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      try {
+        const res = await fetchApi("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+        localStorage.setItem(TOKEN_KEY, res.token);
+        setUser({ ...res.user, permisos: parseUserPermisos(res.user) });
+        await fetchDb();
+        return null;
+      } catch (err: any) {
+        return err.message;
+      }
+    },
+    [fetchDb],
+  );
 
   const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem(TOKEN_KEY);
-    setDb({ users: [], locations: [], equipment: [], movements: [], maintenance: [], marcas: [] });
+    setDb({
+      users: [],
+      locations: [],
+      equipment: [],
+      movements: [],
+      maintenance: [],
+      incidents: [],
+      marcas: [],
+    });
   }, []);
 
   const filteredDb = useMemo(() => {
     if (!user || user.rol === "admin") return db;
-    
+
     // Si tiene 'Todas' permanentemente, no filtramos.
     if (user.sede === "Todas") return db;
-    
+
     // Si tiene una sede temporal asignada y aún es válida
     let hasValidTemporary = false;
     if (user.sedeTemporal && user.sedeTemporal !== "Ninguna" && user.sedeTemporalHasta) {
@@ -249,26 +306,27 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         hasValidTemporary = true;
       }
     }
-    
+
     // Si su sede temporal válida es "Todas", le damos acceso completo
     if (hasValidTemporary && user.sedeTemporal === "Todas") return db;
 
-    const locs = db.locations.filter(l => {
+    const locs = db.locations.filter((l) => {
       if (l.sede === user.sede) return true;
       if (hasValidTemporary && l.sede === user.sedeTemporal) return true;
       return false;
     });
-    const locIds = new Set(locs.map(l => l.id));
+    const locIds = new Set(locs.map((l) => l.id));
 
-    const eqs = db.equipment.filter(e => locIds.has(e.ubicacionId));
-    const eqIds = new Set(eqs.map(e => e.id));
+    const eqs = db.equipment.filter((e) => locIds.has(e.ubicacionId));
+    const eqIds = new Set(eqs.map((e) => e.id));
 
     return {
       ...db,
       locations: locs,
       equipment: eqs,
-      movements: db.movements.filter(m => eqIds.has(m.equipoId)),
-      maintenance: db.maintenance.filter(m => eqIds.has(m.equipoId))
+      movements: db.movements.filter((m) => eqIds.has(m.equipoId)),
+      maintenance: db.maintenance.filter((m) => eqIds.has(m.equipoId)),
+      incidents: db.incidents.filter((i) => eqIds.has(i.activoId)),
     };
   }, [db, user]);
 
@@ -299,9 +357,12 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         estado: e.estado,
         fechaAdquisicion: e.fechaAdquisicion,
         proximoMantenimiento: e.proximoMantenimiento,
-        criticidad: (e as any).criticidad
+        criticidad: (e as any).criticidad,
       };
-      const res = await fetchApi("/inventario/activos", { method: "POST", body: JSON.stringify(payload) });
+      const res = await fetchApi("/inventario/activos", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
       await fetchApi("/inventario/movimientos", {
         method: "POST",
         body: JSON.stringify({
@@ -331,7 +392,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           fecha: m.fecha,
           usuarioId: user?.id,
           motivo: m.motivo,
-          observaciones: m.observaciones
+          observaciones: m.observaciones,
         }),
       });
       await fetchDb();
@@ -339,31 +400,53 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     addMaintenance: async (m) => {
       await fetchApi("/mantenimiento/mantenimientos", {
         method: "POST",
-          body: JSON.stringify({
-            activo_id: m.equipoId,
-            biomedico_id: user?.id,
-            tipo: m.tipo,
-            descripcion: m.descripcion,
-            estado: m.resultado, // Hacky mapping, but UI uses 'resultado'
-            fecha: m.fecha,
-            proxima_fecha: m.proximaFecha,
-            observaciones: m.observaciones
-          }),
+        body: JSON.stringify({
+          activo_id: m.equipoId,
+          biomedico_id: user?.id,
+          tipo: m.tipo,
+          descripcion: m.descripcion,
+          estado: m.resultado, // Hacky mapping, but UI uses 'resultado'
+          fecha: m.fecha,
+          proxima_fecha: m.proximaFecha,
+          observaciones: m.observaciones,
+          archivoBase64: m.archivoBase64,
+          incidencia_id: m.incidenciaId,
+        }),
+      });
+      await fetchDb();
+    },
+    updateMaintenance: async (id, m) => {
+      await fetchApi(`/mantenimiento/mantenimientos/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          estado: m.resultado,
+          descripcion: m.descripcion,
+          fecha: m.fecha,
+          proxima_fecha: m.proximaFecha,
+          observaciones: m.observaciones,
+          archivoBase64: m.archivoBase64,
+        }),
       });
       await fetchDb();
     },
     saveLocation: async (l) => {
       if (l.id) {
-        await fetchApi(`/inventario/ubicaciones/${l.id}`, { method: "PUT", body: JSON.stringify(l) });
+        await fetchApi(`/inventario/ubicaciones/${l.id}`, {
+          method: "PUT",
+          body: JSON.stringify(l),
+        });
       } else {
         await fetchApi("/inventario/ubicaciones", { method: "POST", body: JSON.stringify(l) });
       }
       await fetchDb();
     },
     toggleLocation: async (id) => {
-      const loc = db.locations.find(x => x.id === id);
+      const loc = db.locations.find((x) => x.id === id);
       if (loc) {
-        await fetchApi(`/inventario/ubicaciones/${id}`, { method: "PUT", body: JSON.stringify({ ...loc, activo: !loc.activo }) });
+        await fetchApi(`/inventario/ubicaciones/${id}`, {
+          method: "PUT",
+          body: JSON.stringify({ ...loc, activo: !loc.activo }),
+        });
         await fetchDb();
       }
     },
@@ -396,6 +479,11 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     },
     addIncident: async (i) => {
       await fetchApi("/mantenimiento/incidencias", { method: "POST", body: JSON.stringify(i) });
+      await fetchDb();
+    },
+    updateIncident: async (id, i) => {
+      await fetchApi(`/mantenimiento/incidencias/${id}`, { method: "PUT", body: JSON.stringify(i) });
+      await fetchDb();
     },
     locationName: (id) => db.locations.find((l) => l.id === id)?.nombre ?? "N/A",
     userName: (id) => db.users.find((u) => u.id === id)?.nombre ?? "â€”",
@@ -447,4 +535,3 @@ export function formatDateTime(value: string) {
     minute: "2-digit",
   });
 }
-

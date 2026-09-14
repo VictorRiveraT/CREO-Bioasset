@@ -21,10 +21,7 @@ function ConfiguracionPage() {
   const { theme, setTheme, isAdmin } = useBio();
 
   return (
-    <AppShell
-      title="Configuracin"
-      description="Ajustes generales del sistema y catlogos."
-    >
+    <AppShell title="Configuracin" description="Ajustes generales del sistema y catlogos.">
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="shadow-[var(--shadow-card)] transition-all hover:shadow-md">
           <CardHeader>

@@ -1,10 +1,6 @@
 export type Role = "admin" | "biomedico" | "asistencial" | "auditor" | "estudiante";
 
-export type EquipmentStatus =
-  | "Operativo"
-  | "En mantenimiento"
-  | "Fuera de servicio"
-  | "De baja";
+export type EquipmentStatus = "Operativo" | "En mantenimiento" | "Fuera de servicio" | "De baja";
 
 export const EQUIPMENT_STATUSES: EquipmentStatus[] = [
   "Operativo",
@@ -100,6 +96,15 @@ export interface MaintenanceRecord {
   resultado: string;
   observaciones: string;
   proximaFecha: string;
+  archivoBase64?: string;
+  incidenciaId?: string;
+}
+
+export interface Incident {
+  id: string;
+  activoId: string;
+  titulo: string;
+  estado: string;
 }
 
 export interface DB {
@@ -108,4 +113,5 @@ export interface DB {
   equipment: Equipment[];
   movements: Movement[];
   maintenance: MaintenanceRecord[];
+  incidents: Incident[];
 }

@@ -1,13 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { ArrowLeft, ArrowRight, Pencil, Route as RouteIcon, Wrench, AlertTriangle } from "lucide-react";
-import { AppShell } from "@/components/bioasset/AppShell";
 import {
-  EquipmentDialog,
-  MaintenanceDialog,
-  MovementDialog,
-} from "@/components/bioasset/dialogs";
+  ArrowLeft,
+  ArrowRight,
+  Pencil,
+  Route as RouteIcon,
+  Wrench,
+  AlertTriangle,
+} from "lucide-react";
+import { AppShell } from "@/components/bioasset/AppShell";
+import { EquipmentDialog, MaintenanceDialog, MovementDialog } from "@/components/bioasset/dialogs";
 import {
   Dialog,
   DialogContent,
@@ -55,10 +58,20 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 function DetalleEquipo() {
   const { id } = Route.useParams();
-  const { db, locationName, userName, isAdmin, isBiomedico, isAuditor, isEstudiante, addIncident, canEdit } = useBio();
+  const {
+    db,
+    locationName,
+    userName,
+    isAdmin,
+    isBiomedico,
+    isAuditor,
+    isEstudiante,
+    addIncident,
+    canEdit,
+  } = useBio();
   const [equipo, setEquipo] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const [incidentOpen, setIncidentOpen] = useState(false);
   const [incidentTitle, setIncidentTitle] = useState("");
 
@@ -67,11 +80,14 @@ function DetalleEquipo() {
     if (!incidentTitle) return;
     try {
       await addIncident({ activo_id: equipo!.id, titulo: incidentTitle, estado: "Pendiente" });
-      await fetchApi(`/inventario/activos/${equipo!.id}`, { method: "PATCH", body: JSON.stringify({ estado: "Inoperativo" }) });
+      await fetchApi(`/inventario/activos/${equipo!.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ estado: "Inoperativo" }),
+      });
       setIncidentOpen(false);
       setIncidentTitle("");
       window.location.reload();
-    } catch(err) {
+    } catch (err) {
       console.error(err);
     }
   };
@@ -85,8 +101,23 @@ function DetalleEquipo() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    // If the equipment is loaded and the global db is ready, check if we have access to it
+    if (equipo && db) {
+      const hasAccess = db.equipment.some(e => e.id === equipo.id);
+      // If we don't have access to this equipment in our filtered DB (and we aren't an admin), kick us to the public view
+      if (!hasAccess && !isAdmin) {
+        window.location.href = `/qr/${equipo.id}`;
+      }
+    }
+  }, [equipo, db, isAdmin]);
+
   if (loading) {
-    return <AppShell title="Cargando..."><p>Cargando datos del equipo...</p></AppShell>;
+    return (
+      <AppShell title="Cargando...">
+        <p>Cargando datos del equipo...</p>
+      </AppShell>
+    );
   }
 
   if (!equipo) {
@@ -107,12 +138,15 @@ function DetalleEquipo() {
     .filter((m) => m.equipoId === equipo.id)
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
 
-  const qrUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/equipos/${equipo.id}` : "";
+  const qrUrl = typeof window !== "undefined" ? `${window.location.origin}/qr/${equipo.id}` : "";
 
   return (
     <AppShell
-      title={<><span className="text-yellow-500">{equipo.codigo}</span> — {equipo.nombre}</>}
+      title={
+        <>
+          <span className="text-yellow-500">{equipo.codigo}</span> — {equipo.nombre}
+        </>
+      }
       description="Ficha completa del equipo biomédico"
       actions={
         <div className="flex gap-2">
@@ -147,17 +181,27 @@ function DetalleEquipo() {
                 <form onSubmit={handleReportIncident}>
                   <DialogHeader>
                     <DialogTitle>Reportar falla</DialogTitle>
-                    <DialogDescription>Describa el problema que presenta el equipo. El estado cambiará a Inoperativo.</DialogDescription>
+                    <DialogDescription>
+                      Describa el problema que presenta el equipo. El estado cambiará a Inoperativo.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
                       <Label>Descripción de la falla</Label>
-                      <Input value={incidentTitle} onChange={e => setIncidentTitle(e.target.value)} required />
+                      <Input
+                        value={incidentTitle}
+                        onChange={(e) => setIncidentTitle(e.target.value)}
+                        required
+                      />
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIncidentOpen(false)}>Cancelar</Button>
-                    <Button type="submit" variant="destructive">Reportar</Button>
+                    <Button type="button" variant="outline" onClick={() => setIncidentOpen(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" variant="destructive">
+                      Reportar
+                    </Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -184,9 +228,14 @@ function DetalleEquipo() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="shadow-[var(--shadow-card)] lg:col-span-2">
-          <CardHeader><CardTitle className="text-base">Información general</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Información general</CardTitle>
+          </CardHeader>
           <CardContent className="grid gap-5 sm:grid-cols-3">
-            <Field label="Código patrimonial" value={<span className="text-yellow-500 font-medium">{equipo.codigo}</span>} />
+            <Field
+              label="Código patrimonial"
+              value={<span className="text-yellow-500 font-medium">{equipo.codigo}</span>}
+            />
             <Field label="Nombre" value={equipo.nombre} />
             <Field label="Categoría" value={equipo.categoria} />
             <Field label="Marca" value={equipo.marca} />
@@ -208,7 +257,9 @@ function DetalleEquipo() {
         </Card>
 
         <Card className="shadow-[var(--shadow-card)]">
-          <CardHeader><CardTitle className="text-base">Identificación QR</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Identificación QR</CardTitle>
+          </CardHeader>
           <CardContent className="flex flex-col items-center gap-3 text-center">
             <div className="rounded-lg border bg-card p-3">
               <QRCodeSVG value={qrUrl || equipo.codigo} size={140} />
@@ -222,7 +273,9 @@ function DetalleEquipo() {
       </div>
 
       <Card className="shadow-[var(--shadow-card)]">
-        <CardHeader><CardTitle className="text-base">Historial de movimientos</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Historial de movimientos</CardTitle>
+        </CardHeader>
         <CardContent>
           <ol className="relative space-y-6 border-l pl-6">
             {movimientos.map((m) => (
@@ -250,7 +303,9 @@ function DetalleEquipo() {
       </Card>
 
       <Card className="shadow-[var(--shadow-card)]">
-        <CardHeader><CardTitle className="text-base">Historial de mantenimientos</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Historial de mantenimientos</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-4">
           {mantenimientos.map((m, i) => (
             <div key={m.id}>

@@ -32,8 +32,7 @@ export const Route = createFileRoute("/")({
       { title: "Dashboard | BIOASSET — Gestión de equipos biomédicos" },
       {
         name: "description",
-        content:
-          "Indicadores de inventario, trazabilidad y mantenimiento de equipos biomédicos.",
+        content: "Indicadores de inventario, trazabilidad y mantenimiento de equipos biomédicos.",
       },
       { property: "og:title", content: "Dashboard | BIOASSET" },
       {
@@ -77,7 +76,10 @@ function Dashboard() {
 
   const count = (s: string) => eq.filter((e) => e.estado === s).length;
   const proximos = eq.filter(
-    (e) => e.estado !== "De baja" && daysUntil(e.proximoMantenimiento) >= 0 && daysUntil(e.proximoMantenimiento) <= 30,
+    (e) =>
+      e.estado !== "De baja" &&
+      daysUntil(e.proximoMantenimiento) >= 0 &&
+      daysUntil(e.proximoMantenimiento) <= 30,
   );
   const vencidos = eq.filter(
     (e) => e.estado !== "De baja" && daysUntil(e.proximoMantenimiento) < 0,
@@ -129,15 +131,18 @@ function Dashboard() {
               </div>
               <div className="flex flex-wrap gap-2 text-sm">
                 <div className="bg-muted px-3 py-1 rounded-full">
-                  <span className="font-semibold">Rol:</span> <span className="capitalize">{user.rol}</span>
+                  <span className="font-semibold">Rol:</span>{" "}
+                  <span className="capitalize">{user.rol}</span>
                 </div>
                 <div className="bg-muted px-3 py-1 rounded-full">
                   <span className="font-semibold">Sede Principal:</span> {user.sede || "Todas"}
                 </div>
                 {user.sedeTemporal && user.sedeTemporal !== "Ninguna" && (
                   <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800">
-                    <span className="font-semibold">Sede Temporal:</span> {user.sedeTemporal} 
-                    {user.sedeTemporalHasta ? ` (hasta ${user.sedeTemporalHasta.substring(0, 10)})` : ""}
+                    <span className="font-semibold">Sede Temporal:</span> {user.sedeTemporal}
+                    {user.sedeTemporalHasta
+                      ? ` (hasta ${user.sedeTemporalHasta.substring(0, 10)})`
+                      : ""}
                   </div>
                 )}
               </div>
@@ -147,21 +152,59 @@ function Dashboard() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Kpi label="Total de equipos" value={eq.length} icon={Boxes} tone="bg-primary/10 text-primary" />
-        <Kpi label="Equipos operativos" value={count("Operativo")} icon={CheckCircle2} tone="bg-success/15 text-success" />
-        <Kpi label="En mantenimiento" value={count("En mantenimiento")} icon={Wrench} tone="bg-warning/20 text-warning-foreground" />
-        <Kpi label="Fuera de servicio" value={count("Fuera de servicio")} icon={XCircle} tone="bg-destructive/15 text-destructive" />
-        <Kpi label="Mantenimientos próximos (30 d)" value={proximos.length} icon={Clock} tone="bg-info/15 text-info" />
-        <Kpi label="Mantenimientos vencidos" value={vencidos.length} icon={AlertTriangle} tone="bg-destructive/15 text-destructive" />
+        <Kpi
+          label="Total de equipos"
+          value={eq.length}
+          icon={Boxes}
+          tone="bg-primary/10 text-primary"
+        />
+        <Kpi
+          label="Equipos operativos"
+          value={count("Operativo")}
+          icon={CheckCircle2}
+          tone="bg-success/15 text-success"
+        />
+        <Kpi
+          label="En mantenimiento"
+          value={count("En mantenimiento")}
+          icon={Wrench}
+          tone="bg-warning/20 text-warning-foreground"
+        />
+        <Kpi
+          label="Fuera de servicio"
+          value={count("Fuera de servicio")}
+          icon={XCircle}
+          tone="bg-destructive/15 text-destructive"
+        />
+        <Kpi
+          label="Mantenimientos próximos (30 d)"
+          value={proximos.length}
+          icon={Clock}
+          tone="bg-info/15 text-info"
+        />
+        <Kpi
+          label="Mantenimientos vencidos"
+          value={vencidos.length}
+          icon={AlertTriangle}
+          tone="bg-destructive/15 text-destructive"
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="shadow-[var(--shadow-card)]">
-          <CardHeader><CardTitle className="text-base">Equipos por estado</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Equipos por estado</CardTitle>
+          </CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={porEstado} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80}>
+                <Pie
+                  data={porEstado}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={45}
+                  outerRadius={80}
+                >
                   {porEstado.map((_, i) => (
                     <Cell key={i} fill={chartColors[i % chartColors.length]} />
                   ))}
@@ -173,7 +216,9 @@ function Dashboard() {
         </Card>
 
         <Card className="shadow-[var(--shadow-card)]">
-          <CardHeader><CardTitle className="text-base">Equipos por categoría</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Equipos por categoría</CardTitle>
+          </CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={porCategoria}>
@@ -188,7 +233,9 @@ function Dashboard() {
         </Card>
 
         <Card className="shadow-[var(--shadow-card)]">
-          <CardHeader><CardTitle className="text-base">Mantenimientos por mes</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Mantenimientos por mes</CardTitle>
+          </CardHeader>
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={meses}>
@@ -204,7 +251,9 @@ function Dashboard() {
       </div>
 
       <Card className="shadow-[var(--shadow-card)]">
-        <CardHeader><CardTitle className="text-base">Próximos mantenimientos</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Próximos mantenimientos</CardTitle>
+        </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -221,15 +270,23 @@ function Dashboard() {
               {proximosOrdenados.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>
-                    <Link to="/equipos/$id" params={{ id: e.id }} className="font-medium text-yellow-500 hover:underline">
+                    <Link
+                      to="/equipos/$id"
+                      params={{ id: e.id }}
+                      className="font-medium text-yellow-500 hover:underline"
+                    >
                       {e.codigo}
                     </Link>
                   </TableCell>
                   <TableCell>{e.nombre}</TableCell>
                   <TableCell>{locationName(e.ubicacionId)}</TableCell>
-                  <TableCell><StatusBadge status={e.estado} /></TableCell>
+                  <TableCell>
+                    <StatusBadge status={e.estado} />
+                  </TableCell>
                   <TableCell>{formatDate(e.proximoMantenimiento)}</TableCell>
-                  <TableCell><DueBadge days={daysUntil(e.proximoMantenimiento)} /></TableCell>
+                  <TableCell>
+                    <DueBadge days={daysUntil(e.proximoMantenimiento)} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

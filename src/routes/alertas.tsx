@@ -12,10 +12,14 @@ export const Route = createFileRoute("/alertas")({
       { title: "Alertas de mantenimiento | BIOASSET" },
       {
         name: "description",
-        content: "Mantenimientos vencidos y próximos, equipos en mantenimiento y fuera de servicio.",
+        content:
+          "Mantenimientos vencidos y próximos, equipos en mantenimiento y fuera de servicio.",
       },
       { property: "og:title", content: "Alertas de mantenimiento | BIOASSET" },
-      { property: "og:description", content: "Alertas por reglas simples de fecha de mantenimiento." },
+      {
+        property: "og:description",
+        content: "Alertas por reglas simples de fecha de mantenimiento.",
+      },
     ],
   }),
   component: AlertasPage,

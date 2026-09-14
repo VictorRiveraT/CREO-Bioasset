@@ -72,26 +72,56 @@ app.MapGet("/activos/{id}", [Authorize] async (Guid id, InvDb db) => {
     return a != null ? Results.Ok(new { activo = a }) : Results.NotFound();
 });
 
-app.MapPut("/activos/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, Activo dto, InvDb db) => {
+app.MapGet("/activos/public/{id}", async (Guid id, InvDb db) => {
+    var a = await db.Activos.FindAsync(id);
+    if (a == null) return Results.NotFound();
+    
+    var ubicacion = await db.Ubicaciones.FindAsync(a.UbicacionId);
+    var ubicacionNombre = ubicacion != null ? ubicacion.Nombre : "Desconocida";
+
+    // Only return basic info
+    return Results.Ok(new {
+        activo = new {
+            a.Id,
+            a.Codigo,
+            a.Nombre,
+            a.Categoria,
+            a.Marca,
+            a.Modelo,
+            a.Serie,
+            UbicacionNombre = ubicacionNombre,
+            a.Estado,
+            a.Criticidad
+        }
+    });
+});
+
+app.MapPut("/activos/{id}", [Authorize(Roles = "admin,inventario")] async (Guid id, Activo dto, InvDb db) => {
     var a = await db.Activos.FindAsync(id);
     if(a != null) { 
+        a.Codigo = dto.Codigo;
         a.Nombre = dto.Nombre; 
         a.Categoria = dto.Categoria; 
+        a.Marca = dto.Marca;
+        a.Modelo = dto.Modelo;
+        a.Serie = dto.Serie;
+        a.Estado = dto.Estado;
+        a.UbicacionId = dto.UbicacionId;
+        a.FechaAdquisicion = dto.FechaAdquisicion;
+        a.ProximoMantenimiento = dto.ProximoMantenimiento;
         await db.SaveChangesAsync(); 
     }
     return Results.Ok();
 });
 
-
-
-app.MapPost("/activos", [Authorize(Roles = "admin,biomedico")] async (Activo dto, InvDb db) => {
+app.MapPost("/activos", [Authorize(Roles = "admin,inventario")] async (Activo dto, InvDb db) => {
     dto.Id = Guid.NewGuid();
     db.Activos.Add(dto);
     await db.SaveChangesAsync();
     
     // Generate QR
     var qrGenerator = new QRCodeGenerator();
-    var qrData = qrGenerator.CreateQrCode("http://localhost:5173/equipos/" + dto.Id, QRCodeGenerator.ECCLevel.Q);
+    var qrData = qrGenerator.CreateQrCode("http://localhost:8081/qr/" + dto.Id, QRCodeGenerator.ECCLevel.Q);
     var qrCode = new PngByteQRCode(qrData);
     var qrBytes = qrCode.GetGraphic(20);
     var qrBase64 = "data:image/png;base64," + Convert.ToBase64String(qrBytes);
@@ -99,7 +129,7 @@ app.MapPost("/activos", [Authorize(Roles = "admin,biomedico")] async (Activo dto
     return Results.Created("", new { activo = dto, qrImage = qrBase64 });
 });
 
-app.MapMethods("/activos/{id}", new[]{"PATCH"}, [Authorize(Roles = "admin,biomedico")] async (Guid id, System.Text.Json.Nodes.JsonObject patch, InvDb db) => {
+app.MapMethods("/activos/{id}", new[]{"PATCH"}, [Authorize(Roles = "admin,inventario,biomedico")] async (Guid id, System.Text.Json.Nodes.JsonObject patch, InvDb db) => {
     var a = await db.Activos.FindAsync(id);
     if(a==null) return Results.NotFound();
     
@@ -109,10 +139,10 @@ app.MapMethods("/activos/{id}", new[]{"PATCH"}, [Authorize(Roles = "admin,biomed
     if (patch.TryGetPropertyValue("marca", out var marca) && marca != null) a.Marca = marca.ToString();
     if (patch.TryGetPropertyValue("modelo", out var modelo) && modelo != null) a.Modelo = modelo.ToString();
     if (patch.TryGetPropertyValue("serie", out var serie) && serie != null) a.Serie = serie.ToString();
+    if (patch.TryGetPropertyValue("estado", out var est) && est != null) a.Estado = est.ToString();
     if (patch.TryGetPropertyValue("ubicacionId", out var ubi) && ubi != null) {
         if (Guid.TryParse(ubi.ToString(), out var guid)) a.UbicacionId = guid;
     }
-    if (patch.TryGetPropertyValue("estado", out var est) && est != null) a.Estado = est.ToString();
     if (patch.TryGetPropertyValue("fechaAdquisicion", out var fa) && fa != null) a.FechaAdquisicion = fa.ToString();
     if (patch.TryGetPropertyValue("proximoMantenimiento", out var pm) && pm != null) a.ProximoMantenimiento = pm.ToString();
     if (patch.TryGetPropertyValue("criticidad", out var crit) && crit != null) a.Criticidad = crit.ToString();

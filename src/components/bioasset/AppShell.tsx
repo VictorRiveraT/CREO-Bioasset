@@ -15,7 +15,7 @@ import {
   Moon,
   FileText,
   Settings,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +53,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <nav className="flex flex-col gap-1 px-3">
-      {NAV.filter(item => !item.module || canView(item.module)).map((item) => {
+      {NAV.filter((item) => !item.module || canView(item.module)).map((item) => {
         const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
         return (
           <Link
@@ -82,7 +82,9 @@ function Brand() {
         Creo<span className="text-[#F2B705]">+</span>
       </div>
       <p className="text-sm font-medium text-[#F2B705]">BIOASSET</p>
-      <p className="text-xs text-sidebar-foreground/60 leading-tight">Sistema Inteligente de Gestión y Trazabilidad de Equipos Biomédicos</p>
+      <p className="text-xs text-sidebar-foreground/60 leading-tight">
+        Sistema Inteligente de Gestión y Trazabilidad de Equipos Biomédicos
+      </p>
     </div>
   );
 }
@@ -107,14 +109,14 @@ function LoginScreen() {
             Creo<span className="text-[#F2B705]">+</span>
           </div>
           <CardTitle className="text-2xl mt-4 text-[#F2B705]">BIOASSET</CardTitle>
-          <CardDescription>
-            Creamos posibilidades para una mejor salud.
-          </CardDescription>
+          <CardDescription>Creamos posibilidades para una mejor salud.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={handleLogin}>
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-left block">Correo institucional</Label>
+              <Label htmlFor="email" className="text-left block">
+                Correo institucional
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -124,7 +126,9 @@ function LoginScreen() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-left block">Contraseña</Label>
+              <Label htmlFor="password" className="text-left block">
+                Contraseña
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -179,11 +183,18 @@ export function AppShell({
               {user.nombre.charAt(0)}
             </div>
             <div>
-              <p className="text-sm font-medium text-sidebar-foreground truncate w-32">{user.nombre}</p>
+              <p className="text-sm font-medium text-sidebar-foreground truncate w-32">
+                {user.nombre}
+              </p>
               <p className="text-xs capitalize text-sidebar-foreground/60">{user.rol}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" onClick={logout}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            onClick={logout}
+          >
             <LogOut className="size-4" />
           </Button>
         </div>
@@ -208,7 +219,7 @@ export function AppShell({
               </div>
             </SheetContent>
           </Sheet>
-          
+
           <div className="min-w-0 flex-1 flex items-center justify-between">
             <div>
               <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
@@ -216,13 +227,13 @@ export function AppShell({
                 <p className="truncate text-xs text-muted-foreground">{description}</p>
               )}
             </div>
-            
+
             <div className="flex items-center gap-4">
               {/* Quick Role Selector for DEV only */}
               {import.meta.env.DEV && (
                 <div className="hidden md:flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">Dev Role:</span>
-                  <select 
+                  <select
                     className="text-xs border rounded p-1 bg-background text-foreground"
                     value={user.rol}
                     onChange={(e) => {
@@ -239,7 +250,6 @@ export function AppShell({
                   </select>
                 </div>
               )}
-              
             </div>
           </div>
           {actions}

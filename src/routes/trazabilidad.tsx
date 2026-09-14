@@ -31,7 +31,8 @@ export const Route = createFileRoute("/trazabilidad")({
       { title: "Trazabilidad de equipos | BIOASSET" },
       {
         name: "description",
-        content: "Historial de movimientos y traslados de los equipos biomédicos entre ubicaciones.",
+        content:
+          "Historial de movimientos y traslados de los equipos biomédicos entre ubicaciones.",
       },
       { property: "og:title", content: "Trazabilidad de equipos | BIOASSET" },
       { property: "og:description", content: "Movimientos y traslados de equipos biomédicos." },
@@ -51,13 +52,13 @@ function TrazabilidadPage() {
       .filter((m) => {
         const e = db.equipment.find((x) => x.id === m.equipoId);
         if (!e) return false;
-        
+
         const match =
           e.codigo.toLowerCase().includes(q.toLowerCase()) ||
           e.nombre.toLowerCase().includes(q.toLowerCase());
-          
+
         const inUbi = ubi === "todas" || m.origenId === ubi || m.destinoId === ubi;
-        
+
         return match && inUbi;
       });
   }, [db.movements, db.equipment, q, ubi]);
@@ -90,23 +91,32 @@ function TrazabilidadPage() {
             />
           </div>
           <Select value={ubi} onValueChange={setUbi}>
-            <SelectTrigger><SelectValue placeholder="Ubicación" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Ubicación" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas las ubicaciones</SelectItem>
               {Object.entries(
-                db.locations.filter(l => l.nombre !== "___EMPTY___").reduce((acc, loc) => {
-                  const s = loc.sede || "Sede Principal";
-                  const p = loc.piso || "Piso 1";
-                  const key = `${s} - ${p}`;
-                  if (!acc[key]) acc[key] = [];
-                  acc[key].push(loc);
-                  return acc;
-                }, {} as Record<string, typeof db.locations>)
+                db.locations
+                  .filter((l) => l.nombre !== "___EMPTY___")
+                  .reduce(
+                    (acc, loc) => {
+                      const s = loc.sede || "Sede Principal";
+                      const p = loc.piso || "Piso 1";
+                      const key = `${s} - ${p}`;
+                      if (!acc[key]) acc[key] = [];
+                      acc[key].push(loc);
+                      return acc;
+                    },
+                    {} as Record<string, typeof db.locations>,
+                  ),
               ).map(([groupName, locs]) => (
                 <SelectGroup key={groupName}>
                   <SelectLabel>{groupName}</SelectLabel>
                   {locs.map((l) => (
-                    <SelectItem key={l.id} value={l.id}>{l.nombre}</SelectItem>
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.nombre}
+                    </SelectItem>
                   ))}
                 </SelectGroup>
               ))}

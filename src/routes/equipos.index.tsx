@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { Plus, Search, AlertTriangle } from "lucide-react";
+import { Plus, Search, AlertTriangle, QrCode } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { EquipmentDialog, IncidentDialog } from "@/components/bioasset/dialogs";
 import { DueBadge, StatusBadge } from "@/components/bioasset/StatusBadge";
@@ -32,7 +32,8 @@ export const Route = createFileRoute("/equipos/")({
       { title: "Equipos biomédicos | BIOASSET" },
       {
         name: "description",
-        content: "Inventario de equipos biomédicos con búsqueda y filtros por categoría, estado y ubicación.",
+        content:
+          "Inventario de equipos biomédicos con búsqueda y filtros por categoría, estado y ubicación.",
       },
       { property: "og:title", content: "Equipos biomédicos | BIOASSET" },
       { property: "og:description", content: "Inventario de equipos biomédicos." },
@@ -61,10 +62,7 @@ function EquiposPage() {
       const match =
         !term ||
         [e.codigo, e.nombre, e.marca, e.serie].some((v) => (v || "").toLowerCase().includes(term));
-      return (
-        match &&
-        (cat === "todas" || e.categoria === cat)
-      );
+      return match && (cat === "todas" || e.categoria === cat);
     });
   }, [activos, q, cat]);
 
@@ -73,15 +71,22 @@ function EquiposPage() {
       title="Equipos biomédicos"
       description={`${rows.length} equipos encontrados`}
       actions={
-        canEdit("inventario") ? (
-          <EquipmentDialog
-            trigger={
-              <Button size="sm">
-                <Plus className="size-4" /> Registrar equipo
-              </Button>
-            }
-          />
-        ) : null
+        <div className="flex gap-2">
+          <Button asChild size="sm" variant="outline">
+            <Link to="/qr">
+              <QrCode className="size-4" /> Escanear QR
+            </Link>
+          </Button>
+          {canEdit("inventario") && (
+            <EquipmentDialog
+              trigger={
+                <Button size="sm">
+                  <Plus className="size-4" /> Registrar equipo
+                </Button>
+              }
+            />
+          )}
+        </div>
       }
     >
       <Card className="shadow-[var(--shadow-card)]">
@@ -96,30 +101,44 @@ function EquiposPage() {
             />
           </div>
           <Select value={cat} onValueChange={setCat}>
-            <SelectTrigger><SelectValue placeholder="Categoría" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Categoría" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas las categorías</SelectItem>
               {CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Select value={est} onValueChange={setEst}>
-            <SelectTrigger><SelectValue placeholder="Estado" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Estado" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los estados</SelectItem>
               {EQUIPMENT_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Select value={ubi} onValueChange={setUbi}>
-            <SelectTrigger><SelectValue placeholder="Ubicación" /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder="Ubicación" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas las ubicaciones</SelectItem>
-              {db.locations.filter((l) => l.nombre !== "___EMPTY___").map((l) => (
-                <SelectItem key={l.id} value={l.id}>{l.nombre}</SelectItem>
-              ))}
+              {db.locations
+                .filter((l) => l.nombre !== "___EMPTY___")
+                .map((l) => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.nombre}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </CardContent>
@@ -153,25 +172,31 @@ function EquiposPage() {
                   <TableCell className="text-muted-foreground">{e.modelo}</TableCell>
                   <TableCell className="text-muted-foreground">{e.serie}</TableCell>
                   <TableCell>{locationName(e.ubicacionId)}</TableCell>
-                  <TableCell><StatusBadge status={e.estado} /></TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(e.fechaAdquisicion)}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={e.estado} />
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatDate(e.fechaAdquisicion)}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {formatDate(e.proximoMantenimiento)}{" "}
                     <DueBadge days={daysUntil(e.proximoMantenimiento)} />
                   </TableCell>
-                    <TableCell className="text-right flex items-center justify-end gap-2">
-                      <IncidentDialog
-                        equipoId={e.id}
-                        trigger={
-                          <Button size="sm" variant="destructive">
-                            <AlertTriangle className="size-4" />
-                          </Button>
-                        }
-                      />
-                      <Button asChild variant="outline" size="sm">
-                        <Link to="/equipos/$id" params={{ id: e.id }}>Ver detalle</Link>
-                      </Button>
-                    </TableCell>
+                  <TableCell className="text-right flex items-center justify-end gap-2">
+                    <IncidentDialog
+                      equipoId={e.id}
+                      trigger={
+                        <Button size="sm" variant="destructive">
+                          <AlertTriangle className="size-4" />
+                        </Button>
+                      }
+                    />
+                    <Button asChild variant="outline" size="sm">
+                      <Link to="/equipos/$id" params={{ id: e.id }}>
+                        Ver detalle
+                      </Link>
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
               {rows.length === 0 && (

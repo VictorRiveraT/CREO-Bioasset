@@ -30,7 +30,8 @@ export const Route = createFileRoute("/mantenimiento")({
       { title: "Mantenimiento de equipos | BIOASSET" },
       {
         name: "description",
-        content: "Registro y consulta de mantenimientos preventivos y correctivos de equipos biomédicos.",
+        content:
+          "Registro y consulta de mantenimientos preventivos y correctivos de equipos biomédicos.",
       },
       { property: "og:title", content: "Mantenimiento de equipos | BIOASSET" },
       { property: "og:description", content: "Mantenimientos preventivos y correctivos." },
@@ -51,8 +52,7 @@ function MantenimientoPage() {
       .filter((m) => {
         const e = db.equipment.find((x) => x.id === m.equipoId);
         if (!e) return false;
-        const match =
-          !term || `${e.codigo} ${e.nombre}`.toLowerCase().includes(term);
+        const match = !term || `${e.codigo} ${e.nombre}`.toLowerCase().includes(term);
         const inTipo = tipo === "todos" || m.tipo === tipo;
         return match && inTipo;
       });
@@ -86,7 +86,9 @@ function MantenimientoPage() {
             />
           </div>
           <Select value={tipo} onValueChange={setTipo}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los tipos</SelectItem>
               <SelectItem value="Preventivo">Preventivo</SelectItem>
@@ -108,6 +110,7 @@ function MantenimientoPage() {
                 <TableHead>Descripción</TableHead>
                 <TableHead>Resultado</TableHead>
                 <TableHead>Próximo</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -134,9 +137,25 @@ function MantenimientoPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>{userName(m.biomedicoId)}</TableCell>
-                    <TableCell className="max-w-sm text-muted-foreground">{m.descripcion}</TableCell>
+                    <TableCell className="max-w-sm text-muted-foreground">
+                      {m.descripcion}
+                    </TableCell>
                     <TableCell>{m.resultado}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDate(m.proximaFecha)}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {formatDate(m.proximaFecha)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {canEdit("mantenimiento") && (
+                        <MaintenanceDialog
+                          maintenance={m}
+                          trigger={
+                            <Button size="sm" variant={m.resultado === "En progreso" ? "default" : "outline"}>
+                              {m.resultado === "En progreso" ? "Completar" : "Editar"}
+                            </Button>
+                          }
+                        />
+                      )}
+                    </TableCell>
                   </TableRow>
                 );
               })}

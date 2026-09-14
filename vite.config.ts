@@ -11,6 +11,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   server: {
+    allowedHosts: ["canberra-rescue-journals-steal.trycloudflare.com", ".trycloudflare.com", "all"],
     proxy: {
       "/api": {
         target: "http://localhost:8080",

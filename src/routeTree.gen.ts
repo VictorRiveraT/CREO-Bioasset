@@ -20,6 +20,8 @@ import { Route as UbicacionesRouteImport } from './routes/ubicaciones'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as EquiposIndexRouteImport } from './routes/equipos.index'
 import { Route as EquiposIdRouteImport } from './routes/equipos.$id'
+import { Route as QrIndexRouteImport } from './routes/qr.index'
+import { Route as QrIdRouteImport } from './routes/qr.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -76,6 +78,16 @@ const EquiposIdRoute = EquiposIdRouteImport.update({
   path: '/equipos/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const QrIndexRoute = QrIndexRouteImport.update({
+  id: '/qr/',
+  path: '/qr/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrIdRoute = QrIdRouteImport.update({
+  id: '/qr/$id',
+  path: '/qr/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -88,7 +100,9 @@ export interface FileRoutesByFullPath {
   '/ubicaciones': typeof UbicacionesRoute
   '/usuarios': typeof UsuariosRoute
   '/equipos/$id': typeof EquiposIdRoute
+  '/qr/$id': typeof QrIdRoute
   '/equipos/': typeof EquiposIndexRoute
+  '/qr/': typeof QrIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,7 +115,9 @@ export interface FileRoutesByTo {
   '/ubicaciones': typeof UbicacionesRoute
   '/usuarios': typeof UsuariosRoute
   '/equipos/$id': typeof EquiposIdRoute
+  '/qr/$id': typeof QrIdRoute
   '/equipos': typeof EquiposIndexRoute
+  '/qr': typeof QrIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,7 +131,9 @@ export interface FileRoutesById {
   '/ubicaciones': typeof UbicacionesRoute
   '/usuarios': typeof UsuariosRoute
   '/equipos/$id': typeof EquiposIdRoute
+  '/qr/$id': typeof QrIdRoute
   '/equipos/': typeof EquiposIndexRoute
+  '/qr/': typeof QrIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,7 +148,9 @@ export interface FileRouteTypes {
     | '/ubicaciones'
     | '/usuarios'
     | '/equipos/$id'
+    | '/qr/$id'
     | '/equipos/'
+    | '/qr/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -143,7 +163,9 @@ export interface FileRouteTypes {
     | '/ubicaciones'
     | '/usuarios'
     | '/equipos/$id'
+    | '/qr/$id'
     | '/equipos'
+    | '/qr'
   id:
     | '__root__'
     | '/'
@@ -156,7 +178,9 @@ export interface FileRouteTypes {
     | '/ubicaciones'
     | '/usuarios'
     | '/equipos/$id'
+    | '/qr/$id'
     | '/equipos/'
+    | '/qr/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -170,7 +194,9 @@ export interface RootRouteChildren {
   UbicacionesRoute: typeof UbicacionesRoute
   UsuariosRoute: typeof UsuariosRoute
   EquiposIdRoute: typeof EquiposIdRoute
+  QrIdRoute: typeof QrIdRoute
   EquiposIndexRoute: typeof EquiposIndexRoute
+  QrIndexRoute: typeof QrIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -252,6 +278,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EquiposIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/qr/': {
+      id: '/qr/'
+      path: '/qr'
+      fullPath: '/qr/'
+      preLoaderRoute: typeof QrIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr/$id': {
+      id: '/qr/$id'
+      path: '/qr/$id'
+      fullPath: '/qr/$id'
+      preLoaderRoute: typeof QrIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -266,7 +306,9 @@ const rootRouteChildren: RootRouteChildren = {
   UbicacionesRoute: UbicacionesRoute,
   UsuariosRoute: UsuariosRoute,
   EquiposIdRoute: EquiposIdRoute,
+  QrIdRoute: QrIdRoute,
   EquiposIndexRoute: EquiposIndexRoute,
+  QrIndexRoute: QrIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

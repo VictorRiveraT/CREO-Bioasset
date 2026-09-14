@@ -1,81 +1,103 @@
-USE bioasset;
-DELETE FROM inventario.Activos;
-DELETE FROM inventario.Ubicaciones;
+﻿USE bioasset;
+
+DELETE FROM inventario.Movimientos;
 DELETE FROM mantenimiento.Mantenimientos;
 DELETE FROM alertas.Alertas;
+DELETE FROM inventario.Activos;
+DELETE FROM inventario.Ubicaciones;
+DELETE FROM analitica.Metricas;
 
 DECLARE @AdminId UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM auth.Usuarios WHERE Rol = 'admin');
 DECLARE @BiomedicoId UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM auth.Usuarios WHERE Rol = 'biomedico');
 DECLARE @AsistencialId UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM auth.Usuarios WHERE Rol = 'asistencial');
 
-DECLARE @Ubicacion1 UNIQUEIDENTIFIER = NEWID();
-DECLARE @Ubicacion2 UNIQUEIDENTIFIER = NEWID();
+IF @BiomedicoId IS NULL SET @BiomedicoId = NEWID();
+IF @AdminId IS NULL SET @AdminId = NEWID();
 
-INSERT INTO inventario.Ubicaciones (Id, Nombre, Descripcion, Activo) VALUES 
-(@Ubicacion1, 'UCI', 'Unidad de Cuidados Intensivos', 1),
-(@Ubicacion2, 'Emergencia', 'Sala de Emergencias', 1);
+DECLARE @Ub_Mira_P1 UNIQUEIDENTIFIER = NEWID(); DECLARE @Ub_Mira_P2 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Ub_SanI_P1 UNIQUEIDENTIFIER = NEWID(); DECLARE @Ub_SanI_P3 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Ub_Surco_S1 UNIQUEIDENTIFIER = NEWID(); DECLARE @Ub_Surco_P2 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Ub_Lima_P4 UNIQUEIDENTIFIER = NEWID(); DECLARE @Ub_Lima_S2 UNIQUEIDENTIFIER = NEWID();
 
-INSERT INTO inventario.Activos (Id, Codigo, Nombre, Categoria, Marca, Modelo, Serie, UbicacionId, Estado, FechaAdquisicion, ProximoMantenimiento, Criticidad, activo)
-VALUES
-(NEWID(), 'MN-001', 'Monitor de Signos Vitales', 'Monitoreo', 'Philips', 'IntelliVue MX400', 'PH123001', @Ubicacion1, 'Operativo', '2022-01-10', '2026-10-01', 'Alta', 1),
-(NEWID(), 'MN-002', 'Monitor de Signos Vitales', 'Monitoreo', 'Philips', 'IntelliVue MX400', 'PH123002', @Ubicacion1, 'Operativo', '2022-01-10', '2026-10-01', 'Alta', 1),
-(NEWID(), 'MN-003', 'Monitor de Signos Vitales', 'Monitoreo', 'Philips', 'IntelliVue MX400', 'PH123003', @Ubicacion1, 'Mantenimiento', '2022-01-10', '2026-09-01', 'Alta', 1),
-(NEWID(), 'MN-004', 'Monitor Multiparametro', 'Monitoreo', 'Mindray', 'BeneVision N12', 'MD45001', @Ubicacion2, 'Operativo', '2023-05-15', '2026-11-15', 'Media', 1),
-(NEWID(), 'MN-005', 'Monitor Multiparametro', 'Monitoreo', 'Mindray', 'BeneVision N12', 'MD45002', @Ubicacion2, 'De baja', '2019-02-20', '2024-02-20', 'Media', 0),
-(NEWID(), 'DF-001', 'Desfibrilador', 'Reanimacion', 'Zoll', 'R Series', 'ZL112201', @Ubicacion2, 'Operativo', '2021-08-05', '2026-12-01', 'Alta', 1),
-(NEWID(), 'DF-002', 'Desfibrilador', 'Reanimacion', 'Zoll', 'R Series', 'ZL112202', @Ubicacion2, 'Operativo', '2021-08-05', '2026-12-01', 'Alta', 1),
-(NEWID(), 'DF-003', 'Desfibrilador', 'Reanimacion', 'Mindray', 'BeneHeart D3', 'MD223301', @Ubicacion1, 'Operativo', '2020-03-11', '2026-10-15', 'Alta', 1),
-(NEWID(), 'DF-004', 'Desfibrilador', 'Reanimacion', 'Mindray', 'BeneHeart D3', 'MD223302', @Ubicacion1, 'Operativo', '2020-03-11', '2026-10-15', 'Alta', 1),
-(NEWID(), 'DF-005', 'Desfibrilador', 'Reanimacion', 'Mindray', 'BeneHeart D3', 'MD223303', @Ubicacion1, 'Inoperativo', '2020-03-11', '2026-08-01', 'Alta', 1),
-(NEWID(), 'BI-001', 'Bomba de Infusion', 'Soporte Vida', 'B. Braun', 'Infusomat Space', 'BB99001', @Ubicacion1, 'Operativo', '2024-01-10', '2027-01-10', 'Media', 1),
-(NEWID(), 'BI-002', 'Bomba de Infusion', 'Soporte Vida', 'B. Braun', 'Infusomat Space', 'BB99002', @Ubicacion1, 'Operativo', '2024-01-10', '2027-01-10', 'Media', 1),
-(NEWID(), 'BI-003', 'Bomba de Infusion', 'Soporte Vida', 'B. Braun', 'Infusomat Space', 'BB99003', @Ubicacion2, 'Operativo', '2024-01-10', '2027-01-10', 'Media', 1),
-(NEWID(), 'BI-004', 'Bomba de Infusion', 'Soporte Vida', 'B. Braun', 'Infusomat Space', 'BB99004', @Ubicacion2, 'Mantenimiento', '2024-01-10', '2026-09-05', 'Media', 1),
-(NEWID(), 'BI-005', 'Bomba de Infusion', 'Soporte Vida', 'Baxter', 'Sigma Spectrum', 'BX556601', @Ubicacion2, 'Operativo', '2023-06-01', '2026-11-01', 'Media', 1),
-(NEWID(), 'VM-001', 'Ventilador Mecanico', 'Soporte Vida', 'Drager', 'Evita V500', 'DR778801', @Ubicacion1, 'Operativo', '2019-11-20', '2026-12-20', 'Alta', 1),
-(NEWID(), 'VM-002', 'Ventilador Mecanico', 'Soporte Vida', 'Drager', 'Evita V500', 'DR778802', @Ubicacion1, 'Operativo', '2019-11-20', '2026-12-20', 'Alta', 1),
-(NEWID(), 'VM-003', 'Ventilador Mecanico', 'Soporte Vida', 'Drager', 'Evita V500', 'DR778803', @Ubicacion1, 'Operativo', '2019-11-20', '2026-12-20', 'Alta', 1),
-(NEWID(), 'VM-004', 'Ventilador Mecanico', 'Soporte Vida', 'Puritan Bennett', '980', 'PB334401', @Ubicacion2, 'Inoperativo', '2020-10-15', '2026-08-15', 'Alta', 1),
-(NEWID(), 'VM-005', 'Ventilador Mecanico', 'Soporte Vida', 'Puritan Bennett', '980', 'PB334402', @Ubicacion2, 'Operativo', '2020-10-15', '2026-10-15', 'Alta', 1);
+INSERT INTO inventario.Ubicaciones (Id, Nombre, Descripcion, Piso, Sede, Activo) VALUES 
+(@Ub_Mira_P1, 'Emergencia', 'Sala de Triaje y Emergencias', 'Piso 1', 'Miraflores', 1),
+(@Ub_Mira_P2, 'UCI Adultos', 'Unidad de Cuidados Intensivos', 'Piso 2', 'Miraflores', 1),
+(@Ub_SanI_P1, 'Laboratorio', 'Analisis clinicos', 'Piso 1', 'San Isidro', 1),
+(@Ub_SanI_P3, 'Quirofano A', 'Centro Quirurgico Principal', 'Piso 3', 'San Isidro', 1),
+(@Ub_Surco_S1, 'Imagenologia', 'Rayos X, RM y Tomografia', 'Sotano 1', 'Surco', 1),
+(@Ub_Surco_P2, 'Pediatria', 'Hospitalizacion Infantil', 'Piso 2', 'Surco', 1),
+(@Ub_Lima_P4, 'Cardiologia', 'Pabellon de Cardiologia', 'Piso 4', 'Lima Centro', 1),
+(@Ub_Lima_S2, 'Almacen Central', 'Almacen de equipos de reserva', 'Sotano 2', 'Lima Centro', 1);
 
-DECLARE @ActivoM1 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'MN-003');
-DECLARE @ActivoM2 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'BI-004');
+DECLARE @Eq1 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq2 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq3 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Eq4 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq5 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq6 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Eq7 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq8 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq9 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Eq10 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq11 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq12 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Eq13 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq14 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq15 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Eq16 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq17 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq18 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Eq19 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq20 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq21 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Eq22 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq23 UNIQUEIDENTIFIER = NEWID(); DECLARE @Eq24 UNIQUEIDENTIFIER = NEWID();
+DECLARE @Eq25 UNIQUEIDENTIFIER = NEWID();
+
+INSERT INTO inventario.Activos (Id, Codigo, Nombre, Categoria, Marca, Modelo, Serie, UbicacionId, Estado, FechaAdquisicion, ProximoMantenimiento, Criticidad, activo) VALUES
+(@Eq1, 'MN-001', 'Monitor Multiparametro', 'Monitoreo', 'Philips', 'IntelliVue MX400', 'PH123001', @Ub_Mira_P2, 'Operativo', '2022-01-10', '2026-10-01', 'Alta', 1),
+(@Eq2, 'MN-002', 'Monitor de Signos Vitales', 'Monitoreo', 'Philips', 'IntelliVue MX400', 'PH123002', @Ub_Mira_P1, 'Operativo', '2022-01-10', '2026-10-01', 'Media', 1),
+(@Eq3, 'MN-003', 'Monitor Fetal', 'Monitoreo', 'GE Healthcare', 'Corometrics 250cx', 'GE44332', @Ub_Surco_P2, 'En mantenimiento', '2021-05-12', '2026-09-01', 'Media', 1),
+(@Eq4, 'MN-004', 'Monitor Multiparametro', 'Monitoreo', 'Mindray', 'BeneVision N12', 'MD45001', @Ub_Lima_P4, 'Operativo', '2023-05-15', '2026-11-15', 'Alta', 1),
+(@Eq5, 'MN-005', 'Monitor Signos Vitales', 'Monitoreo', 'Mindray', 'BeneVision N12', 'MD45002', @Ub_Lima_S2, 'De baja', '2019-02-20', '2024-02-20', 'Media', 0),
+(@Eq6, 'DF-001', 'Desfibrilador', 'Reanimacion', 'Zoll', 'R Series', 'ZL112201', @Ub_Mira_P1, 'Operativo', '2021-08-05', '2026-12-01', 'Alta', 1),
+(@Eq7, 'DF-002', 'Desfibrilador Externo', 'Reanimacion', 'Zoll', 'AED Plus', 'ZL112202', @Ub_SanI_P1, 'Operativo', '2021-08-05', '2026-12-01', 'Alta', 1),
+(@Eq8, 'DF-003', 'Desfibrilador', 'Reanimacion', 'Mindray', 'BeneHeart D3', 'MD223301', @Ub_Mira_P2, 'Operativo', '2020-03-11', '2026-10-15', 'Alta', 1),
+(@Eq9, 'DF-004', 'Desfibrilador', 'Reanimacion', 'Mindray', 'BeneHeart D3', 'MD223302', @Ub_SanI_P3, 'Operativo', '2020-03-11', '2026-10-15', 'Alta', 1),
+(@Eq10, 'DF-005', 'Desfibrilador', 'Reanimacion', 'Mindray', 'BeneHeart D3', 'MD223303', @Ub_Lima_S2, 'Inoperativo', '2020-03-11', '2026-08-01', 'Alta', 1),
+(@Eq11, 'BI-001', 'Bomba de Infusion', 'Soporte Vida', 'B. Braun', 'Infusomat Space', 'BB99001', @Ub_Mira_P2, 'Operativo', '2024-01-10', '2027-01-10', 'Media', 1),
+(@Eq12, 'BI-002', 'Bomba de Infusion', 'Soporte Vida', 'B. Braun', 'Infusomat Space', 'BB99002', @Ub_SanI_P3, 'Operativo', '2024-01-10', '2027-01-10', 'Media', 1),
+(@Eq13, 'BI-003', 'Bomba de Infusion Volumetrica', 'Soporte Vida', 'Baxter', 'Sigma Spectrum', 'BX556601', @Ub_Surco_P2, 'Operativo', '2023-06-01', '2026-11-01', 'Media', 1),
+(@Eq14, 'BI-004', 'Bomba de Infusion', 'Soporte Vida', 'B. Braun', 'Infusomat Space', 'BB99004', @Ub_Mira_P1, 'En mantenimiento', '2024-01-10', '2026-09-05', 'Media', 1),
+(@Eq15, 'BI-005', 'Bomba de Jeringa', 'Soporte Vida', 'Baxter', 'Sigma Spectrum', 'BX556602', @Ub_Lima_P4, 'Operativo', '2023-06-01', '2026-11-01', 'Media', 1),
+(@Eq16, 'VM-001', 'Ventilador Mecanico Adulto', 'Soporte Vida', 'Drager', 'Evita V500', 'DR778801', @Ub_Mira_P2, 'Operativo', '2019-11-20', '2026-12-20', 'Alta', 1),
+(@Eq17, 'VM-002', 'Ventilador Mecanico Pedi', 'Soporte Vida', 'Drager', 'Evita V500', 'DR778802', @Ub_Surco_P2, 'Operativo', '2019-11-20', '2026-12-20', 'Alta', 1),
+(@Eq18, 'VM-003', 'Ventilador Mecanico', 'Soporte Vida', 'Puritan Bennett', '980', 'PB334401', @Ub_SanI_P3, 'Inoperativo', '2020-10-15', '2026-08-15', 'Alta', 1),
+(@Eq19, 'RX-001', 'Maquina Rayos X Portatil', 'Imagenologia', 'Siemens', 'Mobilett Elara Max', 'SM001X', @Ub_Surco_S1, 'Operativo', '2021-02-14', '2026-11-10', 'Alta', 1),
+(@Eq20, 'US-001', 'Ecografo 3D', 'Imagenologia', 'GE Healthcare', 'Voluson E8', 'GE888US', @Ub_Surco_S1, 'Operativo', '2022-09-09', '2027-02-28', 'Media', 1),
+(@Eq21, 'AN-001', 'Maquina de Anestesia', 'Soporte Vida', 'Drager', 'Fabius Plus', 'DRAN01', @Ub_SanI_P3, 'Operativo', '2020-01-10', '2026-10-05', 'Alta', 1),
+(@Eq22, 'AN-002', 'Maquina de Anestesia', 'Soporte Vida', 'Drager', 'Fabius Plus', 'DRAN02', @Ub_SanI_P3, 'Operativo', '2020-01-10', '2026-10-05', 'Alta', 1),
+(@Eq23, 'EK-001', 'Electrocardiografo', 'Diagnostico', 'Schiller', 'Cardiovit AT-102', 'SC10201', @Ub_Lima_P4, 'Operativo', '2023-04-20', '2026-10-20', 'Baja', 1),
+(@Eq24, 'IN-001', 'Incubadora Neonatal', 'Soporte Vida', 'Drager', 'Isolette 8000', 'DRIN01', @Ub_Surco_P2, 'Operativo', '2021-07-15', '2026-12-10', 'Alta', 1),
+(@Eq25, 'LA-001', 'Analizador de Sangre', 'Laboratorio', 'Abbott', 'i-STAT 1', 'ABBLAB01', @Ub_SanI_P1, 'Operativo', '2023-11-11', '2026-11-11', 'Media', 1);
+
+INSERT INTO inventario.Movimientos (Id, EquipoId, OrigenId, DestinoId, UsuarioId, Fecha, Motivo, Observaciones) VALUES
+(NEWID(), @Eq10, @Ub_Mira_P1, @Ub_Lima_S2, @AdminId, '2026-08-10', 'Dado de baja temporal', 'Se envio al almacen central por fallos repetitivos.'),
+(NEWID(), @Eq4, @Ub_Lima_S2, @Ub_Lima_P4, @AdminId, '2026-09-01', 'Reasignacion de area', 'Se necesita en cardiologia por aumento de pacientes.'),
+(NEWID(), @Eq14, @Ub_SanI_P3, @Ub_Mira_P1, @BiomedicoId, '2026-09-05', 'Emergencia', 'Prestamo urgente para triaje.'),
+(NEWID(), @Eq3, @Ub_Surco_S1, @Ub_Surco_P2, @BiomedicoId, '2026-09-10', 'Reubicacion', 'Mejor accesibilidad en pediatria.'),
+(NEWID(), @Eq7, @Ub_Lima_S2, @Ub_SanI_P1, @AsistencialId, '2026-09-12', 'Sustitucion', 'Reemplazo de un equipo en laboratorio.');
 
 INSERT INTO mantenimiento.Mantenimientos (Id, activo_id, biomedico_id, Tipo, Estado, proxima_fecha)
 VALUES
-(NEWID(), @ActivoM1, @BiomedicoId, 'Preventivo', 'Completado', '2026-09-01'),
-(NEWID(), @ActivoM2, @BiomedicoId, 'Correctivo', 'En progreso', '2026-09-05');
-
-DECLARE @ActivoA1 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'MN-004');
-DECLARE @ActivoA2 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'DF-001');
-DECLARE @ActivoA3 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'BI-002');
-DECLARE @ActivoA4 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'VM-003');
-DECLARE @ActivoA5 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'MN-005');
-DECLARE @ActivoA6 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'DF-005');
-DECLARE @ActivoA7 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'BI-004');
-DECLARE @ActivoA8 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'VM-004');
-DECLARE @ActivoA9 UNIQUEIDENTIFIER = (SELECT TOP 1 Id FROM inventario.Activos WHERE Codigo = 'MN-001');
+(NEWID(), @Eq1, @BiomedicoId, 'Preventivo', 'Completado', '2026-10-01'),
+(NEWID(), @Eq19, @BiomedicoId, 'Preventivo', 'Completado', '2026-11-10'),
+(NEWID(), @Eq3, @BiomedicoId, 'Correctivo', 'En progreso', '2026-09-01'),
+(NEWID(), @Eq14, @BiomedicoId, 'Correctivo', 'En progreso', '2026-09-05'),
+(NEWID(), @Eq18, @BiomedicoId, 'Correctivo', 'Pendiente', '2026-08-15'),
+(NEWID(), @Eq24, @BiomedicoId, 'Preventivo', 'Pendiente', '2026-12-10'),
+(NEWID(), @Eq25, @BiomedicoId, 'Preventivo', 'Completado', '2026-11-11');
 
 INSERT INTO alertas.Alertas (Id, activo_id, Tipo, Mensaje, Severidad, Estado)
 VALUES
-(NEWID(), @ActivoA1, 'Calibración Vencida', 'El equipo Monitor Multiparametro (MN-004) requiere calibración urgente', 'Alta', 'Activa'),
-(NEWID(), @ActivoA2, 'Mantenimiento Preventivo Pendiente', 'El equipo Desfibrilador (DF-001) tiene mantenimiento programado para esta semana', 'Media', 'Activa'),
-(NEWID(), @ActivoA3, 'Fallo de Autotest', 'La Bomba de Infusion (BI-002) reportó error en su autodiagnóstico diario', 'Alta', 'Activa'),
-(NEWID(), @ActivoA4, 'Batería Baja', 'El Ventilador Mecanico (VM-003) requiere reemplazo de batería interna', 'Media', 'Activa'),
-(NEWID(), @ActivoA5, 'Equipo Fuera de Servicio', 'El Monitor Multiparametro (MN-005) fue reportado inoperativo por usuario', 'Baja', 'Resuelta'),
-(NEWID(), @ActivoA6, 'Mantenimiento Preventivo Vencido', 'El equipo Desfibrilador (DF-005) tiene un retraso de 15 días en mantenimiento', 'Alta', 'Activa'),
-(NEWID(), @ActivoA7, 'Error en sensor', 'La Bomba de Infusion (BI-004) detectó anomalía en sensor de presión', 'Alta', 'Resuelta'),
-(NEWID(), @ActivoA8, 'Calibración Próxima', 'El Ventilador Mecanico (VM-004) requerirá calibración en 10 días', 'Baja', 'Activa'),
-(NEWID(), @ActivoA9, 'Inspección de Rutina', 'Inspección visual y limpieza mensual pendiente para Monitor (MN-001)', 'Baja', 'Activa');
+(NEWID(), @Eq18, 'Calibracion Vencida', 'El Ventilador Mecanico requiere calibracion urgente', 'Alta', 'Activa'),
+(NEWID(), @Eq10, 'Mantenimiento Pendiente', 'Desfibrilador en Almacen Central tiene mantenimiento programado vencido', 'Media', 'Activa'),
+(NEWID(), @Eq3, 'Fallo de Hardware', 'Monitor Fetal reporto error de sistema E-404', 'Alta', 'Activa'),
+(NEWID(), @Eq14, 'Bateria Critica', 'Bomba de Infusion reporta bateria interna defectuosa', 'Alta', 'Activa'),
+(NEWID(), @Eq5, 'Equipo Fuera de Servicio', 'Monitor de signos vitales dado de baja', 'Baja', 'Resuelta');
 
-DELETE FROM analitica.Metricas;
 INSERT INTO analitica.Metricas (Id, Nombre, Valor)
 VALUES
-(NEWID(), 'Disponibilidad General', 94.5),
-(NEWID(), 'MTBF Promedio (horas)', 4320),
-(NEWID(), 'MTTR Promedio (horas)', 4.2),
-(NEWID(), 'Cumplimiento Preventivo', 88.5),
-(NEWID(), 'Equipos Operativos (%)', 85.0),
-(NEWID(), 'Disponibilidad Monitores', 96.2),
-(NEWID(), 'Disponibilidad Soporte Vida', 98.1),
-(NEWID(), 'Tasa de Fallos Críticos', 1.5);
+(NEWID(), 'Disponibilidad General', 92.5),
+(NEWID(), 'MTBF Promedio (horas)', 4100),
+(NEWID(), 'MTTR Promedio (horas)', 5.1),
+(NEWID(), 'Cumplimiento Preventivo', 86.2),
+(NEWID(), 'Equipos Operativos (%)', 88.0),
+(NEWID(), 'Disponibilidad Monitores', 94.2),
+(NEWID(), 'Disponibilidad Soporte Vida', 97.5),
+(NEWID(), 'Tasa de Fallos Criticos', 2.1);

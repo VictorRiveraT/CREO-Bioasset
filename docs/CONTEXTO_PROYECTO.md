@@ -3,6 +3,7 @@
 ## 1. Árbol de directorios completo
 
 El repositorio principal está bajo `bioasset-hub-main` e incluye:
+
 - `/docs`: Documentos de progreso y reportes de QA (PROGRESS.md, SEGURIDAD_Y_BUGS.md, etc.).
 - `/services`: Contiene los 5 microservicios .NET (Minimal APIs) y la configuración del API Gateway (Nginx).
 - `/src`: Frontend React + Vite con arquitectura PWA y `shadcn/ui`.
@@ -66,16 +67,17 @@ bioasset-hub-main
 - **Backend (.NET)**: .NET 8.0 explícito en los `.csproj`. Los servicios usan el paradigma **Minimal APIs** en un solo archivo (`Program.cs`). No usan el patrón MVC / Clean Architecture documentado clásicamente.
 - **Librerías C# (NuGet)**: `Microsoft.AspNetCore.Authentication.JwtBearer` 8.0.0, `Microsoft.EntityFrameworkCore.SqlServer` 8.0.0, `RabbitMQ.Client` 6.8.1 (importado, pero sin uso real), `QRCoder` 1.4.3.
 - **Frontend (npm)**: React 19.2.0, Vite 8.2.0, `@tanstack/react-router` 1.170.18, Tailwind CSS 4.2.1, `shadcn/ui` a través de componentes Radix (`@radix-ui/react-*`).
-- **Infraestructura (docker-compose.yml)**: 
+- **Infraestructura (docker-compose.yml)**:
   - Nginx: `nginx:alpine`
   - Base de datos: SQL Server (`mcr.microsoft.com/mssql/server:2022-latest`)
   - Cola de mensajes: `rabbitmq:3-management-alpine`
 
-**Diferencia respecto al Documento:** El proyecto coincide tecnológicamente con las especificaciones (.NET 8, EF Core, SQL Server, RabbitMQ, React), PERO la implementación de Entity Framework es *Code-First sin Control de Migraciones* (invoca `EnsureCreated()` en runtime) y el Frontend migró internamente a Vite/Tanstack en lugar de un React CRA tradicional.
+**Diferencia respecto al Documento:** El proyecto coincide tecnológicamente con las especificaciones (.NET 8, EF Core, SQL Server, RabbitMQ, React), PERO la implementación de Entity Framework es _Code-First sin Control de Migraciones_ (invoca `EnsureCreated()` en runtime) y el Frontend migró internamente a Vite/Tanstack en lugar de un React CRA tradicional.
 
 ## 3. Estado detallado por microservicio
 
 ### auth-service
+
 - **Endpoints implementados**:
   - `GET /health` (Sin auth): Retorna estado del servicio.
   - `POST /login` (Sin auth): Valida email y password hasheado, retorna JWT y usuario.
@@ -91,6 +93,7 @@ bioasset-hub-main
 - **% de avance estimado**: 70%. Funciona para login y roles RBAC de manera aislada, pero su criptografía de contraseñas es precaria y no emite eventos de auditoría/creación según el modelo maduro.
 
 ### inventario-service
+
 - **Endpoints implementados**:
   - `GET /health` (Sin auth).
   - `GET /ubicaciones` (Auth), `POST /ubicaciones` (Admin), `PUT /ubicaciones/{id}` (Admin).
@@ -105,6 +108,7 @@ bioasset-hub-main
 - **% de avance estimado**: 80%. CRUD operativo, pero completamente síncrono. No comunica eventos de movimiento a RabbitMQ (vital para analítica).
 
 ### mantenimiento-service
+
 - **Endpoints implementados**:
   - `GET /mantenimientos` (Auth), `POST /mantenimientos` (Admin, Biomédico).
   - `GET /incidencias` (Auth), `POST /incidencias` (Auth).
@@ -117,6 +121,7 @@ bioasset-hub-main
 - **% de avance estimado**: 30%. Básicamente un "scaffolding" para salir del paso. Falta toda la lógica de estado de los mantenimientos.
 
 ### alertas-service
+
 - **Endpoints implementados**: `GET /alertas` (Auth req).
 - **Modelos/Entidades**: `Alerta` (`Id`, `ActivoId`, `Tipo`, `Mensaje`, `Severidad`, `Estado`) en schema `alertas`.
 - **Migraciones EF Core**: Usa `EnsureCreated`.
@@ -127,6 +132,7 @@ bioasset-hub-main
 - **% de avance estimado**: 10%. Solo existe la tabla, modelo de datos y un endpoint.
 
 ### analitica-service
+
 - **Endpoints implementados**: `GET /metricas` (Auth req).
 - **Modelos/Entidades**: `Metrica` (`Nombre`, `Valor`) en schema `analitica`.
 - **Migraciones EF Core**: Usa `EnsureCreated`.
@@ -137,23 +143,27 @@ bioasset-hub-main
 - **% de avance estimado**: 5%. Un caparazón vacío de Minimal API.
 
 ## 4. Docker / Infraestructura
+
 - **Contenido del docker-compose.yml**: Compila las imágenes de C# de los 5 servicios usando volúmenes de build locales exponiéndolos todos estáticamente al puerto interno `3000` (`PORT=3000`). Declara una DB en `mcr.microsoft.com/mssql/server:2022-latest` (puerto `1433`, SA / Your_password123), un broker de mensajería `rabbitmq:3-management-alpine` (puerto `5672`/`15672`, guest/guest), y un `gateway` Nginx (puerto `8080`).
 - **Qué levanta**: Todo levanta perfectamente con `docker-compose up`. No hay fallos de red.
 - **Configuración Nginx (API Gateway)**: Enruta exitosamente. `location /` proxy hacia el frontend en el host (`http://host.docker.internal:8081`). Rutas `/api/auth/`, `/api/inventario/`, etc. proxy_pass hacia los respectivos contenedores de C# (puerto 3000). Intercepta peticiones CORS (`OPTIONS`) con un bloque estático HTTP `204 No Content` con headers `Access-Control-Allow-Origin: *`.
 - **RabbitMQ**: La instancia corre perfectamente con guest/guest, pero **no está configurada** a nivel de exchanges, queues, DLQ (Dead-letter queue) ni reintentos. Esto se debe a que NINGUNO de los microservicios C# tiene código que se conecte a él.
 
 ## 5. Seguridad / Auth
+
 - **Generación y validación JWT**: Se genera manualmente en el POST `/login` del `auth-service` con `JwtSecurityTokenHandler` usando `SymmetricSecurityKey` hardcodeada (`"Jwt:Secret"`). El token expira en 7 días y su payload incluye los claims `id` y el `ClaimTypes.Role`.
 - **Roles en código**: Existen `admin`, `biomedico`, `asistencial`. Estos ya se aplican exitosamente usando el atributo nativo `[Authorize(Roles = "admin,biomedico")]` en Minimal APIs (ej. POST/PUT en Inventario).
-- **Dónde se valida el RBAC**: El RBAC ya se valida de forma descentralizada en **cada microservicio**, comprobando el token contra el Secret compartido en su `Program.cs`. El API Gateway *solamente* enruta y maneja el pre-flight CORS (no valida tokens ni reglas de negocio), contradiciendo algunas arquitecturas estrictas pero simplificando la implementación actual.
+- **Dónde se valida el RBAC**: El RBAC ya se valida de forma descentralizada en **cada microservicio**, comprobando el token contra el Secret compartido en su `Program.cs`. El API Gateway _solamente_ enruta y maneja el pre-flight CORS (no valida tokens ni reglas de negocio), contradiciendo algunas arquitecturas estrictas pero simplificando la implementación actual.
 
 ## 6. Frontend PWA
+
 - **Componentes/Páginas y su estado**: Vite + React Router funcional. Vistas funcionales como `/alertas`, `/configuracion`, `/equipos`, `/incidencias`, `/mantenimiento`, `/reportes`, `/trazabilidad`, `/usuarios`.
 - **Mocks vs API (Alerta Crítica)**: Si bien existe un `fetchApi()` funcional en `apiClient.ts` conectado a los endpoints reales (Login, CRUD Equipos), el proveedor del estado global (`src/lib/bioasset/store.tsx`) **inyecta masivamente datos Mock hardcodeados**. Combina los datos de BD real con `MOCK_EQUIPMENT` (45 items falsos), `MOCK_MAINTENANCE` (30 items) y `MOCK_MOVEMENTS` (25 items). La UI miente respecto a la volumetría real porque está contaminada con Dummies.
 - **Lector QR / Componentes**: El `EquipmentDialog` descarga correctamente el string Base64 del código QR devuelto por C# al crear un activo.
 - **Vistas por rol**: Condicionales en menú lateral están operativas. Rutas enteras quedan ocultas (ej. Asistencial no puede ver la Configuración) evaluando `isAdmin`, `isAsistencial` desde el Context.
 
 ## 7. Desviaciones respecto al Documento de Arquitectura original
+
 1. **RabbitMQ Inexistente en Código**: El Documento (y los historiales) dictan mensajería Event-Driven, pero en C# la integración **no existe**. Las referencias en `.csproj` son inútiles sin implementación en los `Program.cs`.
 2. **Arquitectura C# Simplista**: Se documentó diseño por capas (Controllers / Clean Architecture). Todo el código está amontonado en 5 archivos `Program.cs` que usan **Minimal APIs**. Modelos, endpoints y DbContext están en el mismo archivo.
 3. **Manejo de EF Migraciones**: Documentos sugieren migraciones formales. Acá se lanza predecible y peligrosamente `EnsureCreated()` en runtime, lo cual descarta versionamiento de Data Scheme.
@@ -161,21 +171,25 @@ bioasset-hub-main
 5. **Mocks Sobrevivientes en el Frontend**: Se documentó falsamente ("Reemplazo de Mock local completado") en el `PROGRESS.md` que la App dependía 100% del backend. Sin embargo, en el arranque de sesión se autoinyectan más de 100 registros Dummy localmente.
 
 ## 8. Problemas conocidos / bugs / bloqueantes
+
 - **Cero Flujo Asíncrono**: Pese a la infraestructura arriba, Alertas, Mantenimiento y Analíticas están bloqueadas / inactivas ante la falta de `RabbitMQ` codificado en C#.
 - **Datos "Falsos" en Producción**: La UI carga los arreglos `MOCK_...` inyectados en `store.tsx`. Esto descalifica la app de inmediato para una salida de prueba funcional (UAT).
 - **CORS Permisivo**: El API Gateway responde `Access-Control-Allow-Origin: *` de forma abierta a todas las peticiones OPTIONS, lo cual en prod debe limitarse.
 - **Modelo de Fechas Mantenimiento**: En `mantenimiento-service`, `ProximaFecha` es `string?`, lo que es un bug predecible para validación / queries reales de fechas futuras.
 
 ## 9. Historial de avance (changelog resumido)
+
 - **Semanas Iniciales**: Scaffolding en Node.js, y estructuración de Frontend con Vite y Tanstack Router, implementando el UI Toolkit y vistas estáticas de la plataforma Creo+.
 - **Semana 4**: Generación de códigos QR para inventario y trazabilidad básica.
 - **Semana 5**: Migración abrupta y total a C# (.NET 8.0 Minimal APIs). Se integró Auth JWT, Base de Datos SQL Server con EF Core nativo (Code-first), unificando redes Docker vía el Nginx Gateway. Se resolvió RBAC en las vistas y enrutadores. Se actualizaron documentos declarando "falsamente" avances en eventos asíncronos.
 
 ## 10. Próximos pasos planeados
+
 1. **Limpiar Mocks Urgente**: Remover de `src/lib/bioasset/store.tsx` los arreglos generados (`MOCK_EQUIPMENT`, `MOCK_MAINTENANCE`, `MOCK_MOVEMENTS`) para visualizar únicamente la data insertada en SQL Server.
 2. **Implementar RabbitMQ Event Bus**: Enchufar el cliente RabbitMQ en .NET. Lograr que Mantenimiento envíe un evento y Alertas/Analíticas los escuchen.
 3. **Refactorizar Arquitectura de Datos**: Reemplazar los `EnsureCreated()` con un enfoque robusto de control de versionamiento (EF Migrations) y migrar los tipos de dato (de strings a DateTimes correctos).
 4. **Mejorar Seguridad**: Limitar CORS en Nginx, cambiar encriptación SHA256 a Bcrypt o similar para los contraseñas en `auth-service`.
 
 ## 11. Resumen ejecutivo
-La aplicación está migrada exitosamente a **.NET 8** (Minimal APIs + SQL Server) con un frontend PWA **React+Vite** que luce robusto y cuenta con un RBAC implementado (JWT). Sin embargo, el proyecto sufre de un grave **"falso avance documentado"**: el sistema de eventos por *RabbitMQ* es totalmente ficticio en el código actual (no hay líneas que lo usen), y el frontend esconde las carencias del backend inyectando más de 100 registros mockeados localmente de forma silenciosa. El riesgo más urgente es retirar esos mocks y crear el hub de eventos asíncrono para que Alertas y Analítica dejen de ser cascarones vacíos.
+
+La aplicación está migrada exitosamente a **.NET 8** (Minimal APIs + SQL Server) con un frontend PWA **React+Vite** que luce robusto y cuenta con un RBAC implementado (JWT). Sin embargo, el proyecto sufre de un grave **"falso avance documentado"**: el sistema de eventos por _RabbitMQ_ es totalmente ficticio en el código actual (no hay líneas que lo usen), y el frontend esconde las carencias del backend inyectando más de 100 registros mockeados localmente de forma silenciosa. El riesgo más urgente es retirar esos mocks y crear el hub de eventos asíncrono para que Alertas y Analítica dejen de ser cascarones vacíos.
