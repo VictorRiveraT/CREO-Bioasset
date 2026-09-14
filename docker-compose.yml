@@ -1,0 +1,71 @@
+version: '3.8'
+services:
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./services/gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - auth-service
+      - inventario-service
+      - mantenimiento-service
+      - alertas-service
+      - analitica-service
+
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "3001:3000"
+    environment:
+      - PORT=3000
+
+  inventario-service:
+    build: ./services/inventario-service
+    ports:
+      - "3002:3000"
+    environment:
+      - PORT=3000
+
+  mantenimiento-service:
+    build: ./services/mantenimiento-service
+    ports:
+      - "3003:3000"
+    environment:
+      - PORT=3000
+
+  alertas-service:
+    build: ./services/alertas-service
+    ports:
+      - "3004:3000"
+    environment:
+      - PORT=3000
+
+  analitica-service:
+    build: ./services/analitica-service
+    ports:
+      - "3005:3000"
+    environment:
+      - PORT=3000
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Your_password123
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
+volumes:
+  sqlserver_data:
