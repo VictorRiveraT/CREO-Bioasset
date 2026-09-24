@@ -14,6 +14,23 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using QRCoder;
+using RabbitMQ.Client;
+using System.Text.Json;
+
+static class EventBus {
+    public static void Publish(string queue, object message) {
+        try {
+            var factory = new ConnectionFactory() { HostName = "rabbitmq" };
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            channel.QueueDeclare(queue: queue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+            channel.BasicPublish(exchange: "", routingKey: queue, basicProperties: null, body: body);
+        } catch (Exception e) {
+            Console.WriteLine($"RabbitMQ Publish Error: {e.Message}");
+        }
+    }
+}
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<InvDb>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
@@ -114,14 +131,16 @@ app.MapPut("/activos/{id}", [Authorize(Roles = "admin,inventario")] async (Guid 
     return Results.Ok();
 });
 
-app.MapPost("/activos", [Authorize(Roles = "admin,inventario")] async (Activo dto, InvDb db) => {
+app.MapPost("/activos", [Authorize(Roles = "admin,inventario")] async (Activo dto, InvDb db, HttpContext ctx) => {
     dto.Id = Guid.NewGuid();
     db.Activos.Add(dto);
     await db.SaveChangesAsync();
+    EventBus.Publish("activos_q", new { Action = "Created", Data = dto });
     
-    // Generate QR
+    // Generate QR using the actual host from request
+    var origin = ctx.Request.Headers["Origin"].FirstOrDefault() ?? "http://localhost:8081";
     var qrGenerator = new QRCodeGenerator();
-    var qrData = qrGenerator.CreateQrCode("http://localhost:8081/qr/" + dto.Id, QRCodeGenerator.ECCLevel.Q);
+    var qrData = qrGenerator.CreateQrCode(origin + "/qr/" + dto.Id, QRCodeGenerator.ECCLevel.Q);
     var qrCode = new PngByteQRCode(qrData);
     var qrBytes = qrCode.GetGraphic(20);
     var qrBase64 = "data:image/png;base64," + Convert.ToBase64String(qrBytes);
@@ -148,6 +167,7 @@ app.MapMethods("/activos/{id}", new[]{"PATCH"}, [Authorize(Roles = "admin,invent
     if (patch.TryGetPropertyValue("criticidad", out var crit) && crit != null) a.Criticidad = crit.ToString();
 
     await db.SaveChangesAsync();
+    EventBus.Publish("activos_q", new { Action = "Updated", Data = a });
     return Results.Ok(new { activo = a });
 });
 
@@ -159,6 +179,7 @@ app.MapPost("/movimientos", [Authorize] async (Movimiento dto, InvDb db) => {
         activo.UbicacionId = dto.DestinoId;
     }
     await db.SaveChangesAsync();
+    EventBus.Publish("movimientos_q", new { Action = "Created", Data = dto });
     return Results.Created("", dto);
 });
 

@@ -33,6 +33,8 @@ services:
       - "3003:3000"
     environment:
       - PORT=3000
+    volumes:
+      - mantenimiento_uploads:/app/uploads
 
   alertas-service:
     build: ./services/alertas-service
@@ -69,3 +71,4 @@ services:
 
 volumes:
   sqlserver_data:
+  mantenimiento_uploads:

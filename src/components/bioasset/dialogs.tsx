@@ -650,6 +650,13 @@ export function MaintenanceDialog({
                 capture="environment"
                 onChange={handleFileChange}
               />
+              {maintenance?.archivoBase64 && (
+                <div className="mt-2">
+                  <a href={maintenance.archivoBase64} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                    Ver formato adjunto actual
+                  </a>
+                </div>
+              )}
               {fileError && <p className="text-xs text-destructive mt-1">{fileError}</p>}
             </div>
 

@@ -121,15 +121,7 @@ app.MapPut("/usuarios/{id}", [Authorize(Roles="admin")] async (Guid id, UsuarioD
     return Results.Ok();
 });
 
-app.MapDelete("/usuarios/{id}", [Authorize(Roles="admin")] async (Guid id, AuthDb db) => {
-    var user = await db.Usuarios.FindAsync(id);
-    if(user != null) {
-        if(user.Email == "admin@bioasset.pe") return Results.Forbid();
-        db.Usuarios.Remove(user);
-        await db.SaveChangesAsync();
-    }
-    return Results.Ok();
-});
+// DELETE user endpoint removed to enforce Soft Delete (toggle)
 
 // Auto-migrate and seed
 using (var scope = app.Services.CreateScope()) {

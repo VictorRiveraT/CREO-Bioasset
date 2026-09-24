@@ -125,6 +125,20 @@ function AlertasPage() {
           message={(e) => `El equipo ${e.codigo} se encuentra actualmente en mantenimiento.`}
         />
         <AlertGroup
+          title="Notificaciones Críticas (RabbitMQ)"
+          icon={AlertTriangle}
+          tone="bg-purple-500/20 text-purple-600 dark:text-purple-400"
+          items={db.alertas.map((a: any) => ({
+            id: a.activoId,
+            codigo: "ALERTA",
+            nombre: a.mensaje,
+            estado: a.estado,
+            ubicacionId: a.activoId, // Using ubicacionId temporarily for mapping in the UI
+            proximoMantenimiento: new Date().toISOString(),
+          })) as any}
+          message={(e) => `Severidad Alta. Evento asíncrono capturado del bus.`}
+        />
+        <AlertGroup
           title="Equipos fuera de servicio"
           icon={XCircle}
           tone="bg-destructive/15 text-destructive"

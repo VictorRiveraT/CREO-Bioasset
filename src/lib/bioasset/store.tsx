@@ -140,6 +140,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     movements: [],
     maintenance: [],
     incidents: [],
+    alertas: [],
   });
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(false);
@@ -179,7 +180,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
   const fetchDb = useCallback(async () => {
     try {
-      const [usersRes, locsRes, equiposRes, movsRes, mantsRes, marcasRes, incidenciasRes] =
+      const [usersRes, locsRes, equiposRes, movsRes, mantsRes, marcasRes, incidenciasRes, alertasRes] =
         await Promise.all([
           fetchApi("/auth/usuarios"),
           fetchApi("/inventario/ubicaciones"),
@@ -188,6 +189,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           fetchApi("/mantenimiento/mantenimientos"),
           fetchApi("/inventario/marcas").catch(() => ({ marcas: [] })),
           fetchApi("/mantenimiento/incidencias").catch(() => ({ incidencias: [] })),
+          fetchApi("/alertas/alertas").catch(() => ({ alertas: [] })),
         ]);
       setDb({
         users: (usersRes.usuarios || []).map((u: any) => ({
@@ -232,6 +234,10 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         incidents: (incidenciasRes.incidencias || []).map((i: any) => ({
           ...i,
           activoId: i.activo_id || i.activoId,
+        })),
+        alertas: (alertasRes.alertas || []).map((a: any) => ({
+          ...a,
+          activoId: a.activo_id || a.activoId,
         })),
       });
     } catch (e) {

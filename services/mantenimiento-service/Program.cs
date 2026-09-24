@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
+using RabbitMQ.Client;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -28,11 +31,38 @@ app.UseCors(b => b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 app.UseAuthentication();
 app.UseAuthorization();
 
+var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+if (!Directory.Exists(uploadsPath)) Directory.CreateDirectory(uploadsPath);
+app.UseStaticFiles(new StaticFileOptions {
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
+
+static class EventBus {
+    public static void Publish(string queue, object message) {
+        try {
+            var factory = new ConnectionFactory() { HostName = "rabbitmq" };
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            channel.QueueDeclare(queue: queue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+            channel.BasicPublish(exchange: "", routingKey: queue, basicProperties: null, body: body);
+        } catch (Exception e) {
+            Console.WriteLine($"RabbitMQ Publish Error: {e.Message}");
+        }
+    }
+}
+
 app.MapGet("/mantenimientos", [Authorize] async (MantDb db) => Results.Ok(new { mantenimientos = await db.Mantenimientos.ToListAsync() }));
+app.MapGet("/mantenimientos/{id}", [Authorize] async (Guid id, MantDb db) => {
+    var m = await db.Mantenimientos.FindAsync(id);
+    return m != null ? Results.Ok(new { mantenimiento = m }) : Results.NotFound();
+});
 app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (Mantenimiento dto, MantDb db) => {
     dto.Id = Guid.NewGuid();
     db.Mantenimientos.Add(dto);
     await db.SaveChangesAsync();
+    EventBus.Publish("mantenimientos_q", new { Action = "Created", Data = dto });
     return Results.Created($"/mantenimientos/{dto.Id}", dto);
 });
 app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, Mantenimiento dto, MantDb db) => {
@@ -43,18 +73,37 @@ app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async 
     m.ProximaFecha = dto.ProximaFecha;
     m.Fecha = dto.Fecha;
     m.Observaciones = dto.Observaciones;
-    if (!string.IsNullOrEmpty(dto.ArchivoBase64)) {
+    if (!string.IsNullOrEmpty(dto.ArchivoBase64) && dto.ArchivoBase64.StartsWith("data:")) {
+        // Extract base64 and extension
+        var parts = dto.ArchivoBase64.Split(',');
+        var meta = parts[0];
+        var base64Data = parts[1];
+        var ext = meta.Contains("application/pdf") ? ".pdf" : 
+                  meta.Contains("image/png") ? ".png" : 
+                  meta.Contains("image/jpeg") ? ".jpg" : ".bin";
+        var fileName = $"{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(uploadsPath, fileName);
+        await System.IO.File.WriteAllBytesAsync(filePath, Convert.FromBase64String(base64Data));
+        m.ArchivoBase64 = $"/api/mantenimiento/uploads/{fileName}";
+    } else if (!string.IsNullOrEmpty(dto.ArchivoBase64)) {
+        // If it's already a URL from a previous save, don't overwrite it with bad data
         m.ArchivoBase64 = dto.ArchivoBase64;
     }
     await db.SaveChangesAsync();
+    EventBus.Publish("mantenimientos_q", new { Action = "Updated", Data = m });
     return Results.NoContent();
 });
 
 app.MapGet("/incidencias", [Authorize] async (MantDb db) => Results.Ok(new { incidencias = await db.Incidencias.ToListAsync() }));
+app.MapGet("/incidencias/{id}", [Authorize] async (Guid id, MantDb db) => {
+    var i = await db.Incidencias.FindAsync(id);
+    return i != null ? Results.Ok(new { incidencia = i }) : Results.NotFound();
+});
 app.MapPost("/incidencias", [Authorize] async (Incidencia dto, MantDb db) => {
     dto.Id = Guid.NewGuid();
     db.Incidencias.Add(dto);
     await db.SaveChangesAsync();
+    EventBus.Publish("incidencias_q", new { Action = "Created", Data = dto });
     return Results.Created($"/incidencias/{dto.Id}", dto);
 });
 app.MapPut("/incidencias/{id}", [Authorize] async (Guid id, Incidencia dto, MantDb db) => {

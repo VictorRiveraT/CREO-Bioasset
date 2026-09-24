@@ -137,8 +137,13 @@ function MantenimientoPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>{userName(m.biomedicoId)}</TableCell>
-                    <TableCell className="max-w-sm text-muted-foreground">
-                      {m.descripcion}
+                    <TableCell className="max-w-sm text-muted-foreground flex flex-col gap-1">
+                      <span>{m.descripcion}</span>
+                      {m.archivoBase64 && (
+                        <a href={m.archivoBase64} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                          📎 Ver Formato
+                        </a>
+                      )}
                     </TableCell>
                     <TableCell>{m.resultado}</TableCell>
                     <TableCell className="whitespace-nowrap">

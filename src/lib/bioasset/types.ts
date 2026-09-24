@@ -114,4 +114,15 @@ export interface DB {
   movements: Movement[];
   maintenance: MaintenanceRecord[];
   incidents: Incident[];
+  alertas: Alerta[];
+  marcas?: any[];
+}
+
+export interface Alerta {
+  id: string;
+  activoId: string;
+  tipo: string;
+  mensaje: string;
+  severidad: string;
+  estado: string;
 }
