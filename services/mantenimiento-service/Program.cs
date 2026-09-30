@@ -53,7 +53,11 @@ static class EventBus {
     }
 }
 
-app.MapGet("/mantenimientos", [Authorize] async (MantDb db) => Results.Ok(new { mantenimientos = await db.Mantenimientos.ToListAsync() }));
+app.MapGet("/mantenimientos", [Authorize] async (MantDb db, int page = 1, int limit = 1000) => {
+    var total = await db.Mantenimientos.CountAsync();
+    var items = await db.Mantenimientos.OrderByDescending(m => m.Fecha).Skip((page - 1) * limit).Take(limit).ToListAsync();
+    return Results.Ok(new { mantenimientos = items, total, page, limit });
+});
 app.MapGet("/mantenimientos/{id}", [Authorize] async (Guid id, MantDb db) => {
     var m = await db.Mantenimientos.FindAsync(id);
     return m != null ? Results.Ok(new { mantenimiento = m }) : Results.NotFound();
@@ -73,6 +77,8 @@ app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async 
     m.ProximaFecha = dto.ProximaFecha;
     m.Fecha = dto.Fecha;
     m.Observaciones = dto.Observaciones;
+    m.Costo = dto.Costo;
+    m.Proveedor = dto.Proveedor;
     if (!string.IsNullOrEmpty(dto.ArchivoBase64) && dto.ArchivoBase64.StartsWith("data:")) {
         // Extract base64 and extension
         var parts = dto.ArchivoBase64.Split(',');
@@ -94,7 +100,12 @@ app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async 
     return Results.NoContent();
 });
 
-app.MapGet("/incidencias", [Authorize] async (MantDb db) => Results.Ok(new { incidencias = await db.Incidencias.ToListAsync() }));
+app.MapGet("/incidencias", [Authorize] async (MantDb db, int page = 1, int limit = 1000) => {
+    var q = db.Incidencias.AsQueryable();
+    var total = await q.CountAsync();
+    var items = await q.Skip((page - 1) * limit).Take(limit).ToListAsync();
+    return Results.Ok(new { incidencias = items, total, page, limit });
+});
 app.MapGet("/incidencias/{id}", [Authorize] async (Guid id, MantDb db) => {
     var i = await db.Incidencias.FindAsync(id);
     return i != null ? Results.Ok(new { incidencia = i }) : Results.NotFound();
@@ -133,6 +144,15 @@ using (var scope = app.Services.CreateScope()) {
                 ALTER TABLE [mantenimiento].[Mantenimientos] ADD ArchivoBase64 NVARCHAR(MAX) NULL
                 ALTER TABLE [mantenimiento].[Mantenimientos] ADD IncidenciaId UNIQUEIDENTIFIER NULL
             END
+            IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'Costo' AND Object_ID = Object_ID(N'[mantenimiento].[Mantenimientos]'))
+            BEGIN
+                ALTER TABLE [mantenimiento].[Mantenimientos] ADD Costo DECIMAL(18,2) NULL
+                ALTER TABLE [mantenimiento].[Mantenimientos] ADD Proveedor NVARCHAR(100) NULL
+            END
+            IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'RelacionadaId' AND Object_ID = Object_ID(N'[mantenimiento].[Incidencias]'))
+            BEGIN
+                ALTER TABLE [mantenimiento].[Incidencias] ADD RelacionadaId UNIQUEIDENTIFIER NULL
+            END
         ");
     } catch (Exception e) {
         Console.WriteLine(e);
@@ -159,6 +179,8 @@ public class Mantenimiento {
     public string? Observaciones { get; set; }
     public string? ArchivoBase64 { get; set; }
     [Column("incidencia_id"), JsonPropertyName("incidencia_id")] public Guid? IncidenciaId { get; set; }
+    public decimal? Costo { get; set; }
+    public string? Proveedor { get; set; }
 }
 
 public class Incidencia {
@@ -166,4 +188,5 @@ public class Incidencia {
     [Column("activo_id"), JsonPropertyName("activo_id")] public Guid ActivoId { get; set; }
     public string Titulo { get; set; } = "";
     public string Estado { get; set; } = "";
+    [Column("relacionada_id"), JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
 }

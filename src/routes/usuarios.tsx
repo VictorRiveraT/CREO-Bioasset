@@ -70,6 +70,7 @@ function UsuariosPage() {
   const [accesoHasta, setAccesoHasta] = useState("");
   const [sedeTemporal, setSedeTemporal] = useState("Ninguna");
   const [sedeTemporalHasta, setSedeTemporalHasta] = useState("");
+  const [accesosExtra, setAccesosExtra] = useState<{sede: string, hasta: string}[]>([]);
   const [permisos, setPermisos] = useState<UserPermissions>(DEFAULT_PERMISSIONS.asistencial);
 
   // Filters
@@ -101,8 +102,8 @@ function UsuariosPage() {
         permisos,
         sede,
         accesoHasta: accesoHasta ? new Date(accesoHasta).toISOString() : null,
-        sedeTemporal,
-        sedeTemporalHasta: sedeTemporalHasta ? new Date(sedeTemporalHasta).toISOString() : null,
+        sedeTemporal: JSON.stringify(accesosExtra),
+        sedeTemporalHasta: "",
       });
       toast.success("Usuario registrado exitosamente");
       setOpen(false);
@@ -215,35 +216,40 @@ function UsuariosPage() {
                   </div>
 
                   <div className="grid gap-2 p-3 bg-muted rounded-md">
-                    <Label className="font-semibold">Acceso Temporal Adicional</Label>
-                    <div className="grid grid-cols-2 gap-4 mt-2">
-                      <div className="grid gap-2">
-                        <Label htmlFor="sedeTemporal">Sede Extra</Label>
+                    <Label className="font-semibold">Accesos Temporales Adicionales</Label>
+                    {accesosExtra.map((acceso, idx) => (
+                      <div key={idx} className="flex items-center gap-2 mb-2 p-2 bg-background rounded border">
+                        <span className="flex-1 text-sm">{acceso.sede}</span>
+                        <span className="text-xs text-muted-foreground">Hasta: {acceso.hasta}</span>
+                        <button type="button" onClick={() => setAccesosExtra(accesosExtra.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 font-bold px-2">X</button>
+                      </div>
+                    ))}
+                    <div className="grid grid-cols-12 gap-2 mt-2">
+                      <div className="col-span-5">
                         <Select value={sedeTemporal} onValueChange={setSedeTemporal}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sede" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Ninguna">Ninguna</SelectItem>
                             <SelectItem value="Todas">Todas las sedes</SelectItem>
-                            {sedesList.map((s) => (
-                              <SelectItem key={s} value={s as string}>
-                                {s}
-                              </SelectItem>
-                            ))}
+                            {sedesList.map((s) => (<SelectItem key={s} value={s as string}>{s}</SelectItem>))}
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="sedeTemporalHasta">Válido hasta</Label>
+                      <div className="col-span-5">
                         <Input
-                          id="sedeTemporalHasta"
                           type="date"
                           value={sedeTemporalHasta}
                           onChange={(e) => setSedeTemporalHasta(e.target.value)}
+                          className="h-8 text-xs"
                           disabled={sedeTemporal === "Ninguna"}
-                          required={sedeTemporal !== "Ninguna"}
                         />
+                      </div>
+                      <div className="col-span-2">
+                        <button type="button" disabled={sedeTemporal === "Ninguna" || !sedeTemporalHasta} className="w-full h-8 bg-blue-600 text-white rounded text-xs disabled:opacity-50" onClick={() => {
+                          setAccesosExtra([...accesosExtra, { sede: sedeTemporal, hasta: sedeTemporalHasta }]);
+                          setSedeTemporal("Ninguna");
+                          setSedeTemporalHasta("");
+                        }}>Agregar</button>
                       </div>
                     </div>
                   </div>
@@ -398,10 +404,19 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
   const [accesoHasta, setAccesoHasta] = useState(
     userItem.accesoHasta ? userItem.accesoHasta.substring(0, 10) : "",
   );
-  const [sedeTemporal, setSedeTemporal] = useState(userItem.sedeTemporal || "Ninguna");
-  const [sedeTemporalHasta, setSedeTemporalHasta] = useState(
-    userItem.sedeTemporalHasta ? userItem.sedeTemporalHasta.substring(0, 10) : "",
-  );
+  const initialAccesos = (() => {
+    try {
+      if (userItem.sedeTemporal && userItem.sedeTemporal.startsWith("[")) {
+        return JSON.parse(userItem.sedeTemporal);
+      } else if (userItem.sedeTemporal && userItem.sedeTemporal !== "Ninguna") {
+        return [{ sede: userItem.sedeTemporal, hasta: userItem.sedeTemporalHasta ? userItem.sedeTemporalHasta.substring(0, 10) : "" }];
+      }
+    } catch(e) {}
+    return [];
+  })();
+  const [accesosExtra, setAccesosExtra] = useState<{sede: string, hasta: string}[]>(initialAccesos);
+  const [sedeTemporal, setSedeTemporal] = useState("Ninguna");
+  const [sedeTemporalHasta, setSedeTemporalHasta] = useState("");
 
   const [permisos, setPermisos] = useState<UserPermissions>(
     userItem.permisos || DEFAULT_PERMISSIONS[userItem.rol as Role],
@@ -424,8 +439,8 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
         permisos,
         sede,
         accesoHasta: accesoHasta ? new Date(accesoHasta).toISOString() : null,
-        sedeTemporal,
-        sedeTemporalHasta: sedeTemporalHasta ? new Date(sedeTemporalHasta).toISOString() : null,
+        sedeTemporal: JSON.stringify(accesosExtra),
+        sedeTemporalHasta: "",
       });
       toast.success("Usuario actualizado exitosamente");
       setEditOpen(false);
@@ -444,11 +459,25 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
         <TableCell className="capitalize">{userItem.rol}</TableCell>
         <TableCell>
           <div className="font-medium">{userItem.sede || "Todas"}</div>
-          {userItem.sedeTemporal && userItem.sedeTemporal !== "Ninguna" && (
-            <div className="text-xs text-blue-600 dark:text-blue-400">
-              +{userItem.sedeTemporal} (hasta {userItem.sedeTemporalHasta?.substring(0, 10)})
-            </div>
-          )}
+          {(() => {
+            try {
+              if (userItem.sedeTemporal && userItem.sedeTemporal.startsWith("[")) {
+                const arr = JSON.parse(userItem.sedeTemporal);
+                return arr.map((x: any, i: number) => (
+                  <div key={i} className="text-xs text-blue-600 dark:text-blue-400">
+                    +{x.sede} (hasta {x.hasta})
+                  </div>
+                ));
+              } else if (userItem.sedeTemporal && userItem.sedeTemporal !== "Ninguna") {
+                return (
+                  <div className="text-xs text-blue-600 dark:text-blue-400">
+                    +{userItem.sedeTemporal} (hasta {userItem.sedeTemporalHasta?.substring(0, 10)})
+                  </div>
+                );
+              }
+            } catch(e) {}
+            return null;
+          })()}
           {userItem.accesoHasta && (
             <div className="text-xs text-destructive">
               Expira: {userItem.accesoHasta.substring(0, 10)}
@@ -593,41 +622,44 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
               </div>
 
               <div className="grid gap-2 p-3 bg-muted rounded-md">
-                <Label className="font-semibold">Acceso Temporal Adicional</Label>
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor={"sedeTemporal-"}>Sede Extra</Label>
-                    <Select
-                      value={sedeTemporal}
-                      onValueChange={setSedeTemporal}
-                      disabled={isSuperAdmin}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                <Label className="font-semibold">Accesos Temporales Adicionales</Label>
+                {accesosExtra.map((acceso, idx) => (
+                  <div key={idx} className="flex items-center gap-2 mb-2 p-2 bg-background rounded border">
+                    <span className="flex-1 text-sm">{acceso.sede}</span>
+                    <span className="text-xs text-muted-foreground">Hasta: {acceso.hasta}</span>
+                    {!isSuperAdmin && <button type="button" onClick={() => setAccesosExtra(accesosExtra.filter((_, i) => i !== idx))} className="text-red-500 hover:text-red-700 font-bold px-2">X</button>}
+                  </div>
+                ))}
+                {!isSuperAdmin && (
+                <div className="grid grid-cols-12 gap-2 mt-2">
+                  <div className="col-span-5">
+                    <Select value={sedeTemporal} onValueChange={setSedeTemporal}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Sede" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Ninguna">Ninguna</SelectItem>
                         <SelectItem value="Todas">Todas las sedes</SelectItem>
-                        {sedesList.map((s) => (
-                          <SelectItem key={s} value={s as string}>
-                            {s}
-                          </SelectItem>
-                        ))}
+                        {sedesList.map((s) => (<SelectItem key={s} value={s as string}>{s}</SelectItem>))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor={"sedeTemporalHasta-"}>Válido hasta</Label>
+                  <div className="col-span-5">
                     <Input
-                      id={"sedeTemporalHasta-"}
                       type="date"
                       value={sedeTemporalHasta}
                       onChange={(e) => setSedeTemporalHasta(e.target.value)}
-                      disabled={isSuperAdmin || sedeTemporal === "Ninguna"}
-                      required={sedeTemporal !== "Ninguna"}
+                      className="h-8 text-xs"
+                      disabled={sedeTemporal === "Ninguna"}
                     />
                   </div>
+                  <div className="col-span-2">
+                    <button type="button" disabled={sedeTemporal === "Ninguna" || !sedeTemporalHasta} className="w-full h-8 bg-blue-600 text-white rounded text-xs disabled:opacity-50" onClick={() => {
+                      setAccesosExtra([...accesosExtra, { sede: sedeTemporal, hasta: sedeTemporalHasta }]);
+                      setSedeTemporal("Ninguna");
+                      setSedeTemporalHasta("");
+                    }}>Agregar</button>
+                  </div>
                 </div>
+                )}
               </div>
 
               <div className="grid gap-2">

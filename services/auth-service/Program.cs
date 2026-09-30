@@ -96,7 +96,7 @@ app.MapPost("/usuarios", [Authorize(Roles="admin")] async (UsuarioDto req, AuthD
 app.MapPut("/usuarios/{id}/toggle", [Authorize] async (Guid id, AuthDb db, HttpContext ctx) => {
     var user = await db.Usuarios.FindAsync(id);
     if(user != null) {
-        if(user.Email == "admin@bioasset.pe") return Results.Forbid();
+        if(user.Email == "victor.rivera@upch.pe") return Results.Forbid();
         user.Activo = !user.Activo;
         await db.SaveChangesAsync();
     }
@@ -106,9 +106,10 @@ app.MapPut("/usuarios/{id}/toggle", [Authorize] async (Guid id, AuthDb db, HttpC
 app.MapPut("/usuarios/{id}", [Authorize(Roles="admin")] async (Guid id, UsuarioDto req, AuthDb db) => {
     var user = await db.Usuarios.FindAsync(id);
     if(user == null) return Results.NotFound();
-    if(user.Email == "admin@bioasset.pe" && req.email != "admin@bioasset.pe") return Results.Forbid(); // Protect admin email
+    if(user.Email == "victor.rivera@upch.pe" && req.email != "victor.rivera@upch.pe") return Results.Forbid(); // Protect admin email
     
     user.Nombre = req.nombre ?? user.Nombre;
+    user.Email = req.email ?? user.Email;
     if(!string.IsNullOrEmpty(req.password)) user.Password = HashPassword(req.password);
     user.Rol = req.rol ?? user.Rol;
     user.Permisos = req.permisos ?? user.Permisos;
@@ -136,7 +137,7 @@ using (var scope = app.Services.CreateScope()) {
     } catch (Exception ex) { Console.WriteLine("SQL ERROR: " + ex.ToString()); }
     if(!db.Usuarios.Any()) {
         db.Usuarios.AddRange(
-            new Usuario { Id = Guid.NewGuid(), Nombre = "Admin", Email = "admin@bioasset.pe", Password = HashPassword("bioasset"), Rol = "admin", Activo = true, Sede = "Todas" },
+            new Usuario { Id = Guid.NewGuid(), Nombre = "Admin", Email = "victor.rivera@upch.pe", Password = HashPassword("bioasset"), Rol = "admin", Activo = true, Sede = "Todas" },
             new Usuario { Id = Guid.NewGuid(), Nombre = "Biomedico", Email = "biomedico@bioasset.pe", Password = HashPassword("bioasset"), Rol = "biomedico", Activo = true, Sede = "Todas" },
             new Usuario { Id = Guid.NewGuid(), Nombre = "Luis", Email = "luis.ramirez@bioasset.pe", Password = HashPassword("bioasset"), Rol = "asistencial", Activo = true, Sede = "Todas" }
         );
@@ -165,7 +166,7 @@ public class Usuario {
     public DateTime? SedeTemporalHasta { get; set; }
 }
 public record LoginDto(string email, string password);
-public record UsuarioDto(string nombre, string email, string password, string rol, string permisos, string? sede, DateTime? accesoHasta, string? sedeTemporal, DateTime? sedeTemporalHasta);
+public record UsuarioDto(string nombre, string email, string? password, string rol, string permisos, string? sede, DateTime? accesoHasta, string? sedeTemporal, DateTime? sedeTemporalHasta);
 
 
 

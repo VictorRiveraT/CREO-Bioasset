@@ -398,7 +398,7 @@ export function buildSeed(): DB {
       equipoId: e.id,
       tipo: i % 3 === 0 ? "Correctivo" : "Preventivo",
       fecha: dateOnly(-90 - i),
-      tecnicoId: i % 2 === 0 ? "u2" : "u3",
+      biomedicoId: i % 2 === 0 ? "u2" : "u3",
       descripcion:
         i % 3 === 0
           ? "Reemplazo de componente defectuoso y pruebas funcionales."

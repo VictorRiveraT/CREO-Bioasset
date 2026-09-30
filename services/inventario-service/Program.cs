@@ -77,11 +77,13 @@ app.MapDelete("/marcas/{id}", [Authorize(Roles = "admin")] async (Guid id, InvDb
     return Results.Ok();
 });
 
-app.MapGet("/activos", [Authorize] async (InvDb db, string? ubicacion, string? estado) => {
+app.MapGet("/activos", [Authorize] async (InvDb db, string? ubicacion, string? estado, int page = 1, int limit = 1000) => {
     var q = db.Activos.AsQueryable();
     if(!string.IsNullOrEmpty(ubicacion) && ubicacion != "todas") q = q.Where(a => a.UbicacionId.ToString() == ubicacion);
     if(!string.IsNullOrEmpty(estado) && estado != "todos") q = q.Where(a => a.Estado == estado);
-    return Results.Ok(new { activos = await q.ToListAsync() });
+    var total = await q.CountAsync();
+    var items = await q.Skip((page - 1) * limit).Take(limit).ToListAsync();
+    return Results.Ok(new { activos = items, total, page, limit });
 });
 
 app.MapGet("/activos/{id}", [Authorize] async (Guid id, InvDb db) => {
@@ -171,7 +173,12 @@ app.MapMethods("/activos/{id}", new[]{"PATCH"}, [Authorize(Roles = "admin,invent
     return Results.Ok(new { activo = a });
 });
 
-app.MapGet("/movimientos", [Authorize] async (InvDb db) => Results.Ok(new { movimientos = await db.Movimientos.ToListAsync() }));
+app.MapGet("/movimientos", [Authorize] async (InvDb db, int page = 1, int limit = 1000) => {
+    var q = db.Movimientos.AsQueryable();
+    var total = await q.CountAsync();
+    var items = await q.OrderByDescending(m => m.Fecha).Skip((page - 1) * limit).Take(limit).ToListAsync();
+    return Results.Ok(new { movimientos = items, total, page, limit });
+});
 app.MapPost("/movimientos", [Authorize] async (Movimiento dto, InvDb db) => {
     db.Movimientos.Add(dto);
     var activo = await db.Activos.FindAsync(dto.EquipoId);

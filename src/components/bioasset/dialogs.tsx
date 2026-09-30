@@ -34,7 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useBio } from "@/lib/bioasset/store";
-import { CATEGORIES, EQUIPMENT_STATUSES, type Equipment } from "@/lib/bioasset/types";
+import { CATEGORIES, EQUIPMENT_STATUSES, type Equipment , type MaintenanceRecord} from "@/lib/bioasset/types";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
@@ -106,7 +106,7 @@ export function EquipmentDialog({
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{equipment ? "Editar equipo" : "Registrar equipo"}</DialogTitle>
-            <DialogDescription>Complete la informaciÃ³n del equipo biomÃ©dico.</DialogDescription>
+            <DialogDescription>Complete la información del equipo biomédico.</DialogDescription>
           </DialogHeader>
           <form
             id="equipment-form"
@@ -117,7 +117,7 @@ export function EquipmentDialog({
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor="codigo">CÃ³digo patrimonial</Label>
+              <Label htmlFor="codigo">Código patrimonial</Label>
               <Input
                 id="codigo"
                 value={form.codigo}
@@ -135,7 +135,7 @@ export function EquipmentDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>CategorÃ­a</Label>
+              <Label>Categoría</Label>
               <Select value={form.categoria} onValueChange={(v) => set("categoria", v)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -188,7 +188,7 @@ export function EquipmentDialog({
                   <SelectValue placeholder="Seleccione" />
                 </SelectTrigger>
                 <SelectContent>
-                  {db.marcas.map((m) => (
+                  {(db.marcas || []).map((m) => (
                     <SelectItem key={m.id} value={m.nombre}>
                       {m.nombre}
                     </SelectItem>
@@ -208,7 +208,7 @@ export function EquipmentDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {(() => {
-                    const m = db.marcas.find((x) => x.nombre === form.marca);
+                    const m = (db.marcas || []).find((x) => x.nombre === form.marca);
                     if (!m) return null;
                     try {
                       const arr = JSON.parse(m.modelosJson) as string[];
@@ -225,7 +225,7 @@ export function EquipmentDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="serie">NÃºmero de serie</Label>
+              <Label htmlFor="serie">Número de serie</Label>
               <Input
                 id="serie"
                 value={form.serie}
@@ -234,7 +234,7 @@ export function EquipmentDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>UbicaciÃ³n actual</Label>
+              <Label>Ubicación actual</Label>
               <Select value={form.ubicacionId} onValueChange={(v) => set("ubicacionId", v)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -266,7 +266,7 @@ export function EquipmentDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="adq">Fecha de adquisiciÃ³n</Label>
+              <Label htmlFor="adq">Fecha de adquisición</Label>
               <Input
                 id="adq"
                 type="date"
@@ -276,7 +276,7 @@ export function EquipmentDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="prox">PrÃ³ximo mantenimiento</Label>
+              <Label htmlFor="prox">Próximo mantenimiento</Label>
               <Input
                 id="prox"
                 type="date"
@@ -302,7 +302,7 @@ export function EquipmentDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar registro</AlertDialogTitle>
             <AlertDialogDescription>
-              Se guardarÃ¡ la informaciÃ³n del equipo {form.codigo} â€” {form.nombre}.
+              Se guardará la información del equipo {form.codigo} â€” {form.nombre}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -338,7 +338,7 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
       motivo: form.motivo,
       observaciones: form.observaciones,
     });
-    toast.success("Traslado registrado y ubicaciÃ³n actualizada");
+    toast.success("Traslado registrado y ubicación actualizada");
     setConfirm(false);
     setOpen(false);
     setForm((f) => ({ ...f, destinoId: "", motivo: "", observaciones: "" }));
@@ -352,7 +352,7 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
           <DialogHeader>
             <DialogTitle>Registrar movimiento</DialogTitle>
             <DialogDescription>
-              La ubicaciÃ³n actual del equipo se actualizarÃ¡ automÃ¡ticamente.
+              La ubicación actual del equipo se actualizará automáticamente.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -383,14 +383,14 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>UbicaciÃ³n de origen</Label>
+              <Label>Ubicación de origen</Label>
               <Input
                 value={db.locations.find((l) => l.id === equipo?.ubicacionId)?.nombre ?? "â€”"}
                 readOnly
               />
             </div>
             <div className="space-y-2">
-              <Label>UbicaciÃ³n de destino</Label>
+              <Label>Ubicación de destino</Label>
               <Select value={form.destinoId} onValueChange={(v) => set("destinoId", v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Seleccione destino" />
@@ -457,7 +457,7 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar traslado</AlertDialogTitle>
             <AlertDialogDescription>
-              El equipo {equipo?.codigo} se moverÃ¡ a{" "}
+              El equipo {equipo?.codigo} se moverá a{" "}
               {db.locations.find((l) => l.id === form.destinoId)?.nombre}.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -530,7 +530,7 @@ export function MaintenanceDialog({
       observaciones: form.observaciones,
       proximaFecha: form.proximaFecha,
       archivoBase64: form.archivoBase64,
-      incidenciaId: incidenciaId ?? maintenance?.incidenciaId,
+      incidenciaId: incidenciaId || maintenance?.incidenciaId || undefined,
     };
 
     if (maintenance) {
@@ -698,7 +698,7 @@ export function MaintenanceDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar mantenimiento</AlertDialogTitle>
             <AlertDialogDescription>
-              Se registrarÃ¡ el mantenimiento y se programarÃ¡ el prÃ³ximo para el{" "}
+              Se registrará el mantenimiento y se programará el próximo para el{" "}
               {form.proximaFecha}.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -736,7 +736,7 @@ export function MarcaDialog({ trigger }: { trigger: ReactNode }) {
       .split(",")
       .map((s) => s.trim())
       .filter((s) => s);
-    await saveMarca({ id: editingId ?? undefined, nombre, modelosJson: JSON.stringify(arr) });
+    await saveMarca({ id: editingId || undefined, nombre, modelosJson: JSON.stringify(arr) });
     setEditingId(null);
     setNombre("");
     setModelosText("");
@@ -755,7 +755,7 @@ export function MarcaDialog({ trigger }: { trigger: ReactNode }) {
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4">
           <div className="border rounded-md p-2 h-64 overflow-y-auto space-y-2">
-            {db.marcas.map((m) => (
+            {(db.marcas || []).map((m) => (
               <div
                 key={m.id}
                 className="flex items-center justify-between p-2 bg-muted rounded-md text-sm"
@@ -849,7 +849,7 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId: string; trigge
     if (!incidentTitle) return;
     try {
       await addIncident({ activo_id: equipoId, titulo: incidentTitle, estado: "Pendiente" });
-      await updateEquipment(equipoId, { estado: "Inoperativo" });
+      await updateEquipment(equipoId, { estado: "Fuera de servicio" });
       setOpen(false);
       setIncidentTitle("");
       toast.success("Falla reportada correctamente");

@@ -97,6 +97,9 @@ export interface MaintenanceRecord {
   observaciones: string;
   proximaFecha: string;
   archivoBase64?: string;
+  tecnicoId?: string;
+  costo?: number;
+  proveedor?: string;
   incidenciaId?: string;
 }
 

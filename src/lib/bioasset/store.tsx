@@ -128,6 +128,8 @@ interface Ctx {
   locationName: (id: string) => string;
   userName: (id: string) => string;
   equipmentById: (id: string) => Equipment | undefined;
+  saveMarca: (marca: { id?: string; nombre: string; modelosJson: string }) => Promise<void>;
+  deleteMarca: (id: string) => Promise<void>;
 }
 
 const BioContext = createContext<Ctx | null>(null);
@@ -169,7 +171,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleRoleChange = () => {
       if (user) {
-        // En modo dev reasignar los permisos segÃºn el nuevo rol simulado
+        // En modo dev reasignar los permisos según el nuevo rol simulado
         const newPerms = parseUserPermisos({ rol: user.rol, permisos: "{}" });
         setUser({ ...user, permisos: newPerms });
       }
@@ -304,21 +306,31 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
     // Si tiene una sede temporal asignada y aún es válida
     let hasValidTemporary = false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     if (user.sedeTemporal && user.sedeTemporal !== "Ninguna" && user.sedeTemporalHasta) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       const expirationDate = new Date(user.sedeTemporalHasta);
       if (expirationDate >= today) {
         hasValidTemporary = true;
       }
     }
 
+    // Parse multiple sedes
+    let accesosExtra: {sede: string, hasta: string}[] = [];
+    try {
+      if (user.sedeTemporal && user.sedeTemporal.startsWith("[")) {
+        accesosExtra = JSON.parse(user.sedeTemporal).filter((x: any) => new Date(x.hasta) >= today);
+      } else if (user.sedeTemporal && user.sedeTemporal !== "Ninguna" && hasValidTemporary) {
+        accesosExtra = [{ sede: user.sedeTemporal, hasta: user.sedeTemporalHasta || "" }];
+      }
+    } catch(e) {}
+
     // Si su sede temporal válida es "Todas", le damos acceso completo
-    if (hasValidTemporary && user.sedeTemporal === "Todas") return db;
+    if (accesosExtra.some(x => x.sede === "Todas")) return db;
 
     const locs = db.locations.filter((l) => {
       if (l.sede === user.sede) return true;
-      if (hasValidTemporary && l.sede === user.sedeTemporal) return true;
+      if (accesosExtra.some(x => x.sede === l.sede)) return true;
       return false;
     });
     const locIds = new Set(locs.map((l) => l.id));
@@ -378,7 +390,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           fecha: new Date().toISOString(),
           usuario_id: user?.id,
           motivo: "Alta inicial",
-          observaciones: "Registro automÃ¡tico al crear equipo",
+          observaciones: "Registro automático al crear equipo",
         }),
       });
       await fetchDb();
@@ -493,6 +505,18 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     },
     locationName: (id) => db.locations.find((l) => l.id === id)?.nombre ?? "N/A",
     userName: (id) => db.users.find((u) => u.id === id)?.nombre ?? "â€”",
+    saveMarca: async (marca) => {
+      if (marca.id) {
+        await fetchApi(`/inventario/marcas/${marca.id}`, { method: "PUT", body: JSON.stringify(marca) });
+      } else {
+        await fetchApi("/inventario/marcas", { method: "POST", body: JSON.stringify(marca) });
+      }
+      await fetchDb();
+    },
+    deleteMarca: async (id) => {
+      await fetchApi(`/inventario/marcas/${id}`, { method: "DELETE" });
+      await fetchDb();
+    },
     equipmentById: (id) => {
       const e = db.equipment.find((x) => x.id === id);
       if (!e) return undefined;
