@@ -58,3 +58,13 @@ _(Asegúrate de copiar primero el archivo con `docker cp scripts/seed.sql bioass
 ---
 
 _Este proyecto fue inicializado con Lovable y posteriormente extendido con una arquitectura robusta de microservicios en .NET Core._
+
+
+## Actualización Reciente (Demo 1)
+
+Se ha estabilizado el sistema para la primera demostración oficial. Mejoras incluidas:
+- Soporte avanzado para múltiples accesos temporales por usuario.
+- Rediseño visual de las Alertas por correo (Light Theme + SendGrid).
+- Arreglo de codificación UTF-8 en todo el código base.
+- Fixes de consistencia en TypeScript para gestión de Marcas, Mantenimientos y Estado de los equipos.
+- Los acordeones de ubicaciones ahora inician plegados por defecto para mayor limpieza visual.

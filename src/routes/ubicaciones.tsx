@@ -51,10 +51,10 @@ export const Route = createFileRoute("/ubicaciones")({
       { title: "Ubicaciones | BIOASSET" },
       {
         name: "description",
-        content: "CatÃ¡logo de ubicaciones donde se encuentran los equipos biomÃ©dicos.",
+        content: "Catálogo de ubicaciones donde se encuentran los equipos biomédicos.",
       },
       { property: "og:title", content: "Ubicaciones | BIOASSET" },
-      { property: "og:description", content: "CatÃ¡logo de Ã¡reas y servicios de la instituciÃ³n." },
+      { property: "og:description", content: "Catálogo de áreas y servicios de la institución." },
     ],
   }),
   component: UbicacionesPage,
@@ -155,8 +155,8 @@ function LocationDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{location ? "Editar Ãrea" : "Nueva Ãrea / especialidad"}</DialogTitle>
-          <DialogDescription>Ãreas o servicios donde pueden estar los equipos.</DialogDescription>
+          <DialogTitle>{location ? "Editar Área" : "Nueva Área / especialidad"}</DialogTitle>
+          <DialogDescription>Áreas o servicios donde pueden estar los equipos.</DialogDescription>
         </DialogHeader>
         <form
           id="loc-form"
@@ -171,12 +171,12 @@ function LocationDialog({
               sede,
               piso,
             });
-            toast.success(location ? "Ãrea actualizada" : "Ãrea creada");
+            toast.success(location ? "Área actualizada" : "Área creada");
             setOpen(false);
           }}
         >
           <div className="space-y-2">
-            <Label htmlFor="nom">Nombre de Ã¡rea/especialidad</Label>
+            <Label htmlFor="nom">Nombre de área/especialidad</Label>
             <Input
               id="nom"
               value={nombre}
@@ -186,7 +186,7 @@ function LocationDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="desc">DescripciÃ³n</Label>
+            <Label htmlFor="desc">Descripción</Label>
             <Input id="desc" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
           </div>
         </form>
@@ -222,7 +222,7 @@ function UbicacionesPage() {
   return (
     <AppShell
       title="Ubicaciones"
-      description="CatÃ¡logo estructurado por Sedes y Pisos"
+      description="Catálogo estructurado por Sedes y Pisos"
       actions={
         canEdit("ubicaciones") ? (
           <SedeDialog
@@ -275,8 +275,8 @@ function UbicacionesPage() {
                               <Table>
                                 <TableHeader>
                                   <TableRow>
-                                    <TableHead className="pl-4">Ãrea / Especialidad</TableHead>
-                                    <TableHead>DescripciÃ³n</TableHead>
+                                    <TableHead className="pl-4">Área / Especialidad</TableHead>
+                                    <TableHead>Descripción</TableHead>
                                     <TableHead className="text-center w-24">Equipos</TableHead>
                                     <TableHead className="w-24">Estado</TableHead>
                                     {canEdit("ubicaciones") && (
@@ -293,7 +293,7 @@ function UbicacionesPage() {
                                         colSpan={canEdit("ubicaciones") ? 5 : 4}
                                         className="text-center text-muted-foreground py-6"
                                       >
-                                        No hay Ã¡reas registradas en {pisoName.toLowerCase()}.
+                                        No hay áreas registradas en {pisoName.toLowerCase()}.
                                       </TableCell>
                                     </TableRow>
                                   ) : (
@@ -347,16 +347,16 @@ function UbicacionesPage() {
                                                 <AlertDialogContent>
                                                   <AlertDialogHeader>
                                                     <AlertDialogTitle>
-                                                      Confirmar eliminaciÃ³n
+                                                      Confirmar eliminación
                                                     </AlertDialogTitle>
                                                     <AlertDialogDescription>
                                                       {eqCount > 0 ? (
                                                         <span className="text-destructive font-medium">
                                                           No se puede eliminar porque hay {eqCount}{" "}
-                                                          equipos asignados a esta Ã¡rea.
+                                                          equipos asignados a esta área.
                                                         </span>
                                                       ) : (
-                                                        `Se eliminarÃ¡ permanentemente el Ã¡rea "${l.nombre}".`
+                                                        `Se eliminará permanentemente el área "${l.nombre}".`
                                                       )}
                                                     </AlertDialogDescription>
                                                   </AlertDialogHeader>
@@ -368,7 +368,7 @@ function UbicacionesPage() {
                                                       onClick={async () => {
                                                         try {
                                                           await deleteLocation(l.id);
-                                                          toast.success("Ãrea eliminada");
+                                                          toast.success("Área eliminada");
                                                         } catch {
                                                           toast.error("Error al eliminar");
                                                         }
@@ -394,7 +394,7 @@ function UbicacionesPage() {
                                     presetPiso={pisoName}
                                     trigger={
                                       <Button variant="outline" size="sm" className="h-8">
-                                        <Plus className="mr-2 size-3" /> AÃ±adir Ãrea
+                                        <Plus className="mr-2 size-3" /> Añadir Área
                                       </Button>
                                     }
                                   />

@@ -105,7 +105,7 @@ function DetalleEquipo() {
     // If the equipment is loaded and the global db is ready, check if we have access to it
     if (equipo && db) {
       const hasAccess = db.equipment.some(e => e.id === equipo.id);
-      // If we don't have access to this equipment in our filtered DB (and we aren't an admin), kick us to the public view
+      // If we don't have access to this equipment in our filtered DB (and we aren't aún admin), kick us to the public view
       if (!hasAccess && !isAdmin) {
         window.location.href = `/qr/${equipo.id}`;
       }
