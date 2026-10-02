@@ -2,7 +2,7 @@
 
 **BIOASSET** es un sistema integral de trazabilidad, gestión e inventariado de equipos biomédicos. Diseñado para garantizar la seguridad clínica, optimizar la disponibilidad y llevar un control estricto del estado de los activos médicos.
 
-## 🚀 Arquitectura del Sistema
+## Arquitectura del Sistema
 
 El proyecto sigue una arquitectura moderna dividida en:
 
@@ -14,7 +14,7 @@ El proyecto sigue una arquitectura moderna dividida en:
   - `mantenimiento-service/`: Seguimiento de preventivos/correctivos e incidencias.
   - `alertas-service/`: Sistema de notificaciones tempranas y alertas por correo vía SendGrid.
 
-## ✨ Novedades para Demo Final
+## Novedades para Demo Final
 
 Se han implementado funcionalidades clave orientadas a la escalabilidad y seguridad de la información:
 
@@ -24,7 +24,7 @@ Se han implementado funcionalidades clave orientadas a la escalabilidad y seguri
 * **Depuración Integral UI/UX**: Corrección de inconsistencias visuales, tildes (UTF-8), alineaciones e implementaciones consistentes de notificaciones (Toasts) con respuestas y errores exactos desde el servidor HTTP.
 * **Integración Base de Datos SQL Server**: Todos los microservicios se conectan nativamente a sus esquemas específicos dentro de un clúster contenedorizado de SQL Server 2022.
 
-## ⚙️ Cómo ejecutar el proyecto (Desarrollo y Demo)
+## Cómo ejecutar el proyecto (Desarrollo y Demo)
 
 Todo el backend está orquestado mediante Docker Compose, mientras que el Frontend puede levantarse localmente con HMR de Vite.
 
@@ -46,7 +46,7 @@ Todo el backend está orquestado mediante Docker Compose, mientras que el Fronte
 4. **Acceder a la aplicación**:
    Ingresa a **`http://localhost:8080`**. El gateway (Nginx) resolverá el enrutado entre la interfaz web y los microservicios.
 
-## 📚 Estructura de Documentación (`/docs`)
+## Estructura de Documentación (`/docs`)
 La carpeta `/docs` alberga evidencias técnicas, alineaciones con el marco de trabajo (PMBOK), minutas y el roadmap (`PROGRESS.md`) general de las evoluciones que ha sufrido el producto.
 
 ---
