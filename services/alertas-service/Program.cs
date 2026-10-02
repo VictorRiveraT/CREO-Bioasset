@@ -36,9 +36,39 @@ app.UseCors(b => b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/alertas", [Authorize] async (AlertasDb db) => Results.Ok(new { alertas = await db.Alertas.ToListAsync() }));
-app.MapPut("/alertas/{id}", [Authorize] async (Guid id, Alerta dto, AlertasDb db) => {
+app.MapGet("/alertas", [Authorize] async (AlertasDb db, HttpContext ctx) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    var sedeTemporal = ctx.User.FindFirst("sedeTemporal")?.Value;
+    var sedes = new List<string>();
+    if(sede != null) sedes.Add(sede);
+    if(!string.IsNullOrEmpty(sedeTemporal) && sedeTemporal != "[]" && sedeTemporal != "Ninguna") {
+        try { var temp = System.Text.Json.JsonSerializer.Deserialize<List<string>>(sedeTemporal); if(temp != null) sedes.AddRange(temp); } catch {}
+        try { var temp = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(sedeTemporal); 
+              foreach(var t in temp) { if(t.TryGetProperty("sede", out var s)) sedes.Add(s.GetString()); } } catch {}
+    }
+
+    var q = db.Alertas.AsQueryable();
+    if (rol != "admin" && sede != "Todas") {
+        var allowedUbicaciones = await db.Ubicaciones.Where(u => sedes.Contains(u.Sede)).Select(u => u.Id).ToListAsync();
+        var allowedActivos = await db.Activos.Where(a => allowedUbicaciones.Contains(a.UbicacionId)).Select(a => a.Id).ToListAsync();
+        q = q.Where(a => allowedActivos.Contains(a.ActivoId));
+    }
+
+    var items = await q.ToListAsync();
+    return Results.Ok(new { alertas = items });
+});
+app.MapPut("/alertas/{id}", [Authorize] async (Guid id, Alerta dto, AlertasDb db, HttpContext ctx) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     var alerta = await db.Alertas.FindAsync(id);
+    if(alerta != null && rol != "admin" && sede != "Todas") {
+        var a = await db.Activos.FindAsync(alerta.ActivoId);
+        if(a != null) {
+            var u = await db.Ubicaciones.FindAsync(a.UbicacionId);
+            if(u == null || u.Sede != sede) return Results.Forbid();
+        }
+    }
     if (alerta == null) return Results.NotFound();
     alerta.Estado = dto.Estado;
     await db.SaveChangesAsync();
@@ -65,8 +95,16 @@ app.Run();
 public class AlertasDb : DbContext {
     public AlertasDb(DbContextOptions<AlertasDb> options) : base(options) { }
     public DbSet<Alerta> Alertas => Set<Alerta>();
-    protected override void OnModelCreating(ModelBuilder modelBuilder) { modelBuilder.HasDefaultSchema("alertas"); }
+    public DbSet<InvUbicacion> Ubicaciones => Set<InvUbicacion>();
+    public DbSet<InvActivo> Activos => Set<InvActivo>();
+    protected override void OnModelCreating(ModelBuilder modelBuilder) { 
+        modelBuilder.HasDefaultSchema("alertas"); 
+        modelBuilder.Entity<InvUbicacion>().ToTable("Ubicaciones", "inventario");
+        modelBuilder.Entity<InvActivo>().ToTable("Activos", "inventario");
+    }
 }
+public class InvUbicacion { [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } public string Sede { get; set; } = ""; }
+public class InvActivo { [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } public Guid UbicacionId { get; set; } }
 
 public class Alerta {
     [Key] public Guid Id { get; set; } = Guid.NewGuid();

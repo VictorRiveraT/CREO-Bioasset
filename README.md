@@ -1,70 +1,53 @@
-# CREO BioAsset - Sistema de Gestión de Equipos Biomédicos
+﻿# CREO BioAsset - Sistema Inteligente de Gestión y Trazabilidad
 
-BIOASSET es un sistema para centralizar y gestionar la información de equipos biomédicos de una institución de salud.
+**BIOASSET** es un sistema integral de trazabilidad, gestión e inventariado de equipos biomédicos. Diseñado para garantizar la seguridad clínica, optimizar la disponibilidad y llevar un control estricto del estado de los activos médicos.
 
-## Estructura del Repositorio
+## 🚀 Arquitectura del Sistema
 
-El proyecto se divide en las siguientes áreas principales para separar responsabilidades entre el frontend, los microservicios del backend y la documentación generada:
+El proyecto sigue una arquitectura moderna dividida en:
 
-- **`/src`**: Frontend de la aplicación (React + Vite + Tailwind + TanStack Router). **NOTA IMPORTANTE**: Esta carpeta contiene el trabajo generado por Lovable y los componentes de UI. _No modificar su estructura interna_ sin previa coordinación, para evitar conflictos con el diseño de la interfaz.
-- **`/services`**: Backend del sistema implementado bajo arquitectura de microservicios en .NET 8 (Minimal APIs, C#, Entity Framework Core). Contiene:
-  - `gateway/`: API Gateway (Nginx) configurado en el puerto 8080 que unifica y expone tanto el frontend (proxy hacia Vite) como los endpoints de cada microservicio bajo `/api/*`.
-  - `auth-service/`: Gestión de usuarios y autenticación (JWT).
-  - `inventario-service/`: Catálogo de activos, ficha técnica y generación de códigos QR.
-  - `mantenimiento-service/`: Registro de revisiones, mantenimientos preventivos/correctivos.
-  - `alertas-service/`: Motor básico para identificar calibraciones vencidas o próximos mantenimientos.
-  - `analitica-service/`: Indicadores y métricas para alimentar los reportes y dashboards.
-- **`/docs`**: Documentación del progreso, verificaciones semanales (como `VERIFICACION_SEMANA4.md`, `VERIFICACION_PANTALLAS.md`), capturas de pantalla de evidencia y bitácora del desarrollo (`PROGRESS.md`).
-- **`/scripts`**: Scripts utilitarios (como `seed.sql` para poblar la base de datos local con información de prueba).
+- **Frontend (`/src`)**: Aplicación React + Vite + Tailwind CSS (Shadcn/UI) orquestado con TanStack Router. Consume y muta información en tiempo real.
+- **Microservicios .NET 8 (`/services`)**:
+  - `gateway/`: Nginx configurado en el puerto 8080. Ejerce de API Gateway, unificando el frontend con los endpoints del backend (`/api/*`).
+  - `auth-service/`: Autenticación JWT, RBAC Estricto (Role-Based Access Control) y gestión de permisos granulares por Sedes.
+  - `inventario-service/`: Catálogo central de equipos (Activos), ubicaciones y trazabilidad/movimientos.
+  - `mantenimiento-service/`: Seguimiento de preventivos/correctivos e incidencias.
+  - `alertas-service/`: Sistema de notificaciones tempranas y alertas por correo vía SendGrid.
 
-## Cómo ejecutar el proyecto en Desarrollo
+## ✨ Novedades para Demo Final
 
-Todo el sistema está orquestado mediante `docker-compose`, pero el servidor de desarrollo del frontend (Vite) se ejecuta en el host local para permitir Hot-Reload (HMR).
+Se han implementado funcionalidades clave orientadas a la escalabilidad y seguridad de la información:
 
-1. Instalar dependencias del frontend:
+* **Aislamiento Multisede Estricto (Backend)**: Los microservicios ahora bloquean intrínsecamente operaciones (como `DELETE`, `PUT`, `POST`) sobre activos, usuarios o ubicaciones fuera de la jurisdicción (Sede) permitida para cada cuenta de administrador.
+* **Invalidación Activa de Sesiones**: Si un Administrador revoca (inactiva) el acceso de un usuario, su sesión activa es terminada en menos de 5 segundos de forma automática (Polling + Interceptors).
+* **Control de Permisos Granulares UI**: Representación visual de roles dinámicos donde se muestran indicadores (`+` o `-`) si el usuario posee más o menos accesos que los correspondientes a su perfil estándar.
+* **Depuración Integral UI/UX**: Corrección de inconsistencias visuales, tildes (UTF-8), alineaciones e implementaciones consistentes de notificaciones (Toasts) con respuestas y errores exactos desde el servidor HTTP.
+* **Integración Base de Datos SQL Server**: Todos los microservicios se conectan nativamente a sus esquemas específicos dentro de un clúster contenedorizado de SQL Server 2022.
 
+## ⚙️ Cómo ejecutar el proyecto (Desarrollo y Demo)
+
+Todo el backend está orquestado mediante Docker Compose, mientras que el Frontend puede levantarse localmente con HMR de Vite.
+
+1. **Instalar dependencias del frontend**:
    ```bash
    npm install
    ```
 
-2. Levantar el servidor de desarrollo de Vite (Frontend):
-
-   ```bash
-   npm run dev
-   ```
-
-   _(Vite se levantará típicamente en `http://localhost:8081` si el 8080 está ocupado)_
-
-3. Levantar los microservicios y el Gateway (Backend + Nginx):
-
+2. **Levantar el Backend Completo**:
    ```bash
    docker-compose up -d --build
    ```
 
+3. **Levantar el Frontend**:
+   ```bash
+   npm run dev
+   ```
+
 4. **Acceder a la aplicación**:
-   Ingresa a **`http://localhost:8080`**.
-   El Nginx (Gateway) está configurado para servir el Frontend completo en la raíz `/` (incluyendo Hot-Reload) y enrutar las peticiones `/api/*` hacia los microservicios de .NET correspondientes.
+   Ingresa a **`http://localhost:8080`**. El gateway (Nginx) resolverá el enrutado entre la interfaz web y los microservicios.
 
-### Base de Datos y Datos de Prueba
-
-Si necesitas cargar los datos de demostración iniciales (20+ equipos y 3 usuarios), puedes ejecutar el script de seed directamente contra el contenedor de SQL Server:
-
-```bash
-docker exec -i bioasset-hub-main-sqlserver-1 /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Your_password123 -C -d bioasset -i /tmp/seed.sql
-```
-
-_(Asegúrate de copiar primero el archivo con `docker cp scripts/seed.sql bioasset-hub-main-sqlserver-1:/tmp/seed.sql`)_
+## 📚 Estructura de Documentación (`/docs`)
+La carpeta `/docs` alberga evidencias técnicas, alineaciones con el marco de trabajo (PMBOK), minutas y el roadmap (`PROGRESS.md`) general de las evoluciones que ha sufrido el producto.
 
 ---
-
-_Este proyecto fue inicializado con Lovable y posteriormente extendido con una arquitectura robusta de microservicios en .NET Core._
-
-
-## Actualización Reciente (Demo 1)
-
-Se ha estabilizado el sistema para la primera demostración oficial. Mejoras incluidas:
-- Soporte avanzado para múltiples accesos temporales por usuario.
-- Rediseño visual de las Alertas por correo (Light Theme + SendGrid).
-- Arreglo de codificación UTF-8 en todo el código base.
-- Fixes de consistencia en TypeScript para gestión de Marcas, Mantenimientos y Estado de los equipos.
-- Los acordeones de ubicaciones ahora inician plegados por defecto para mayor limpieza visual.
+_Proyecto desarrollado bajo los más altos estándares de calidad, listo para operar como infraestructura tecnológica clínica._

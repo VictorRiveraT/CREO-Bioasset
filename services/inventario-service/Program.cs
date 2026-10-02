@@ -115,8 +115,15 @@ app.MapGet("/activos/public/{id}", async (Guid id, InvDb db) => {
     });
 });
 
-app.MapPut("/activos/{id}", [Authorize(Roles = "admin,inventario")] async (Guid id, Activo dto, InvDb db) => {
+app.MapPut("/activos/{id}", [Authorize(Roles = "admin,inventario")] async (Guid id, Activo dto, InvDb db, HttpContext ctx) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     var a = await db.Activos.FindAsync(id);
+    if(a != null && rol != "admin" && sede != "Todas") {
+        var oldU = await db.Ubicaciones.FindAsync(a.UbicacionId);
+        var newU = await db.Ubicaciones.FindAsync(dto.UbicacionId);
+        if((oldU != null && oldU.Sede != sede) || (newU != null && newU.Sede != sede)) return Results.Forbid();
+    }
     if(a != null) { 
         a.Codigo = dto.Codigo;
         a.Nombre = dto.Nombre; 
@@ -134,6 +141,12 @@ app.MapPut("/activos/{id}", [Authorize(Roles = "admin,inventario")] async (Guid 
 });
 
 app.MapPost("/activos", [Authorize(Roles = "admin,inventario")] async (Activo dto, InvDb db, HttpContext ctx) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (rol != "admin" && sede != "Todas") {
+        var u = await db.Ubicaciones.FindAsync(dto.UbicacionId);
+        if (u == null || u.Sede != sede) return Results.Forbid();
+    }
     dto.Id = Guid.NewGuid();
     db.Activos.Add(dto);
     await db.SaveChangesAsync();
@@ -173,8 +186,22 @@ app.MapMethods("/activos/{id}", new[]{"PATCH"}, [Authorize(Roles = "admin,invent
     return Results.Ok(new { activo = a });
 });
 
-app.MapGet("/movimientos", [Authorize] async (InvDb db, int page = 1, int limit = 1000) => {
+app.MapGet("/movimientos", [Authorize] async (InvDb db, HttpContext ctx, int page = 1, int limit = 1000) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    var sedeTemporal = ctx.User.FindFirst("sedeTemporal")?.Value;
+    var sedes = new List<string>();
+    if(sede != null) sedes.Add(sede);
+    if(!string.IsNullOrEmpty(sedeTemporal) && sedeTemporal != "[]" && sedeTemporal != "Ninguna") {
+        try { var temp = System.Text.Json.JsonSerializer.Deserialize<List<string>>(sedeTemporal); if(temp != null) sedes.AddRange(temp); } catch {}
+        try { var temp = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(sedeTemporal); foreach(var t in temp) { if(t.TryGetProperty("sede", out var s)) sedes.Add(s.GetString()); } } catch {}
+    }
     var q = db.Movimientos.AsQueryable();
+    if (rol != "admin" && sede != "Todas") {
+        var allowedUbicaciones = await db.Ubicaciones.Where(u => sedes.Contains(u.Sede)).Select(u => u.Id).ToListAsync();
+        var allowedActivos = await db.Activos.Where(a => allowedUbicaciones.Contains(a.UbicacionId)).Select(a => a.Id).ToListAsync();
+        q = q.Where(m => allowedActivos.Contains(m.EquipoId));
+    }
     var total = await q.CountAsync();
     var items = await q.OrderByDescending(m => m.Fecha).Skip((page - 1) * limit).Take(limit).ToListAsync();
     return Results.Ok(new { movimientos = items, total, page, limit });

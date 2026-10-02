@@ -17,6 +17,14 @@ export async function fetchApi(path: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem("bioasset.token");
+      if(window.location.pathname !== "/") {
+        window.location.href = "/";
+      } else {
+        window.location.reload();
+      }
+    }
     let message = "API error";
     try {
       const data = await response.json();

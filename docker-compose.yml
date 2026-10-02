@@ -19,6 +19,7 @@ services:
       - "3001:3000"
     environment:
       - PORT=3000
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
 
   inventario-service:
     build: ./services/inventario-service
@@ -42,6 +43,7 @@ services:
       - "3004:3000"
     environment:
       - PORT=3000
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
 
   analitica-service:
     build: ./services/analitica-service

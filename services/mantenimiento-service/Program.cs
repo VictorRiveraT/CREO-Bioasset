@@ -53,24 +53,57 @@ static class EventBus {
     }
 }
 
-app.MapGet("/mantenimientos", [Authorize] async (MantDb db, int page = 1, int limit = 1000) => {
-    var total = await db.Mantenimientos.CountAsync();
-    var items = await db.Mantenimientos.OrderByDescending(m => m.Fecha).Skip((page - 1) * limit).Take(limit).ToListAsync();
+app.MapGet("/mantenimientos", [Authorize] async (MantDb db, HttpContext ctx, int page = 1, int limit = 1000) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    var sedeTemporal = ctx.User.FindFirst("sedeTemporal")?.Value;
+    var sedes = new List<string>();
+    if(sede != null) sedes.Add(sede);
+    if(!string.IsNullOrEmpty(sedeTemporal) && sedeTemporal != "[]" && sedeTemporal != "Ninguna") {
+        try { var temp = System.Text.Json.JsonSerializer.Deserialize<List<string>>(sedeTemporal); if(temp != null) sedes.AddRange(temp); } catch {}
+        try { var temp = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(sedeTemporal); foreach(var t in temp) { if(t.TryGetProperty("sede", out var s)) sedes.Add(s.GetString()); } } catch {}
+    }
+    var q = db.Mantenimientos.AsQueryable();
+    if (rol != "admin" && sede != "Todas") {
+        var allowedUbicaciones = await db.Ubicaciones.Where(u => sedes.Contains(u.Sede)).Select(u => u.Id).ToListAsync();
+        var allowedActivos = await db.Activos.Where(a => allowedUbicaciones.Contains(a.UbicacionId)).Select(a => a.Id).ToListAsync();
+        q = q.Where(m => allowedActivos.Contains(m.ActivoId));
+    }
+    var total = await q.CountAsync();
+    var items = await q.OrderByDescending(m => m.Fecha).Skip((page - 1) * limit).Take(limit).ToListAsync();
     return Results.Ok(new { mantenimientos = items, total, page, limit });
 });
 app.MapGet("/mantenimientos/{id}", [Authorize] async (Guid id, MantDb db) => {
     var m = await db.Mantenimientos.FindAsync(id);
     return m != null ? Results.Ok(new { mantenimiento = m }) : Results.NotFound();
 });
-app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (Mantenimiento dto, MantDb db) => {
+app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (Mantenimiento dto, MantDb db, HttpContext ctx) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (rol != "admin" && sede != "Todas") {
+        var a = await db.Activos.FindAsync(dto.ActivoId);
+        if (a != null) {
+            var u = await db.Ubicaciones.FindAsync(a.UbicacionId);
+            if (u == null || u.Sede != sede) return Results.Forbid();
+        }
+    }
     dto.Id = Guid.NewGuid();
     db.Mantenimientos.Add(dto);
     await db.SaveChangesAsync();
     EventBus.Publish("mantenimientos_q", new { Action = "Created", Data = dto });
     return Results.Created($"/mantenimientos/{dto.Id}", dto);
 });
-app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, Mantenimiento dto, MantDb db) => {
+app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, Mantenimiento dto, MantDb db, HttpContext ctx) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     var m = await db.Mantenimientos.FindAsync(id);
+    if(m != null && rol != "admin" && sede != "Todas") {
+        var a = await db.Activos.FindAsync(m.ActivoId);
+        if(a != null) {
+            var u = await db.Ubicaciones.FindAsync(a.UbicacionId);
+            if(u == null || u.Sede != sede) return Results.Forbid();
+        }
+    }
     if (m == null) return Results.NotFound();
     m.Estado = dto.Estado;
     m.Descripcion = dto.Descripcion;
@@ -100,8 +133,22 @@ app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async 
     return Results.NoContent();
 });
 
-app.MapGet("/incidencias", [Authorize] async (MantDb db, int page = 1, int limit = 1000) => {
+app.MapGet("/incidencias", [Authorize] async (MantDb db, HttpContext ctx, int page = 1, int limit = 1000) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    var sedeTemporal = ctx.User.FindFirst("sedeTemporal")?.Value;
+    var sedes = new List<string>();
+    if(sede != null) sedes.Add(sede);
+    if(!string.IsNullOrEmpty(sedeTemporal) && sedeTemporal != "[]" && sedeTemporal != "Ninguna") {
+        try { var temp = System.Text.Json.JsonSerializer.Deserialize<List<string>>(sedeTemporal); if(temp != null) sedes.AddRange(temp); } catch {}
+        try { var temp = System.Text.Json.JsonSerializer.Deserialize<List<System.Text.Json.JsonElement>>(sedeTemporal); foreach(var t in temp) { if(t.TryGetProperty("sede", out var s)) sedes.Add(s.GetString()); } } catch {}
+    }
     var q = db.Incidencias.AsQueryable();
+    if (rol != "admin" && sede != "Todas") {
+        var allowedUbicaciones = await db.Ubicaciones.Where(u => sedes.Contains(u.Sede)).Select(u => u.Id).ToListAsync();
+        var allowedActivos = await db.Activos.Where(a => allowedUbicaciones.Contains(a.UbicacionId)).Select(a => a.Id).ToListAsync();
+        q = q.Where(i => allowedActivos.Contains(i.ActivoId));
+    }
     var total = await q.CountAsync();
     var items = await q.Skip((page - 1) * limit).Take(limit).ToListAsync();
     return Results.Ok(new { incidencias = items, total, page, limit });
@@ -110,15 +157,33 @@ app.MapGet("/incidencias/{id}", [Authorize] async (Guid id, MantDb db) => {
     var i = await db.Incidencias.FindAsync(id);
     return i != null ? Results.Ok(new { incidencia = i }) : Results.NotFound();
 });
-app.MapPost("/incidencias", [Authorize] async (Incidencia dto, MantDb db) => {
+app.MapPost("/incidencias", [Authorize] async (Incidencia dto, MantDb db, HttpContext ctx) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+    if (rol != "admin" && sede != "Todas") {
+        var a = await db.Activos.FindAsync(dto.ActivoId);
+        if (a != null) {
+            var u = await db.Ubicaciones.FindAsync(a.UbicacionId);
+            if (u == null || u.Sede != sede) return Results.Forbid();
+        }
+    }
     dto.Id = Guid.NewGuid();
     db.Incidencias.Add(dto);
     await db.SaveChangesAsync();
     EventBus.Publish("incidencias_q", new { Action = "Created", Data = dto });
     return Results.Created($"/incidencias/{dto.Id}", dto);
 });
-app.MapPut("/incidencias/{id}", [Authorize] async (Guid id, Incidencia dto, MantDb db) => {
+app.MapPut("/incidencias/{id}", [Authorize] async (Guid id, Incidencia dto, MantDb db, HttpContext ctx) => {
+    var sede = ctx.User.FindFirst("sede")?.Value;
+    var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     var i = await db.Incidencias.FindAsync(id);
+    if(i != null && rol != "admin" && sede != "Todas") {
+        var a = await db.Activos.FindAsync(i.ActivoId);
+        if(a != null) {
+            var u = await db.Ubicaciones.FindAsync(a.UbicacionId);
+            if(u == null || u.Sede != sede) return Results.Forbid();
+        }
+    }
     if (i == null) return Results.NotFound();
     i.Estado = dto.Estado;
     await db.SaveChangesAsync();
@@ -162,6 +227,18 @@ app.Run();
 
 public class MantDb : DbContext {
     public MantDb(DbContextOptions<MantDb> options) : base(options) { }
+    public DbSet<Mantenimiento> Mantenimientos => Set<Mantenimiento>();
+    public DbSet<Incidencia> Incidencias => Set<Incidencia>();
+    public DbSet<InvUbicacion> Ubicaciones => Set<InvUbicacion>();
+    public DbSet<InvActivo> Activos => Set<InvActivo>();
+    protected override void OnModelCreating(ModelBuilder modelBuilder) { 
+        modelBuilder.HasDefaultSchema("mantenimiento"); 
+        modelBuilder.Entity<InvUbicacion>().ToTable("Ubicaciones", "inventario");
+        modelBuilder.Entity<InvActivo>().ToTable("Activos", "inventario");
+    }
+}
+public class InvUbicacion { [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } public string Sede { get; set; } = ""; }
+public class InvActivo { [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } public Guid UbicacionId { get; set; } }
     public DbSet<Mantenimiento> Mantenimientos => Set<Mantenimiento>();
     public DbSet<Incidencia> Incidencias => Set<Incidencia>();
     protected override void OnModelCreating(ModelBuilder modelBuilder) { modelBuilder.HasDefaultSchema("mantenimiento"); }
