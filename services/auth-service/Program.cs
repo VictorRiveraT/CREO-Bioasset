@@ -169,7 +169,7 @@ app.MapPost("/login", async (LoginDto req, AuthDb db) => {
     
 
 
-    if(!string.IsNullOrEmpty(user.Permisos) && user.Permisos.Contains("\"forzóarReset\":true")) {
+    if(!string.IsNullOrEmpty(user.Permisos) && user.Permisos.Contains("\"forzarReset\":true")) {
 
 
         return Results.BadRequest(new { error = "Por seguridad, un administrador ha solicitado que cambies tu contraseña. Revisa tu correo electrónico para restablecerla." });
@@ -334,13 +334,13 @@ app.MapPost("/reset", async (ResetDto req, AuthDb db) => {
     
 
 
-    // Clear forzóarReset if present
+    // Clear forzarReset if present
 
 
-    if(!string.IsNullOrEmpty(user.Permisos) && user.Permisos.Contains("\"forzóarReset\":true")) {
+    if(!string.IsNullOrEmpty(user.Permisos) && user.Permisos.Contains("\"forzarReset\":true")) {
 
 
-        user.Permisos = user.Permisos.Replace("\"forzóarReset\":true", "\"forzóarReset\":false");
+        user.Permisos = user.Permisos.Replace("\"forzarReset\":true", "\"forzarReset\":false");
 
 
     }
@@ -485,6 +485,8 @@ app.MapGet("/usuarios", [Authorize] async (AuthDb db, HttpContext ctx) => {
 app.MapPost("/usuarios", [Authorize(Roles="admin")] async (UsuarioDto req, AuthDb db, HttpContext ctx) => {
 
 
+        if (await db.Usuarios.AnyAsync(u => u.Email == req.email)) return Results.BadRequest(new { error = "El correo ya está registrado en otra cuenta" });
+
     var miSede = ctx.User.FindFirst("sede")?.Value ?? "Todas";
 
 
@@ -527,7 +529,7 @@ app.MapPost("/usuarios", [Authorize(Roles="admin")] async (UsuarioDto req, AuthD
     
 
 
-    // Inject forzóarReset into permisos
+    // Inject forzarReset into permisos
 
 
     var permisosStr = req.permisos ?? "{}";
@@ -536,13 +538,13 @@ app.MapPost("/usuarios", [Authorize(Roles="admin")] async (UsuarioDto req, AuthD
     if(permisosStr == "{}") {
 
 
-        permisosStr = "{\"forzóarReset\":true}";
+        permisosStr = "{\"forzarReset\":true}";
 
 
-    } else if(!permisosStr.Contains("\"forzóarReset\":true")) {
+    } else if(!permisosStr.Contains("\"forzarReset\":true")) {
 
 
-        permisosStr = permisosStr.TrimEnd('}') + ",\"forzóarReset\":true}";
+        permisosStr = permisosStr.TrimEnd('}') + ",\"forzarReset\":true}";
 
 
     }
@@ -614,13 +616,13 @@ app.MapPost("/usuarios", [Authorize(Roles="admin")] async (UsuarioDto req, AuthD
             <h2 style='color: #F2B705;'>Bienvenido a Creo+ BioAsset</h2>
 
 
-            <h3>Tu cuenta ha sido cÁreada exitosamente</h3>
+            <h3>Tu cuenta ha sido creada exitosamente</h3>
 
 
             <p>Hola {user.Nombre},</p>
 
 
-            <p>Un administrador ha cÁreado una cuenta para ti en el sistema.</p>
+            <p>Un administrador ha creado una cuenta para ti en el sistema.</p>
 
 
             <p>Tus credenciales temporales son:</p>
@@ -707,22 +709,22 @@ app.MapPost("/usuarios/{id}/force-reset", [Authorize(Roles="admin")] async (Guid
     
 
 
-    // Set forzóarReset to true
+    // Set forzarReset to true
 
 
     if(string.IsNullOrEmpty(user.Permisos) || user.Permisos == "{}") {
 
 
-        user.Permisos = "{\"forzóarReset\":true}";
+        user.Permisos = "{\"forzarReset\":true}";
 
 
-    } else if(!user.Permisos.Contains("\"forzóarReset\":true")) {
+    } else if(!user.Permisos.Contains("\"forzarReset\":true")) {
 
 
-        if(user.Permisos.Contains("\"forzóarReset\":false")) {
+        if(user.Permisos.Contains("\"forzarReset\":false")) {
 
 
-            user.Permisos = user.Permisos.Replace("\"forzóarReset\":false", "\"forzóarReset\":true");
+            user.Permisos = user.Permisos.Replace("\"forzarReset\":false", "\"forzarReset\":true");
 
 
         } else {
@@ -731,7 +733,7 @@ app.MapPost("/usuarios/{id}/force-reset", [Authorize(Roles="admin")] async (Guid
             // Append to existing JSON object
 
 
-            user.Permisos = user.Permisos.TrimEnd('}') + ",\"forzóarReset\":true}";
+            user.Permisos = user.Permisos.TrimEnd('}') + ",\"forzarReset\":true}";
 
 
         }
@@ -809,7 +811,8 @@ app.MapPut("/usuarios/{id}", [Authorize(Roles="admin")] async (Guid id, UsuarioD
     if(user == null) return Results.NotFound();
 
 
-    if(user.Email == "victor.rivera@upch.pe" && req.email != "victor.rivera@upch.pe") return Results.Forbid(); // Protect admin email
+        if (req.email != user.Email && await db.Usuarios.AnyAsync(u => u.Email == req.email)) return Results.BadRequest(new { error = "El correo ya está registrado en otra cuenta" });
+if(user.Email == "victor.rivera@upch.pe" && req.email != "victor.rivera@upch.pe") return Results.Forbid(); // Protect admin email
 
 
     
@@ -827,13 +830,13 @@ app.MapPut("/usuarios/{id}", [Authorize(Roles="admin")] async (Guid id, UsuarioD
         user.Password = HashPassword(req.password);
 
 
-        // Clear forzóarReset since admin gave them a new one
+        // Clear forzarReset since admin gave them a new one
 
 
-        if(!string.IsNullOrEmpty(user.Permisos) && user.Permisos.Contains("\"forzóarReset\":true")) {
+        if(!string.IsNullOrEmpty(user.Permisos) && user.Permisos.Contains("\"forzarReset\":true")) {
 
 
-            user.Permisos = user.Permisos.Replace("\"forzóarReset\":true", "\"forzóarReset\":false");
+            user.Permisos = user.Permisos.Replace("\"forzarReset\":true", "\"forzarReset\":false");
 
 
         }
