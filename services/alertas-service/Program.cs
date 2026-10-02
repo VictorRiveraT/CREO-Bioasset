@@ -265,7 +265,7 @@ public class DailyReportTrigger {
                     <table width='100%' cellpadding='0' cellspacing='0' border='0'>
                         <tr>
                             <td valign='top'>
-                                <a href='http://localhost:5173/equipos/{activoId}' style='text-decoration: none;'>
+                                <a href='http://localhost:8080/equipos/{activoId}' style='text-decoration: none;'>
                                     <h4 style='margin: 0 0 4px 0; color: #111827; font-size: 15px; font-weight: 600;'>{eq}</h4>
                                 </a>
                                 <p style='margin: 0 0 8px 0; color: #4b5563; font-size: 13px;'>{msg}</p>
@@ -320,7 +320,7 @@ public class DailyReportTrigger {
                     </div>
                     
                     <div style='margin-top: 30px; text-align: center;'>
-                        <a href='http://localhost:5173' style='display: inline-block; background-color: #1f2937; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 6px;'>Abrir BioAsset Dashboard</a>
+                        <a href='http://localhost:8080' style='display: inline-block; background-color: #1f2937; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 6px;'>Abrir BioAsset Dashboard</a>
                     </div>
                 </div>
 
