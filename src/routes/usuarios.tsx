@@ -1,4 +1,4 @@
-﻿import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 import { toast } from "sonner";
 
@@ -861,7 +861,7 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
 
       await fetchApi(`/auth/usuarios/${userItem.id}/force-reset`, { method: "POST" });
 
-      alert("Se forzóóó el restablecimiento y se envióóó un correo al usuario.");
+      alert("Se forzó el restablecimiento y se envió un correo al usuario.");
 
     } catch(err: any) {
 

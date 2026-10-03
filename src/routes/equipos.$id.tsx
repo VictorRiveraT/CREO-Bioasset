@@ -61,6 +61,7 @@ import { daysUntil, formatDate, formatDateTime, useBio } from "@/lib/bioasset/st
 import { fetchApi } from "@/lib/bioasset/apiClient";
 
 import type { Equipment } from "@/lib/bioasset/types";
+import { decryptUrlParam } from "@/lib/bioasset/security";
 
 
 
@@ -116,7 +117,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 function DetalleEquipo() {
 
-  const { id } = Route.useParams();
+  const { id: rawId } = Route.useParams();
+  const id = decryptUrlParam(rawId);
 
   const {
 
@@ -192,7 +194,25 @@ function DetalleEquipo() {
 
       .then((res) => {
 
-        setEquipo(res.activo);
+        if (res.activo) {
+
+          const raw = res.activo;
+
+          setEquipo({
+
+            ...raw,
+
+            codigo: raw.codigo_qr || raw.codigo,
+
+            ubicacionId: raw.ubicacion_id || raw.ubicacionId,
+
+            fechaAdquisicion: raw.fecha_adquisicion || raw.fechaAdquisicion,
+
+            proximoMantenimiento: raw.proximo_mantenimiento || raw.proximoMantenimiento,
+
+          });
+
+        }
 
       })
 
@@ -204,25 +224,7 @@ function DetalleEquipo() {
 
 
 
-  useEffect(() => {
 
-    // If the equipment is loaded and the global db is ready, check if we have access to it
-
-    if (equipo && db) {
-
-      const hasAccess = db.equipment.some(e => e.id === equipo.id);
-
-      // If we don't have access to this equipment in our filtered DB (and we aren't aún admin), kick us to the public view
-
-      if (!hasAccess && !isAdmin) {
-
-        window.location.href = `/qr/${equipo.id}`;
-
-      }
-
-    }
-
-  }, [equipo, db, isAdmin]);
 
 
 

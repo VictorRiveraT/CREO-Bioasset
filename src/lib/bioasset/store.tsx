@@ -268,316 +268,161 @@ interface Ctx {
 
 const BioContext = createContext<Ctx | null>(null);
 
-
-
 export function BioAssetProvider({ children }: { children: ReactNode }) {
-
   const [db, setDb] = useState<DB>({
-
     users: [],
-
     locations: [],
-
     equipment: [],
-
     movements: [],
-
     maintenance: [],
-
     incidents: [],
-
     alertas: [],
-
   });
 
   const [user, setUser] = useState<User | null>(null);
-
   const [ready, setReady] = useState(false);
-
   const [theme, setThemeState] = useState<"light" | "dark">(
-
     () =>
-
       (typeof window !== "undefined"
-
         ? (localStorage.getItem("bioasset.theme") as "light" | "dark")
-
         : "light") || "light",
-
   );
 
-
-
   const setTheme = useCallback((t: "light" | "dark") => {
-
     setThemeState(t);
-
     localStorage.setItem("bioasset.theme", t);
-
     if (t === "dark") {
-
       document.documentElement.classList.add("dark");
-
     } else {
-
       document.documentElement.classList.remove("dark");
-
     }
-
   }, []);
-
-
 
   // Initialize theme on mount
-
   useEffect(() => {
-
     setTheme(theme);
-
   }, []);
 
-
-
   useEffect(() => {
-
     const handleRoleChange = () => {
-
       if (user) {
-
         // En modo dev reasignar los permisos según el nuevo rol simulado
-
         const newPerms = parseUserPermisos({ rol: user.rol, permisos: "{}" });
-
         setUser({ ...user, permisos: newPerms });
-
       }
-
     };
-
     window.addEventListener("bioasset.rolechanged", handleRoleChange);
-
     return () => window.removeEventListener("bioasset.rolechanged", handleRoleChange);
-
   }, [user]);
 
-
-
   const fetchDb = useCallback(async () => {
-
     try {
-
       const [usersRes, locsRes, equiposRes, movsRes, mantsRes, marcasRes, incidenciasRes, alertasRes] =
-
         await Promise.all([
-
           fetchApi("/auth/usuarios"),
-
           fetchApi("/inventario/ubicaciones"),
-
           fetchApi("/inventario/activos"),
-
           fetchApi("/inventario/movimientos"),
-
           fetchApi("/mantenimiento/mantenimientos"),
-
           fetchApi("/inventario/marcas").catch(() => ({ marcas: [] })),
-
           fetchApi("/mantenimiento/incidencias").catch(() => ({ incidencias: [] })),
-
           fetchApi("/alertas/alertas").catch(() => ({ alertas: [] })),
-
         ]);
 
       setDb({
-
         users: (usersRes.usuarios || []).map((u: any) => ({
-
           ...u,
-
           email: u.email,
-
           permisos: parseUserPermisos(u),
-
           sede: u.sede,
-
           accesoHasta: u.accesoHasta,
-
           sedeTemporal: u.sedeTemporal,
-
           sedeTemporalHasta: u.sedeTemporalHasta,
-
         })),
-
         locations: (locsRes.ubicaciones || []).map((l: any) => ({
-
           ...l,
-
           sede: l.sede || "Sede Principal",
-
           piso: l.piso || "Piso 1",
-
         })),
-
         marcas: marcasRes.marcas || [],
-
         equipment: (equiposRes.activos || []).map((e: any) => ({
-
           ...e,
-
           codigo: e.codigo_qr || e.codigo,
-
           ubicacionId: e.ubicacion_id || e.ubicacionId,
-
           fechaAdquisicion: e.fecha_adquisicion || e.fechaAdquisicion,
-
           proximoMantenimiento: e.proximo_mantenimiento || e.proximoMantenimiento,
-
         })),
-
         movements: (movsRes.movimientos || []).map((m: any) => ({
-
           ...m,
-
           equipoId: m.equipoId || m.equipo_id,
-
           origenId: m.origenId || m.origen_id,
-
           destinoId: m.destinoId || m.destino_id,
-
           usuarioId: m.usuarioId || m.usuario_id,
-
         })),
-
         maintenance: (mantsRes.mantenimientos || []).map((m: any) => ({
-
           ...m,
-
           fecha: m.fecha ? m.fecha.substring(0, 10) : new Date().toISOString().substring(0, 10),
-
           equipoId: m.activo_id || m.equipoId,
-
           proximaFecha: m.proxima_fecha ? m.proxima_fecha.substring(0, 10) : "",
-
           biomedicoId: m.biomedico_id || m.biomedicoId || m.tecnico_id || m.tecnicoId,
-
           resultado: m.estado || m.resultado,
-
           archivoBase64: m.archivoBase64,
-
           incidenciaId: m.incidencia_id || m.incidenciaId,
-
         })),
-
         incidents: (incidenciasRes.incidencias || []).map((i: any) => ({
-
           ...i,
-
           activoId: i.activo_id || i.activoId,
-
         })),
-
         alertas: (alertasRes.alertas || []).map((a: any) => ({
-
           ...a,
-
           activoId: a.activo_id || a.activoId,
-
         })),
-
       });
-
     } catch (e) {
-
       console.error("Error loading DB", e);
-
     } finally {
-
       setReady(true);
-
     }
-
   }, []);
 
-
-
   useEffect(() => {
-
     const token = localStorage.getItem(TOKEN_KEY);
-
     if (token) {
-
       fetchApi("/auth/me")
-
         .then((res) => {
-
           if (res.user.permisos && typeof res.user.permisos === "string" && res.user.permisos.includes('"forzarReset":true')) {
-
             throw new Error("force_reset");
-
           }
-
           const finalUser = { ...res.user, permisos: parseUserPermisos(res.user) };
-
           localStorage.setItem("bioasset_user_id_temp", finalUser.id);
-
-          (window as any).__CURRENT_USER__ = finalUser;
-
           setUser(finalUser);
-
           fetchDb();
-
         })
-
         .catch(() => {
-
           localStorage.removeItem(TOKEN_KEY);
-
           setReady(true);
-
         });
-
     } else {
-
       setReady(true);
-
     }
-
   }, [fetchDb]);
 
-
-
   const login = useCallback(
-
     async (email: string, password: string) => {
-
       try {
-
         const res = await fetchApi("/auth/login", {
-
           method: "POST",
-
           body: JSON.stringify({ email, password }),
-
         });
-
         localStorage.setItem(TOKEN_KEY, res.token);
-
         setUser({ ...res.user, permisos: parseUserPermisos(res.user) });
-
         await fetchDb();
-
         return null;
-
       } catch (err: any) {
-
         return err.message;
-
       }
-
     },
-
     [fetchDb],
-
   );
 
 
@@ -611,14 +456,12 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
 
   const filteredDb = useMemo(() => {
+    if (!user) return db;
 
-    if (!user || user.rol === "admin") return db;
-
-
-
-    // Si tiene 'Todas' permanentemente, no filtramos.
-
-    if (user.sede === "Todas") return db;
+    const userSedeRaw = (user.sede || "").trim();
+    if (!userSedeRaw || userSedeRaw.toLowerCase().includes("todas") || user.rol === "admin") {
+      return db;
+    }
 
 
 
@@ -670,14 +513,12 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
 
 
+    const userSedeLower = userSedeRaw.toLowerCase();
     const locs = db.locations.filter((l) => {
-
-      if (l.sede === user.sede) return true;
-
-      if (accesosExtra.some(x => x.sede === l.sede)) return true;
-
+      const lSedeLower = (l.sede || "Sede Principal").toLowerCase();
+      if (lSedeLower === userSedeLower || lSedeLower.includes(userSedeLower) || userSedeLower.includes(lSedeLower)) return true;
+      if (accesosExtra.some((x) => x.sede.toLowerCase().includes(lSedeLower) || lSedeLower.includes(x.sede.toLowerCase()))) return true;
       return false;
-
     });
 
     const locIds = new Set(locs.map((l) => l.id));
@@ -1023,7 +864,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
     locationName: (id) => db.locations.find((l) => l.id === id)?.nombre ?? "N/A",
 
-    userName: (id) => db.users.find((u) => u.id === id)?.nombre ?? "â€”",
+    userName: (id) => db.users.find((u) => u.id === id)?.nombre ?? "N/A",
 
     saveMarca: async (marca) => {
 

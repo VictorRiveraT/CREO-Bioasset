@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { daysUntil, formatDate, useBio } from "@/lib/bioasset/store";
 
 import type { Equipment } from "@/lib/bioasset/types";
+import { encryptUrlParam } from "@/lib/bioasset/security";
 
 
 
@@ -118,7 +119,7 @@ function AlertGroup({
 
                 to="/equipos/$id"
 
-                params={{ id: e.id }}
+                params={{ id: encryptUrlParam(e.id) }}
 
                 className="text-sm font-semibold text-primary hover:underline"
 

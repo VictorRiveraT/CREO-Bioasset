@@ -51,6 +51,7 @@ import {
 import { daysUntil, formatDate, useBio } from "@/lib/bioasset/store";
 
 import { EQUIPMENT_STATUSES } from "@/lib/bioasset/types";
+import { encryptUrlParam } from "@/lib/bioasset/security";
 
 
 
@@ -546,7 +547,7 @@ function Dashboard() {
 
                       to="/equipos/$id"
 
-                      params={{ id: e.id }}
+                      params={{ id: encryptUrlParam(e.id) }}
 
                       className="font-medium text-yellow-500 hover:underline"
 

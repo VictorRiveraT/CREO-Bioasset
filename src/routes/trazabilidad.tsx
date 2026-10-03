@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ArrowRight, Plus, Search } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
-import { MovementDialog } from "@/components/bioasset/dialogs";
+import { MovementDialog } from "@/components/bioasset/dialogs";
+import { encryptUrlParam } from "@/lib/bioasset/security";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -140,7 +141,7 @@ function TrazabilidadPage() {
             </TableHeader>
             <TableBody>
               {rows.map((m) => {
-                const e = db.equipment.find((x) => x.id === m.equipoId)!;
+                const e = db.equipment.find((x) => x.id === m.equipoId);
                 return (
                   <TableRow key={m.id}>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
@@ -149,12 +150,12 @@ function TrazabilidadPage() {
                     <TableCell>
                       <Link
                         to="/equipos/$id"
-                        params={{ id: e.id }}
+                        params={{ id: e ? encryptUrlParam(e.id) : "" }}
                         className="font-medium text-yellow-500 hover:underline"
                       >
-                        {e.codigo}
+                        {e?.codigo}
                       </Link>{" "}
-                      <span className="text-muted-foreground">{e.nombre}</span>
+                      <span className="text-muted-foreground">{e?.nombre}</span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <span className="inline-flex items-center gap-2">

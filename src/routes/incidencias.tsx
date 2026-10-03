@@ -15,7 +15,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useBio } from "@/lib/bioasset/store";
-import { MaintenanceDialog } from "@/components/bioasset/dialogs";
+import { MaintenanceDialog } from "@/components/bioasset/dialogs";
+import { encryptUrlParam } from "@/lib/bioasset/security";
 
 export const Route = createFileRoute("/incidencias")({
   head: () => ({
@@ -76,18 +77,18 @@ function IncidenciasPage() {
                 </TableRow>
               ) : (
                 rows.map((i) => {
-                  const e = db.equipment.find((x) => x.id === i.activoId)!;
+                  const e = db.equipment.find((x) => x.id === i.activoId);
                   return (
                     <TableRow key={i.id}>
                       <TableCell>
                         <Link
                           to="/equipos/$id"
-                          params={{ id: e.id }}
+                          params={{ id: e ? encryptUrlParam(e.id) : "" }}
                           className="font-medium text-yellow-500 hover:underline"
                         >
-                          {e.codigo}
+                          {e?.codigo}
                         </Link>{" "}
-                        <span className="text-muted-foreground">{e.nombre}</span>
+                        <span className="text-muted-foreground">{e?.nombre}</span>
                       </TableCell>
                       <TableCell className="max-w-md truncate">{i.titulo}</TableCell>
                       <TableCell>

@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
-import { MaintenanceDialog } from "@/components/bioasset/dialogs";
+import { MaintenanceDialog } from "@/components/bioasset/dialogs";
+import { encryptUrlParam } from "@/lib/bioasset/security";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -115,7 +116,7 @@ function MantenimientoPage() {
             </TableHeader>
             <TableBody>
               {rows.map((m) => {
-                const e = db.equipment.find((x) => x.id === m.equipoId)!;
+                const e = db.equipment.find((x) => x.id === m.equipoId);
                 return (
                   <TableRow key={m.id}>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
@@ -124,12 +125,12 @@ function MantenimientoPage() {
                     <TableCell>
                       <Link
                         to="/equipos/$id"
-                        params={{ id: e.id }}
+                        params={{ id: e ? encryptUrlParam(e.id) : "" }}
                         className="font-medium text-yellow-500 hover:underline"
                       >
-                        {e.codigo}
+                        {e?.codigo}
                       </Link>{" "}
-                      <span className="text-muted-foreground">{e.nombre}</span>
+                      <span className="text-muted-foreground">{e?.nombre}</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={m.tipo === "Correctivo" ? "destructive" : "secondary"}>
@@ -137,13 +138,15 @@ function MantenimientoPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>{userName(m.biomedicoId)}</TableCell>
-                    <TableCell className="max-w-sm text-muted-foreground flex flex-col gap-1">
-                      <span>{m.descripcion}</span>
+                    <TableCell className="max-w-sm text-muted-foreground">
+                      <div className="flex flex-col gap-1">
+                        <span>{m.descripcion}</span>
                       {m.archivoBase64 && (
                         <a href={m.archivoBase64} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
                           📎 Ver Formato
                         </a>
-                      )}
+                      )}
+                      </div>
                     </TableCell>
                     <TableCell>{m.resultado}</TableCell>
                     <TableCell className="whitespace-nowrap">

@@ -51,6 +51,7 @@ import { daysUntil, formatDate, useBio } from "@/lib/bioasset/store";
 import { CATEGORIES, EQUIPMENT_STATUSES } from "@/lib/bioasset/types";
 
 import { fetchApi } from "@/lib/bioasset/apiClient";
+import { encryptUrlParam } from "@/lib/bioasset/security";
 
 
 
@@ -90,8 +91,6 @@ function EquiposPage() {
 
   const { db, canEdit, locationName } = useBio();
 
-  const [activos, setActivos] = useState<any[]>([]);
-
   const [q, setQ] = useState("");
 
   const [cat, setCat] = useState("todas");
@@ -102,49 +101,33 @@ function EquiposPage() {
 
 
 
-  useEffect(() => {
-
-    fetchApi(`/inventario/activos?ubicacion=${ubi}&estado=${est}`)
-
-      .then((res) => setActivos(res.activos))
-
-      .catch((err) => console.error(err));
-
-  }, [ubi, est]);
-
-
-
   const rows = useMemo(() => {
 
     const term = q.trim().toLowerCase();
 
-    
-
-    // Create a set of allowed location IDs from the already-filtered db.locations
-
-    const allowedLocIds = new Set(db.locations.map(l => l.id));
 
 
+    return db.equipment.filter((e) => {
 
-    return (activos || []).filter((e) => {
-
-      // Security/Visibility check: only show if the equipment's location is in our allowed locations
-
-      if (!allowedLocIds.has(e.ubicacionId)) return false;
-
-
-
-      const match =
+      const matchTerm =
 
         !term ||
 
         [e.codigo, e.nombre, e.marca, e.serie].some((v) => (v || "").toLowerCase().includes(term));
 
-      return match && (cat === "todas" || e.categoria === cat);
+      const matchCat = cat === "todas" || e.categoria === cat;
+
+      const matchEst = est === "todos" || e.estado === est;
+
+      const matchUbi = ubi === "todas" || e.ubicacionId === ubi;
+
+
+
+      return matchTerm && matchCat && matchEst && matchUbi;
 
     });
 
-  }, [activos, q, cat, db.locations]);
+  }, [db.equipment, q, cat, est, ubi]);
 
 
 
@@ -380,34 +363,22 @@ function EquiposPage() {
 
                   </TableCell>
 
-                  <TableCell className="text-right flex items-center justify-end gap-2">
-
-                    <IncidentDialog
-
-                      equipoId={e.id}
-
-                      trigger={
-
-                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive">
-
-                          <AlertTriangle className="size-4" />
-
-                        </Button>
-
-                      }
-
-                    />
-
-                    <Button asChild variant="outline" size="sm">
-
-                      <Link to="/equipos/$id" params={{ id: e.id }}>
-
-                        Ver detalle
-
-                      </Link>
-
-                    </Button>
-
+                  <TableCell className="text-right whitespace-nowrap">
+                    <div className="flex items-center justify-end gap-2">
+                      <IncidentDialog
+                        equipoId={e.id}
+                        trigger={
+                          <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive">
+                            <AlertTriangle className="size-4" />
+                          </Button>
+                        }
+                      />
+                      <Button asChild variant="outline" size="sm">
+                        <Link to="/equipos/$id" params={{ id: encryptUrlParam(e.id) }}>
+                          Ver detalle
+                        </Link>
+                      </Button>
+                    </div>
                   </TableCell>
 
                 </TableRow>

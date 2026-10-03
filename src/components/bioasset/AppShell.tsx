@@ -84,8 +84,9 @@ import { useBio } from "@/lib/bioasset/store";
 
 import { fetchApi } from "@/lib/bioasset/apiClient";
 
-
 import { cn } from "@/lib/utils";
+
+import { NotificationBell } from "./NotificationBell";
 
 
 
@@ -1208,71 +1209,10 @@ export function AppShell({
 
 
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
 
-
-              {/* Quick Role Selector for DEV only */}
-
-
-              {import.meta.env.DEV && (
-
-
-                <div className="hidden md:flex items-center gap-2">
-
-
-                  <span className="text-xs text-muted-foreground">Dev Role:</span>
-
-
-                  <select
-
-
-                    className="text-xs border rounded p-1 bg-background text-foreground"
-
-
-                    value={user.rol}
-
-
-                    onChange={(e) => {
-
-
-                      // Hacky dev-only role switch bypassing real auth
-
-
-                      user.rol = e.target.value as any;
-
-
-                      window.dispatchEvent(new Event("bioasset.rolechanged"));
-
-
-                    }}
-
-
-                  >
-
-
-                    <option value="admin">Admin</option>
-
-
-                    <option value="biomedico">Biomédico</option>
-
-
-                    <option value="asistencial">Asistencial</option>
-
-
-                    <option value="auditor">Auditor</option>
-
-
-                    <option value="estudiante">Estudiante</option>
-
-
-                  </select>
-
-
-                </div>
-
-
-              )}
-
+              {/* Campanita de Notificaciones y Alertas Popup */}
+              <NotificationBell />
 
             </div>
 

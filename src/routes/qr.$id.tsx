@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { fetchApi } from "@/lib/bioasset/apiClient";
+import { decryptUrlParam, encryptUrlParam } from "@/lib/bioasset/security";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -62,7 +63,8 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 function PublicQRPage() {
 
-  const { id } = Route.useParams();
+  const { id: rawId } = Route.useParams();
+  const id = decryptUrlParam(rawId);
 
   const navigate = useNavigate();
 
@@ -110,7 +112,7 @@ function PublicQRPage() {
 
       if (hasAccess) {
 
-        navigate({ to: `/equipos/${id}` });
+        navigate({ to: "/equipos/$id", params: { id: encryptUrlParam(id) } });
 
         return;
 
@@ -128,7 +130,23 @@ function PublicQRPage() {
 
       .then((res) => {
 
-        setEquipo(res.activo);
+        if (res.activo) {
+
+          const raw = res.activo;
+
+          setEquipo({
+
+            ...raw,
+
+            codigo: raw.codigo_qr || raw.codigo,
+
+            ubicacionId: raw.ubicacion_id || raw.ubicacionId,
+
+            ubicacionNombre: raw.ubicacion_nombre || raw.ubicacionNombre,
+
+          });
+
+        }
 
         setError(null);
 

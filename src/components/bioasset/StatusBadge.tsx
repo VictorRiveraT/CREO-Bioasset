@@ -11,7 +11,7 @@ const MAP: Record<EquipmentStatus, string> = {
 
 export function StatusBadge({ status }: { status: EquipmentStatus }) {
   return (
-    <Badge variant="outline" className={cn("font-medium", MAP[status])}>
+    <Badge variant="outline" className={cn("font-medium whitespace-nowrap shrink-0", MAP[status])}>
       {status}
     </Badge>
   );
@@ -20,18 +20,18 @@ export function StatusBadge({ status }: { status: EquipmentStatus }) {
 export function DueBadge({ days }: { days: number }) {
   if (days < 0)
     return (
-      <Badge variant="outline" className="border-destructive/30 bg-destructive/15 text-destructive">
+      <Badge variant="outline" className="border-destructive/30 bg-destructive/15 text-destructive whitespace-nowrap shrink-0">
         Vencido ({Math.abs(days)} d)
       </Badge>
     );
   if (days <= 30)
     return (
-      <Badge variant="outline" className="border-warning/40 bg-warning/20 text-warning-foreground">
+      <Badge variant="outline" className="border-warning/40 bg-warning/20 text-warning-foreground whitespace-nowrap shrink-0">
         En {days} d
       </Badge>
     );
   return (
-    <Badge variant="outline" className="border-success/30 bg-success/15 text-success">
+    <Badge variant="outline" className="border-success/30 bg-success/15 text-success whitespace-nowrap shrink-0">
       En {days} d
     </Badge>
   );
