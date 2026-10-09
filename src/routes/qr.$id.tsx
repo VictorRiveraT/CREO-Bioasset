@@ -108,11 +108,11 @@ function PublicQRPage() {
 
     if (user) {
 
-      const hasAccess = db.equipment.some((e) => e.id === id);
+      const found = db.equipment.find((e) => e.id === id || e.codigo === id || e.serie === id);
 
-      if (hasAccess) {
+      if (found) {
 
-        navigate({ to: "/equipos/$id", params: { id: encryptUrlParam(id) } });
+        navigate({ to: "/equipos/$id", params: { id: encryptUrlParam(found.id) } });
 
         return;
 

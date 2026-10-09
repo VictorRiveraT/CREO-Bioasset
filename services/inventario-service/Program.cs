@@ -16,22 +16,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using QRCoder;
 using RabbitMQ.Client;
 using System.Text.Json;
-
-static class EventBus {
-    public static void Publish(string queue, object message) {
-        try {
-            var factory = new ConnectionFactory() { HostName = "rabbitmq" };
-            using var connection = factory.CreateConnection();
-            using var channel = connection.CreateModel();
-            channel.QueueDeclare(queue: queue, durable: false, exclusive: false, autoDelete: false, arguments: null);
-            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
-            channel.BasicPublish(exchange: "", routingKey: queue, basicProperties: null, body: body);
-        } catch (Exception e) {
-            Console.WriteLine($"RabbitMQ Publish Error: {e.Message}");
-        }
-    }
-}
-
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<InvDb>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddCors();
@@ -86,13 +70,25 @@ app.MapGet("/activos", [Authorize] async (InvDb db, string? ubicacion, string? e
     return Results.Ok(new { activos = items, total, page, limit });
 });
 
-app.MapGet("/activos/{id}", [Authorize] async (Guid id, InvDb db) => {
-    var a = await db.Activos.FindAsync(id);
+app.MapGet("/activos/{id}", [Authorize] async (string id, InvDb db) => {
+    Activo? a = null;
+    if (Guid.TryParse(id, out var guidId)) {
+        a = await db.Activos.FindAsync(guidId);
+    }
+    if (a == null) {
+        a = await db.Activos.FirstOrDefaultAsync(x => x.Codigo == id || x.Serie == id);
+    }
     return a != null ? Results.Ok(new { activo = a }) : Results.NotFound();
 });
 
-app.MapGet("/activos/public/{id}", async (Guid id, InvDb db) => {
-    var a = await db.Activos.FindAsync(id);
+app.MapGet("/activos/public/{id}", async (string id, InvDb db) => {
+    Activo? a = null;
+    if (Guid.TryParse(id, out var guidId)) {
+        a = await db.Activos.FindAsync(guidId);
+    }
+    if (a == null) {
+        a = await db.Activos.FirstOrDefaultAsync(x => x.Codigo == id || x.Serie == id);
+    }
     if (a == null) return Results.NotFound();
     
     var ubicacion = await db.Ubicaciones.FindAsync(a.UbicacionId);
@@ -290,3 +286,18 @@ public class Activo {
     [Column("activo"), JsonPropertyName("activo")] public bool IsActivo { get; set; } = true; 
 }
 public class Movimiento { [Key] public Guid Id { get; set; } = Guid.NewGuid(); public Guid EquipoId { get; set; } public Guid? OrigenId { get; set; } public Guid DestinoId { get; set; } public string Fecha { get; set; } = ""; public Guid UsuarioId { get; set; } public string Motivo { get; set; } = ""; public string? Observaciones { get; set; } }
+
+static class EventBus {
+    public static void Publish(string queue, object message) {
+        try {
+            var factory = new ConnectionFactory() { HostName = "rabbitmq" };
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            channel.QueueDeclare(queue: queue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+            channel.BasicPublish(exchange: "", routingKey: queue, basicProperties: null, body: body);
+        } catch (Exception e) {
+            Console.WriteLine($"RabbitMQ Publish Error: {e.Message}");
+        }
+    }
+}
