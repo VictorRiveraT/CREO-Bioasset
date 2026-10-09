@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://holdings-accurately-checking-attended.trycloudflare.com/api/:path*"
+    }
+  ]
+}

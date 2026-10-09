@@ -1,7 +1,7 @@
 import { sanitizeInput } from "./security";
 const rawApiUrl = import.meta.env.VITE_API_URL || "/api";
 export const API_URL =
-  typeof window !== "undefined" && rawApiUrl.includes("http://localhost")
+  typeof window !== "undefined" && (rawApiUrl.includes("http://localhost") || rawApiUrl.startsWith("/"))
     ? "/api"
     : rawApiUrl;
 
