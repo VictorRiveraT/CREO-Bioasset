@@ -100,7 +100,7 @@ function PublicQRPage() {
 
   useEffect(() => {
 
-    if (!ready) return;
+    if (user && !ready) return;
 
 
 
@@ -130,7 +130,7 @@ function PublicQRPage() {
 
       .then((res) => {
 
-        if (res.activo) {
+        if (res && res.activo) {
 
           const raw = res.activo;
 
@@ -146,9 +146,13 @@ function PublicQRPage() {
 
           });
 
-        }
+          setError(null);
 
-        setError(null);
+        } else {
+
+          setError("No se pudo cargar la información del equipo.");
+
+        }
 
       })
 
@@ -162,7 +166,7 @@ function PublicQRPage() {
 
       .finally(() => setLoading(false));
 
-  }, [id, user, navigate]);
+  }, [id, user, navigate, ready, db.equipment]);
 
 
 
