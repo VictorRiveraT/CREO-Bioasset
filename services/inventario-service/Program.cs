@@ -148,8 +148,19 @@ app.MapPost("/activos", [Authorize(Roles = "admin,inventario")] async (Activo dt
     await db.SaveChangesAsync();
     EventBus.Publish("activos_q", new { Action = "Created", Data = dto });
     
-    // Generate QR using the actual host from request
-    var origin = ctx.Request.Headers["Origin"].FirstOrDefault() ?? "http://localhost:8081";
+    var rawOrigin = ctx.Request.Headers["Origin"].FirstOrDefault() ?? ctx.Request.Headers["Referer"].FirstOrDefault();
+    string origin = "https://creo-bioasset-one.vercel.app";
+    if (!string.IsNullOrEmpty(rawOrigin) && !rawOrigin.Contains("localhost")) {
+        try {
+            var uri = new Uri(rawOrigin);
+            origin = $"{uri.Scheme}://{uri.Authority}";
+        } catch {}
+    } else {
+        var envUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
+        if (!string.IsNullOrEmpty(envUrl) && !envUrl.Contains("localhost")) {
+            origin = envUrl.TrimEnd('/');
+        }
+    }
     var qrGenerator = new QRCodeGenerator();
     var qrData = qrGenerator.CreateQrCode(origin + "/qr/" + dto.Id, QRCodeGenerator.ECCLevel.Q);
     var qrCode = new PngByteQRCode(qrData);

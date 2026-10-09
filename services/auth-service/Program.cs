@@ -232,6 +232,21 @@ app.MapPost("/login", async (LoginDto req, AuthDb db) => {
 
 
 
+static string GetFrontendOrigin(HttpContext ctx) {
+    var rawOrigin = ctx.Request.Headers["Origin"].FirstOrDefault() ?? ctx.Request.Headers["Referer"].FirstOrDefault();
+    if (!string.IsNullOrEmpty(rawOrigin) && !rawOrigin.Contains("localhost")) {
+        try {
+            var uri = new Uri(rawOrigin);
+            return $"{uri.Scheme}://{uri.Authority}";
+        } catch {}
+    }
+    var envUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
+    if (!string.IsNullOrEmpty(envUrl) && !envUrl.Contains("localhost")) {
+        return envUrl.TrimEnd('/');
+    }
+    return "https://creo-bioasset-one.vercel.app";
+}
+
 app.MapPost("/recover", async (RecoverDto req, HttpContext ctx, AuthDb db) => {
 
 
@@ -244,7 +259,7 @@ app.MapPost("/recover", async (RecoverDto req, HttpContext ctx, AuthDb db) => {
     
 
 
-    var origin = ctx.Request.Headers["Origin"].FirstOrDefault() ?? "http://localhost:8080";
+    var origin = GetFrontendOrigin(ctx);
 
 
     var resetLink = $"{origin}/?reset_email={Uri.EscapeDataString(user.Email)}";
@@ -601,7 +616,7 @@ app.MapPost("/usuarios", [Authorize(Roles="admin")] async (UsuarioDto req, AuthD
 
 
 
-    var origin = ctx.Request.Headers["Origin"].FirstOrDefault() ?? "http://localhost:8080";
+    var origin = GetFrontendOrigin(ctx);
 
 
     var resetLink = $"{origin}/?reset_email={Uri.EscapeDataString(user.Email)}";
@@ -748,7 +763,7 @@ app.MapPost("/usuarios/{id}/force-reset", [Authorize(Roles="admin")] async (Guid
 
 
 
-    var origin = ctx.Request.Headers["Origin"].FirstOrDefault() ?? "http://localhost:8080";
+    var origin = GetFrontendOrigin(ctx);
 
 
     var resetLink = $"{origin}/?reset_email={Uri.EscapeDataString(user.Email)}";
@@ -845,7 +860,7 @@ if(user.Email == "victor.rivera@upch.pe" && req.email != "victor.rivera@upch.pe"
         
 
 
-        var origin = ctx.Request.Headers["Origin"].FirstOrDefault() ?? "http://localhost:8080";
+        var origin = GetFrontendOrigin(ctx);
 
 
         var resetLink = $"{origin}/?reset_email={Uri.EscapeDataString(user.Email)}";
