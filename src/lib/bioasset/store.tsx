@@ -415,8 +415,12 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({ email, password }),
         });
         localStorage.setItem(TOKEN_KEY, res.token);
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem(`bioasset_toast_shown_${res.user.id}`);
+        }
         setUser({ ...res.user, permisos: parseUserPermisos(res.user) });
         await fetchDb();
+        toast.success(`¡Sesión iniciada como ${res.user.nombre}!`);
         return null;
       } catch (err: any) {
         return err.message;
@@ -425,32 +429,21 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     [fetchDb],
   );
 
-
-
   const logout = useCallback(() => {
-
     setUser(null);
-
     localStorage.removeItem(TOKEN_KEY);
-
+    if (typeof window !== "undefined") {
+      sessionStorage.clear();
+    }
     setDb({
-
       users: [],
-
       locations: [],
-
       equipment: [],
-
       movements: [],
-
       maintenance: [],
-
       incidents: [],
-
       marcas: [],
-
     });
-
   }, []);
 
 

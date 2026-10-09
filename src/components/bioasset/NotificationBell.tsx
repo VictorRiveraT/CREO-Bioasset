@@ -147,23 +147,37 @@ export function NotificationBell() {
     return notifications.some((n) => !n.leido && n.severidad === "alta");
   }, [notifications]);
 
-  // Toast al iniciar sesión de la mañana (1 sola vez por sesión)
+  // Toast al iniciar sesión (1 sola vez por sesión activa de usuario)
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const sessionKey = `bioasset_toast_shown_${user?.id || "guest"}`;
+    if (typeof window === "undefined" || !user) return;
+    const sessionKey = `bioasset_toast_shown_${user.id}`;
     const alreadyShownInSession = sessionStorage.getItem(sessionKey);
 
-    if (!alreadyShownInSession && unreadCount > 0) {
+    if (!alreadyShownInSession) {
       const highCount = notifications.filter((n) => n.severidad === "alta" && !n.leido).length;
       if (highCount > 0) {
-        toast.warning(`Bienvenido: Tienes ${highCount} alerta(s) crítica(s) en tu sede`, {
-          description: "Revisa la campanita para atender los mantenimientos pendientes.",
+        toast.warning(`Atención ${user.nombre}: Tienes ${highCount} alerta(s) crítica(s) en tu sede`, {
+          description: "Revisa la campanita para atender los mantenimientos o incidencias pendientes.",
           action: {
             label: "Ver Alertas",
             onClick: () => {
               navigate({ to: "/alertas" });
             },
           },
+        });
+      } else if (unreadCount > 0) {
+        toast.info(`Bienvenido ${user.nombre}: Tienes ${unreadCount} notificación(es) en tu sede`, {
+          description: "Haz clic en la campanita para ver el resumen de equipos.",
+          action: {
+            label: "Ver Alertas",
+            onClick: () => {
+              navigate({ to: "/alertas" });
+            },
+          },
+        });
+      } else {
+        toast.success(`Bienvenido ${user.nombre}`, {
+          description: "Todos los equipos de tu sede operan dentro de los parámetros esperados.",
         });
       }
       sessionStorage.setItem(sessionKey, "true");
