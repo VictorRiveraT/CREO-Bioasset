@@ -44,6 +44,7 @@ services:
     environment:
       - PORT=3000
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - FRONTEND_URL=https://creo-bioasset-one.vercel.app
 
   analitica-service:
     build: ./services/analitica-service

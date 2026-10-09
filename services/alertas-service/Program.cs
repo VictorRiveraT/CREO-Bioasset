@@ -247,7 +247,7 @@ public class DailyReportTrigger {
     public static async Task Trigger(AlertasDb db, string userIdStr) {
         if (!Guid.TryParse(userIdStr, out var userId)) return;
         
-        string frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:8081";
+        string frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "https://creo-bioasset-one.vercel.app";
         
         var conn = db.Database.GetDbConnection();
         if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
