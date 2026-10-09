@@ -45,10 +45,17 @@ export async function fetchApi(path: string, options: RequestInit = {}) {
         window.location.reload();
       }
     }
-    let message = "API error";
+    let message = `Error (${response.status})`;
     try {
-      const data = await response.json();
-      message = data.error || data.message || message;
+      const text = await response.text();
+      try {
+        const data = JSON.parse(text);
+        message = data.error || data.message || message;
+      } catch {
+        if (text && text.trim().length > 0 && text.trim().length < 150) {
+          message = text.trim();
+        }
+      }
     } catch {}
     throw new Error(message);
   }
