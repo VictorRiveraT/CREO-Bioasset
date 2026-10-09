@@ -1,9 +1,7 @@
 import { sanitizeInput } from "./security";
+
 const rawApiUrl = import.meta.env.VITE_API_URL || "/api";
-export const API_URL =
-  typeof window !== "undefined" && (rawApiUrl.includes("http://localhost") || rawApiUrl.startsWith("/"))
-    ? "/api"
-    : rawApiUrl;
+export const API_URL = typeof window !== "undefined" ? "/api" : rawApiUrl;
 
 /**
  * Cliente de Red Endurecido con Protección Anti-CSRF, Anti-XSS y Control de Sesión.
