@@ -319,11 +319,11 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     try {
       const [usersRes, locsRes, equiposRes, movsRes, mantsRes, marcasRes, incidenciasRes, alertasRes] =
         await Promise.all([
-          fetchApi("/auth/usuarios"),
-          fetchApi("/inventario/ubicaciones"),
-          fetchApi("/inventario/activos"),
-          fetchApi("/inventario/movimientos"),
-          fetchApi("/mantenimiento/mantenimientos"),
+          fetchApi("/auth/usuarios").catch(() => ({ usuarios: [] })),
+          fetchApi("/inventario/ubicaciones").catch(() => ({ ubicaciones: [] })),
+          fetchApi("/inventario/activos").catch(() => ({ activos: [] })),
+          fetchApi("/inventario/movimientos").catch(() => ({ movimientos: [] })),
+          fetchApi("/mantenimiento/mantenimientos").catch(() => ({ mantenimientos: [] })),
           fetchApi("/inventario/marcas").catch(() => ({ marcas: [] })),
           fetchApi("/mantenimiento/incidencias").catch(() => ({ incidencias: [] })),
           fetchApi("/alertas/alertas").catch(() => ({ alertas: [] })),
