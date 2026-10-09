@@ -1128,7 +1128,7 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
 
 
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b bg-card/90 px-4 py-3 backdrop-blur md:px-8">
+        <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-card/90 px-3 py-2.5 backdrop-blur sm:px-6 md:px-8">
 
 
           <Sheet open={open} onOpenChange={setOpen}>
@@ -1226,7 +1226,7 @@ export function AppShell({
         </header>
 
 
-        <main className="flex-1 space-y-6 p-4 md:p-8">{children}</main>
+        <main className="flex-1 space-y-4 p-3 sm:space-y-6 sm:p-6 md:p-8">{children}</main>
 
 
       </div>
