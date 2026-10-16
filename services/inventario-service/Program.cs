@@ -111,7 +111,7 @@ app.MapGet("/activos/public/{id}", async (string id, InvDb db) => {
     });
 });
 
-app.MapPut("/activos/{id}", [Authorize(Roles = "admin,inventario")] async (Guid id, Activo dto, InvDb db, HttpContext ctx) => {
+app.MapPut("/activos/{id}", [Authorize(Roles = "admin,inventario,biomedico")] async (Guid id, Activo dto, InvDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     var a = await db.Activos.FindAsync(id);
@@ -136,7 +136,7 @@ app.MapPut("/activos/{id}", [Authorize(Roles = "admin,inventario")] async (Guid 
     return Results.Ok();
 });
 
-app.MapPost("/activos", [Authorize(Roles = "admin,inventario")] async (Activo dto, InvDb db, HttpContext ctx) => {
+app.MapPost("/activos", [Authorize(Roles = "admin,inventario,biomedico")] async (Activo dto, InvDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     if (rol != "admin" && sede != "Todas") {

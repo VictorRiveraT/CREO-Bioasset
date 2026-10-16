@@ -38,20 +38,9 @@ app.UseStaticFiles(new StaticFileOptions {
     RequestPath = "/uploads"
 });
 
-static class EventBus {
-    public static void Publish(string queue, object message) {
-        try {
-            var factory = new ConnectionFactory() { HostName = "rabbitmq" };
-            using var connection = factory.CreateConnection();
-            using var channel = connection.CreateModel();
-            channel.QueueDeclare(queue: queue, durable: false, exclusive: false, autoDelete: false, arguments: null);
-            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
-            channel.BasicPublish(exchange: "", routingKey: queue, basicProperties: null, body: body);
-        } catch (Exception e) {
-            Console.WriteLine($"RabbitMQ Publish Error: {e.Message}");
-        }
-    }
-}
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+
 
 app.MapGet("/mantenimientos", [Authorize] async (MantDb db, HttpContext ctx, int page = 1, int limit = 1000) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
@@ -239,10 +228,7 @@ public class MantDb : DbContext {
 }
 public class InvUbicacion { [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } public string Sede { get; set; } = ""; }
 public class InvActivo { [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } public Guid UbicacionId { get; set; } }
-    public DbSet<Mantenimiento> Mantenimientos => Set<Mantenimiento>();
-    public DbSet<Incidencia> Incidencias => Set<Incidencia>();
-    protected override void OnModelCreating(ModelBuilder modelBuilder) { modelBuilder.HasDefaultSchema("mantenimiento"); }
-}
+
 
 public class Mantenimiento {
     [Key] public Guid Id { get; set; } = Guid.NewGuid();
@@ -266,4 +252,19 @@ public class Incidencia {
     public string Titulo { get; set; } = "";
     public string Estado { get; set; } = "";
     [Column("relacionada_id"), JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
+}
+
+static class EventBus {
+    public static void Publish(string queue, object message) {
+        try {
+            var factory = new ConnectionFactory() { HostName = "rabbitmq" };
+            using var connection = factory.CreateConnection();
+            using var channel = connection.CreateModel();
+            channel.QueueDeclare(queue: queue, durable: false, exclusive: false, autoDelete: false, arguments: null);
+            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(message));
+            channel.BasicPublish(exchange: "", routingKey: queue, basicProperties: null, body: body);
+        } catch (Exception e) {
+            Console.WriteLine($"RabbitMQ Publish Error: {e.Message}");
+        }
+    }
 }

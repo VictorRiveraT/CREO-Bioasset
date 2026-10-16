@@ -3,7 +3,8 @@ import { Download, FileSpreadsheet, Activity, AlertTriangle } from "lucide-react
 import { AppShell } from "@/components/bioasset/AppShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useBio, formatDate } from "@/lib/bioasset/store";
+import { useBio, formatDate } from "@/lib/bioasset/store";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/reportes")({
   head: () => ({
@@ -16,7 +17,10 @@ export const Route = createFileRoute("/reportes")({
 });
 
 function downloadCSV(data: any[], filename: string) {
-  if (!data || data.length === 0) return;
+  if (!data || data.length === 0) {
+    toast.info("No hay registros disponibles para exportar en este momento.");
+    return;
+  }
   const headers = Object.keys(data[0]);
   const csvRows = [
     headers.join(","),

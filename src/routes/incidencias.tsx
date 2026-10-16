@@ -105,7 +105,7 @@ function IncidenciasPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {canEdit("mantenimiento") && i.estado !== "Cerrada" && (
+                        {canEdit("mantenimiento") && i.estado !== "Cerrada" && e && (
                           <MaintenanceDialog
                             equipoId={e.id}
                             incidenciaId={i.id}

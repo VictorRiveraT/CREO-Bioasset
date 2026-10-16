@@ -1065,7 +1065,7 @@ export function AppShell({
             <div className="size-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs text-foreground">
 
 
-              {user.nombre.charAt(0)}
+              {(user?.nombre || user?.email || "U").charAt(0).toUpperCase()}
 
 
             </div>

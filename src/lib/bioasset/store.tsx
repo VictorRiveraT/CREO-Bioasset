@@ -386,6 +386,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           ubicacionId: e.ubicacion_id || e.ubicacionId,
           fechaAdquisicion: e.fecha_adquisicion || e.fechaAdquisicion,
           proximoMantenimiento: e.proximo_mantenimiento || e.proximoMantenimiento,
+          activo: e.activo !== false && e.activo !== 0,
         })),
         movements: rawMovs.map((m: any) => ({
           ...m,
@@ -837,33 +838,21 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     },
 
     addUser: async (u) => {
-
-      // Stringify permisos array to JSON
-
-      if (u.permisos) {
-
-        u.permisos = JSON.stringify(u.permisos);
-
-      }
-
-      await fetchApi("/auth/usuarios", { method: "POST", body: JSON.stringify(u) });
-
+      const payload = {
+        ...u,
+        permisos: typeof u.permisos === "object" ? JSON.stringify(u.permisos) : u.permisos,
+      };
+      await fetchApi("/auth/usuarios", { method: "POST", body: JSON.stringify(payload) });
       await fetchDb();
-
     },
 
     updateUser: async (id, u) => {
-
-      if (u.permisos) {
-
-        u.permisos = JSON.stringify(u.permisos);
-
-      }
-
-      await fetchApi(`/auth/usuarios/${id}`, { method: "PUT", body: JSON.stringify(u) });
-
+      const payload = {
+        ...u,
+        permisos: typeof u.permisos === "object" ? JSON.stringify(u.permisos) : u.permisos,
+      };
+      await fetchApi(`/auth/usuarios/${id}`, { method: "PUT", body: JSON.stringify(payload) });
       await fetchDb();
-
     },
 
     deleteUser: async (id) => {
