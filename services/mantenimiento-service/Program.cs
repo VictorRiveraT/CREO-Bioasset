@@ -38,6 +38,24 @@ app.UseStaticFiles(new StaticFileOptions {
     RequestPath = "/uploads"
 });
 
+async Task<string?> ProcessUpload(string? base64Str) {
+    if (!string.IsNullOrEmpty(base64Str) && base64Str.StartsWith("data:")) {
+        var parts = base64Str.Split(',');
+        if (parts.Length > 1) {
+            var meta = parts[0];
+            var base64Data = parts[1];
+            var ext = meta.Contains("application/pdf") ? ".pdf" : 
+                      meta.Contains("image/png") ? ".png" : 
+                      meta.Contains("image/jpeg") ? ".jpg" : ".bin";
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(uploadsPath, fileName);
+            await System.IO.File.WriteAllBytesAsync(filePath, Convert.FromBase64String(base64Data));
+            return $"/api/mantenimiento/uploads/{fileName}";
+        }
+    }
+    return base64Str;
+}
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 
@@ -77,7 +95,20 @@ app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (Man
         }
     }
     dto.Id = Guid.NewGuid();
+    dto.ArchivoBase64 = await ProcessUpload(dto.ArchivoBase64);
     db.Mantenimientos.Add(dto);
+
+    if (dto.IncidenciaId.HasValue) {
+        var inc = await db.Incidencias.FindAsync(dto.IncidenciaId.Value);
+        if (inc != null) {
+            if (dto.Estado == "Completado" || dto.Estado == "Finalizado" || dto.Estado == "De baja") {
+                inc.Estado = "Cerrada";
+            } else if (dto.Estado == "En progreso") {
+                inc.Estado = "En revision";
+            }
+        }
+    }
+
     await db.SaveChangesAsync();
     EventBus.Publish("mantenimientos_q", new { Action = "Created", Data = dto });
     return Results.Created($"/mantenimientos/{dto.Id}", dto);
@@ -102,21 +133,23 @@ app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async 
     m.Costo = dto.Costo;
     m.Proveedor = dto.Proveedor;
     if (!string.IsNullOrEmpty(dto.ArchivoBase64) && dto.ArchivoBase64.StartsWith("data:")) {
-        // Extract base64 and extension
-        var parts = dto.ArchivoBase64.Split(',');
-        var meta = parts[0];
-        var base64Data = parts[1];
-        var ext = meta.Contains("application/pdf") ? ".pdf" : 
-                  meta.Contains("image/png") ? ".png" : 
-                  meta.Contains("image/jpeg") ? ".jpg" : ".bin";
-        var fileName = $"{Guid.NewGuid()}{ext}";
-        var filePath = Path.Combine(uploadsPath, fileName);
-        await System.IO.File.WriteAllBytesAsync(filePath, Convert.FromBase64String(base64Data));
-        m.ArchivoBase64 = $"/api/mantenimiento/uploads/{fileName}";
+        m.ArchivoBase64 = await ProcessUpload(dto.ArchivoBase64);
     } else if (!string.IsNullOrEmpty(dto.ArchivoBase64)) {
-        // If it's already a URL from a previous save, don't overwrite it with bad data
         m.ArchivoBase64 = dto.ArchivoBase64;
     }
+
+    var incId = dto.IncidenciaId ?? m.IncidenciaId;
+    if (incId.HasValue) {
+        var inc = await db.Incidencias.FindAsync(incId.Value);
+        if (inc != null) {
+            if (dto.Estado == "Completado" || dto.Estado == "Finalizado" || dto.Estado == "De baja") {
+                inc.Estado = "Cerrada";
+            } else if (dto.Estado == "En progreso") {
+                inc.Estado = "En revision";
+            }
+        }
+    }
+
     await db.SaveChangesAsync();
     EventBus.Publish("mantenimientos_q", new { Action = "Updated", Data = m });
     return Results.NoContent();

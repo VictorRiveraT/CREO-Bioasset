@@ -1,6 +1,6 @@
-﻿import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { Plus } from "lucide-react";
 
@@ -289,16 +289,20 @@ function LocationDialog({
   const [open, setOpen] = useState(false);
 
   const [nombre, setNombre] = useState(
-
     location?.nombre === "___EMPTY___" ? "" : (location?.nombre ?? ""),
-
   );
-
   const [descripcion, setDescripcion] = useState(location?.descripcion ?? "");
-
   const [sede, setSede] = useState(location?.sede ?? presetSede ?? "Sede Principal");
-
   const [piso, setPiso] = useState(location?.piso ?? presetPiso ?? "Piso 1");
+
+  useEffect(() => {
+    if (open) {
+      setNombre(location?.nombre === "___EMPTY___" ? "" : (location?.nombre ?? ""));
+      setDescripcion(location?.descripcion ?? "");
+      setSede(location?.sede ?? presetSede ?? "Sede Principal");
+      setPiso(location?.piso ?? presetPiso ?? "Piso 1");
+    }
+  }, [open, location, presetSede, presetPiso]);
 
 
 
@@ -740,9 +744,9 @@ function UbicacionesPage() {
 
                                                           toast.success("Área eliminada");
 
-                                                        } catch {
+                                                        } catch (err: any) {
 
-                                                          toast.error("Error al eliminar");
+                                                          toast.error(err.message || "Error al eliminar");
 
                                                         }
 

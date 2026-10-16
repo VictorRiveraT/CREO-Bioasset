@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 
 
 import { toast } from "sonner";
@@ -212,39 +212,34 @@ export function EquipmentDialog({
 
 
   const [form, setForm] = useState({
-
-
     codigo: equipment?.codigo ?? `BIO-${String(db.equipment.length + 1).padStart(3, "0")}`,
-
-
     nombre: equipment?.nombre ?? "",
-
-
     categoria: equipment?.categoria ?? CATEGORIES[0],
-
-
     marca: equipment?.marca ?? "",
-
-
     modelo: equipment?.modelo ?? "",
-
-
     serie: equipment?.serie ?? "",
-
-
     ubicacionId: equipment?.ubicacionId ?? activeLocations[0]?.id ?? "",
-
-
     estado: equipment?.estado ?? "Operativo",
-
-
     fechaAdquisicion: equipment?.fechaAdquisicion ?? today(),
-
-
     proximoMantenimiento: equipment?.proximoMantenimiento ?? inDays(180),
-
-
   });
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        codigo: equipment?.codigo ?? `BIO-${String(db.equipment.length + 1).padStart(3, "0")}`,
+        nombre: equipment?.nombre ?? "",
+        categoria: equipment?.categoria ?? CATEGORIES[0],
+        marca: equipment?.marca ?? "",
+        modelo: equipment?.modelo ?? "",
+        serie: equipment?.serie ?? "",
+        ubicacionId: equipment?.ubicacionId ?? activeLocations[0]?.id ?? "",
+        estado: equipment?.estado ?? "Operativo",
+        fechaAdquisicion: equipment?.fechaAdquisicion ?? today(),
+        proximoMantenimiento: equipment?.proximoMantenimiento ?? inDays(180),
+      });
+    }
+  }, [open, equipment, db.equipment.length, activeLocations[0]?.id]);
 
 
 
@@ -980,21 +975,22 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
 
 
   const [form, setForm] = useState({
-
-
     equipoId: equipoId ?? db.equipment[0]?.id ?? "",
-
-
     destinoId: "",
-
-
     motivo: "",
-
-
     observaciones: "",
-
-
   });
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        equipoId: equipoId ?? db.equipment[0]?.id ?? "",
+        destinoId: "",
+        motivo: "",
+        observaciones: "",
+      });
+    }
+  }, [open, equipoId, db.equipment[0]?.id]);
 
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -1529,42 +1525,51 @@ export function MaintenanceDialog({
 
 
     const [form, setForm] = useState({
-
-
       equipoId: maintenance?.equipoId ?? equipoId ?? db.equipment[0]?.id ?? "",
-
-
       tipo: maintenance?.tipo ?? (incidenciaId ? "Correctivo" : "Preventivo"),
-
-
       fecha: maintenance?.fecha ?? today(),
-
-
-      biomedicoId: maintenance?.biomedicoId ?? user?.id ?? "u2",
-
-
+      biomedicoId: maintenance?.biomedicoId ?? user?.id ?? "",
       resultado: maintenance?.resultado ?? "En progreso",
-
-
       observaciones: initObs,
-
-
       perturbacion: pReportada,
-
-
       acciones: pAcciones,
-
-
       recomendaciones: pRecom,
-
-
       proximaFecha: maintenance?.proximaFecha ?? inDays(180),
-
-
       archivoBase64: maintenance?.archivoBase64 ?? "",
-
-
     });
+
+    useEffect(() => {
+      if (open) {
+        let obs = maintenance?.observaciones ?? "";
+        let pReport = "";
+        let pAcc = "";
+        let pRec = "";
+        try {
+          const parsed = JSON.parse(obs);
+          if (parsed && typeof parsed === "object") {
+            obs = parsed.causas || "";
+            pReport = parsed.perturbacion || "";
+            pAcc = parsed.acciones || "";
+            pRec = parsed.recomendaciones || "";
+          }
+        } catch {}
+
+        setForm({
+          equipoId: maintenance?.equipoId ?? equipoId ?? db.equipment[0]?.id ?? "",
+          tipo: maintenance?.tipo ?? (incidenciaId ? "Correctivo" : "Preventivo"),
+          fecha: maintenance?.fecha ?? today(),
+          biomedicoId: maintenance?.biomedicoId ?? user?.id ?? "",
+          resultado: maintenance?.resultado ?? "En progreso",
+          observaciones: obs,
+          perturbacion: pReport,
+          acciones: pAcc,
+          recomendaciones: pRec,
+          proximaFecha: maintenance?.proximaFecha ?? inDays(180),
+          archivoBase64: maintenance?.archivoBase64 ?? "",
+        });
+        setFileError("");
+      }
+    }, [open, maintenance, equipoId, incidenciaId, user?.id, db.equipment[0]?.id]);
 
 
   const [fileError, setFileError] = useState("");
@@ -2798,53 +2803,27 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId: string; trigge
 
 
   const [open, setOpen] = useState(false);
-
-
   const [incidentTitle, setIncidentTitle] = useState("");
 
-
-
-
+  useEffect(() => {
+    if (open) {
+      setIncidentTitle("");
+    }
+  }, [open]);
 
   const handleReportIncident = async (e: React.FormEvent) => {
-
-
     e.preventDefault();
-
-
     if (!incidentTitle) return;
-
-
     try {
-
-
-      await addIncident({ activo_id: equipoId, titulo: incidentTitle, estado: "Pendiente" });
-
-
+      await addIncident({ activo_id: equipoId, titulo: incidentTitle, estado: "Abierta" });
       await updateEquipment(equipoId, { estado: "Fuera de servicio" });
-
-
       setOpen(false);
-
-
       setIncidentTitle("");
-
-
       toast.success("Falla reportada correctamente");
-
-
-    } catch (err) {
-
-
+    } catch (err: any) {
       console.error(err);
-
-
-      toast.error("Error al reportar falla");
-
-
+      toast.error(err.message || "Error al reportar falla");
     }
-
-
   };
 
 

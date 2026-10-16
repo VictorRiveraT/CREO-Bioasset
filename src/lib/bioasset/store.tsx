@@ -908,27 +908,15 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     },
 
     equipmentById: (id) => {
-
       const e = db.equipment.find((x) => x.id === id);
-
       if (!e) return undefined;
-
-      // Map DB snake_case to UI camelCase
-
       return {
-
         ...e,
-
-        codigo: (e as any).codigo_qr,
-
-        ubicacionId: (e as any).ubicacion_id,
-
-        fechaAdquisicion: (e as any).fecha_adquisicion,
-
-        proximoMantenimiento: (e as any).proximo_mantenimiento,
-
+        codigo: (e as any).codigo_qr || e.codigo,
+        ubicacionId: (e as any).ubicacion_id || e.ubicacionId,
+        fechaAdquisicion: (e as any).fecha_adquisicion || e.fechaAdquisicion,
+        proximoMantenimiento: (e as any).proximo_mantenimiento || e.proximoMantenimiento,
       };
-
     },
 
   };

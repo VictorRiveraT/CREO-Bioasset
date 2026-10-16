@@ -59,7 +59,7 @@ import { Separator } from "@/components/ui/separator";
 import { daysUntil, formatDate, formatDateTime, useBio } from "@/lib/bioasset/store";
 
 import { fetchApi } from "@/lib/bioasset/apiClient";
-
+import { toast } from "sonner";
 import type { Equipment } from "@/lib/bioasset/types";
 import { decryptUrlParam } from "@/lib/bioasset/security";
 
@@ -155,35 +155,22 @@ function DetalleEquipo() {
 
 
   const handleReportIncident = async (e: React.FormEvent) => {
-
     e.preventDefault();
-
-    if (!incidentTitle) return;
-
+    if (!incidentTitle || !equipo) return;
     try {
-
-      await addIncident({ activo_id: equipo!.id, titulo: incidentTitle, estado: "Pendiente" });
-
-      await fetchApi(`/inventario/activos/${equipo!.id}`, {
-
+      await addIncident({ activo_id: equipo.id, titulo: incidentTitle, estado: "Abierta" });
+      await fetchApi(`/inventario/activos/${equipo.id}`, {
         method: "PATCH",
-
-        body: JSON.stringify({ estado: "Inoperativo" }),
-
+        body: JSON.stringify({ estado: "Fuera de servicio" }),
       });
-
+      setEquipo((prev) => (prev ? { ...prev, estado: "Fuera de servicio" } : null));
       setIncidentOpen(false);
-
       setIncidentTitle("");
-
-      window.location.reload();
-
-    } catch (err) {
-
+      toast.success("Falla reportada correctamente.");
+    } catch (err: any) {
       console.error(err);
-
+      toast.error(err.message || "Error al reportar la falla.");
     }
-
   };
 
 
@@ -368,7 +355,7 @@ function DetalleEquipo() {
 
                     <DialogDescription>
 
-                      Describa el problema que presenta el equipo. El estado cambiará a Inoperativo.
+                      Describa el problema que presenta el equipo. El estado cambiará a Fuera de servicio.
 
                     </DialogDescription>
 

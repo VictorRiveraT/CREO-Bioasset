@@ -307,7 +307,7 @@ app.MapPost("/recover", async (RecoverDto req, HttpContext ctx, AuthDb db) => {
 
 
 
-    return Results.Ok(new { message = "Correo de recuperación envióado" });
+    return Results.Ok(new { message = "Correo de recuperación enviado" });
 
 
 });
@@ -808,7 +808,7 @@ app.MapPost("/usuarios/{id}/force-reset", [Authorize(Roles="admin")] async (Guid
 
 
 
-    return Results.Ok(new { message = "Se ha forzóado el restablecimiento de contraseña y se envióó el correo." });
+    return Results.Ok(new { message = "Se ha forzado el restablecimiento de contraseña y se envió el correo." });
 
 
 });

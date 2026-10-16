@@ -52,7 +52,7 @@ import { fetchApi } from "@/lib/bioasset/apiClient";
 
 import type { UserPermissions, Role } from "@/lib/bioasset/types";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 import {
 
@@ -236,10 +236,8 @@ function UsuariosPage() {
 
       setSedeTemporalHasta("");
 
-    } catch {
-
-      toast.error("Ocurrió un error al registrar el usuario");
-
+    } catch (err: any) {
+      toast.error(err.message || "Ocurrió un error al registrar el usuario");
     }
 
   };
@@ -854,121 +852,86 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
 
 
   const handleForceReset = async () => {
-
     setIsResetting(true);
-
     try {
-
       await fetchApi(`/auth/usuarios/${userItem.id}/force-reset`, { method: "POST" });
-
-      alert("Se forzó el restablecimiento y se envió un correo al usuario.");
-
+      toast.success("Se forzó el restablecimiento y se envió un correo al usuario.");
     } catch(err: any) {
-
-      alert("Error: " + err.message);
-
+      toast.error(err.message || "Error al forzar restablecimiento");
     }
-
     setIsResetting(false);
-
   };
-
-
 
   const [sede, setSede] = useState(userItem.sede || "Todas");
-
   const [accesoHasta, setAccesoHasta] = useState(
-
     userItem.accesoHasta ? userItem.accesoHasta.substring(0, 10) : "",
-
   );
-
   const initialAccesos = (() => {
-
     try {
-
       if (userItem.sedeTemporal && userItem.sedeTemporal.startsWith("[")) {
-
         return JSON.parse(userItem.sedeTemporal);
-
       } else if (userItem.sedeTemporal && userItem.sedeTemporal !== "Ninguna") {
-
         return [{ sede: userItem.sedeTemporal, hasta: userItem.sedeTemporalHasta ? userItem.sedeTemporalHasta.substring(0, 10) : "" }];
-
       }
-
     } catch(e) {}
-
     return [];
-
   })();
-
   const [accesosExtra, setAccesosExtra] = useState<{sede: string, hasta: string}[]>(initialAccesos);
-
   const [sedeTemporal, setSedeTemporal] = useState("Ninguna");
-
   const [sedeTemporalHasta, setSedeTemporalHasta] = useState("");
 
-
-
   const [permisos, setPermisos] = useState<UserPermissions>(
-
     userItem.permisos || DEFAULT_PERMISSIONS[userItem.rol as Role],
-
   );
 
-
+  useEffect(() => {
+    if (editOpen) {
+      setNombre(userItem.nombre);
+      setEmail(userItem.email);
+      setPassword("");
+      setRol(userItem.rol as Role);
+      setSede(userItem.sede || "Todas");
+      setAccesoHasta(userItem.accesoHasta ? userItem.accesoHasta.substring(0, 10) : "");
+      let parsedExtra = [];
+      try {
+        if (userItem.sedeTemporal && userItem.sedeTemporal.startsWith("[")) {
+          parsedExtra = JSON.parse(userItem.sedeTemporal);
+        } else if (userItem.sedeTemporal && userItem.sedeTemporal !== "Ninguna") {
+          parsedExtra = [{ sede: userItem.sedeTemporal, hasta: userItem.sedeTemporalHasta ? userItem.sedeTemporalHasta.substring(0, 10) : "" }];
+        }
+      } catch {}
+      setAccesosExtra(parsedExtra);
+      setSedeTemporal("Ninguna");
+      setSedeTemporalHasta("");
+      setPermisos(userItem.permisos || DEFAULT_PERMISSIONS[userItem.rol as Role]);
+    }
+  }, [editOpen, userItem]);
 
   const handleEditRoleChange = (r: string) => {
-
     setRol(r as Role);
-
     setPermisos(DEFAULT_PERMISSIONS[r as Role]);
-
   };
 
-
-
   const handleEditUser = async (e: React.FormEvent) => {
-
     e.preventDefault();
-
     if (!nombre || !email || !rol) return;
-
     try {
-
       await updateUser(userItem.id, {
-
         nombre,
-
         email,
-
         password,
-
         rol,
-
         permisos,
-
         sede,
-
         accesoHasta: accesoHasta ? new Date(accesoHasta).toISOString() : null,
-
         sedeTemporal: JSON.stringify(accesosExtra),
-
         sedeTemporalHasta: null,
-
       });
-
       toast.success("Usuario actualizado exitosamente");
-
       setEditOpen(false);
-
-    } catch {
-
-      toast.error("Ocurrió un error al actualizar");
-
+    } catch (err: any) {
+      toast.error(err.message || "Ocurrió un error al actualizar");
     }
-
   };
 
 

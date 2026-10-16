@@ -43,6 +43,10 @@ app.MapPut("/ubicaciones/{id}", [Authorize(Roles = "admin")] async (Guid id, Ubi
     return Results.Ok();
 });
 app.MapDelete("/ubicaciones/{id}", [Authorize(Roles = "admin")] async (Guid id, InvDb db) => {
+    var hasActivos = await db.Activos.AnyAsync(a => a.UbicacionId == id);
+    if (hasActivos) {
+        return Results.BadRequest(new { error = "No se puede eliminar la ubicación porque tiene equipos asignados." });
+    }
     var u = await db.Ubicaciones.FindAsync(id);
     if(u!=null) { db.Ubicaciones.Remove(u); await db.SaveChangesAsync(); }
     return Results.Ok();
@@ -57,7 +61,14 @@ app.MapPut("/marcas/{id}", [Authorize(Roles = "admin")] async (Guid id, Marca dt
 });
 app.MapDelete("/marcas/{id}", [Authorize(Roles = "admin")] async (Guid id, InvDb db) => {
     var m = await db.Marcas.FindAsync(id);
-    if(m!=null) { db.Marcas.Remove(m); await db.SaveChangesAsync(); }
+    if(m!=null) {
+        var hasActivos = await db.Activos.AnyAsync(a => a.Marca == m.Nombre);
+        if (hasActivos) {
+            return Results.BadRequest(new { error = "No se puede eliminar la marca porque tiene equipos asignados." });
+        }
+        db.Marcas.Remove(m); 
+        await db.SaveChangesAsync(); 
+    }
     return Results.Ok();
 });
 

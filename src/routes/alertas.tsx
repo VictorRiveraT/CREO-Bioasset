@@ -260,14 +260,14 @@ function AlertasPage() {
           tone="bg-purple-500/20 text-purple-600 dark:text-purple-400"
 
           items={db.alertas.map((a: any) => {
-            const eq = db.equipment.find(x => x.id === a.activoId);
+            const eq = db.equipment.find((x) => x.id === a.activoId);
             return {
-              id: a.id || a.activoId,
-              codigo: "ALERTA",
-              nombre: a.mensaje || a.tipo,
-              estado: a.estado || "Activa",
+              id: eq ? eq.id : (a.activoId || a.id),
+              codigo: eq ? eq.codigo : "ALERTA",
+              nombre: eq ? `${eq.nombre} — ${a.mensaje || a.tipo}` : (a.mensaje || a.tipo),
+              estado: eq ? eq.estado : (a.estado || "Activa"),
               ubicacionId: eq ? eq.ubicacionId : "",
-              proximoMantenimiento: new Date().toISOString().split("T")[0],
+              proximoMantenimiento: eq ? eq.proximoMantenimiento : new Date().toISOString().split("T")[0],
             };
           }) as any}
 
