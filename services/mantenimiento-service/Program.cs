@@ -84,7 +84,7 @@ app.MapGet("/mantenimientos/{id}", [Authorize] async (Guid id, MantDb db) => {
     var m = await db.Mantenimientos.FindAsync(id);
     return m != null ? Results.Ok(new { mantenimiento = m }) : Results.NotFound();
 });
-app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (Mantenimiento dto, MantDb db, HttpContext ctx) => {
+app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (CreateMantenimientoDto dto, MantDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     if (rol != "admin" && sede != "Todas") {
@@ -94,26 +94,43 @@ app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (Man
             if (u == null || u.Sede != sede) return Results.Forbid();
         }
     }
-    dto.Id = Guid.NewGuid();
-    dto.ArchivoBase64 = await ProcessUpload(dto.ArchivoBase64);
-    db.Mantenimientos.Add(dto);
+    var userIdStr = ctx.User.FindFirst("id")?.Value;
+    Guid userGuid = Guid.Empty;
+    if (!string.IsNullOrEmpty(userIdStr)) Guid.TryParse(userIdStr, out userGuid);
 
-    if (dto.IncidenciaId.HasValue) {
-        var inc = await db.Incidencias.FindAsync(dto.IncidenciaId.Value);
+    var entity = new Mantenimiento {
+        Id = Guid.NewGuid(),
+        ActivoId = dto.ActivoId,
+        BiomedicoId = dto.BiomedicoId.HasValue && dto.BiomedicoId.Value != Guid.Empty ? dto.BiomedicoId.Value : userGuid,
+        Tipo = dto.Tipo ?? "Preventivo",
+        Estado = dto.Estado ?? "Pendiente",
+        Descripcion = dto.Descripcion ?? "",
+        ProximaFecha = dto.ProximaFecha,
+        Fecha = dto.Fecha ?? DateTime.UtcNow.ToString("yyyy-MM-dd"),
+        Observaciones = dto.Observaciones,
+        ArchivoBase64 = await ProcessUpload(dto.ArchivoBase64),
+        IncidenciaId = dto.IncidenciaId,
+        Costo = dto.Costo,
+        Proveedor = dto.Proveedor
+    };
+    db.Mantenimientos.Add(entity);
+
+    if (entity.IncidenciaId.HasValue) {
+        var inc = await db.Incidencias.FindAsync(entity.IncidenciaId.Value);
         if (inc != null) {
-            if (dto.Estado == "Completado" || dto.Estado == "Finalizado" || dto.Estado == "De baja") {
+            if (entity.Estado == "Completado" || entity.Estado == "Finalizado" || entity.Estado == "De baja") {
                 inc.Estado = "Cerrada";
-            } else if (dto.Estado == "En progreso") {
+            } else if (entity.Estado == "En progreso") {
                 inc.Estado = "En revision";
             }
         }
     }
 
     await db.SaveChangesAsync();
-    EventBus.Publish("mantenimientos_q", new { Action = "Created", Data = dto });
-    return Results.Created($"/mantenimientos/{dto.Id}", dto);
+    EventBus.Publish("mantenimientos_q", new { Action = "Created", Data = entity });
+    return Results.Created($"/mantenimientos/{entity.Id}", entity);
 });
-app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, Mantenimiento dto, MantDb db, HttpContext ctx) => {
+app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, System.Text.Json.Nodes.JsonObject dto, MantDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     var m = await db.Mantenimientos.FindAsync(id);
@@ -125,26 +142,38 @@ app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async 
         }
     }
     if (m == null) return Results.NotFound();
-    m.Estado = dto.Estado;
-    m.Descripcion = dto.Descripcion;
-    m.ProximaFecha = dto.ProximaFecha;
-    m.Fecha = dto.Fecha;
-    m.Observaciones = dto.Observaciones;
-    m.Costo = dto.Costo;
-    m.Proveedor = dto.Proveedor;
-    if (!string.IsNullOrEmpty(dto.ArchivoBase64) && dto.ArchivoBase64.StartsWith("data:")) {
-        m.ArchivoBase64 = await ProcessUpload(dto.ArchivoBase64);
-    } else if (!string.IsNullOrEmpty(dto.ArchivoBase64)) {
-        m.ArchivoBase64 = dto.ArchivoBase64;
+
+    if (dto.TryGetPropertyValue("estado", out var est) && est != null) m.Estado = est.ToString();
+    if (dto.TryGetPropertyValue("descripcion", out var desc) && desc != null) m.Descripcion = desc.ToString();
+    if (dto.TryGetPropertyValue("tipo", out var tipo) && tipo != null) m.Tipo = tipo.ToString();
+    if (dto.TryGetPropertyValue("proxima_fecha", out var pf) && pf != null) m.ProximaFecha = pf.ToString();
+    else if (dto.TryGetPropertyValue("proximaFecha", out var pf2) && pf2 != null) m.ProximaFecha = pf2.ToString();
+    if (dto.TryGetPropertyValue("fecha", out var fecha) && fecha != null) m.Fecha = fecha.ToString();
+    if (dto.TryGetPropertyValue("observaciones", out var obs) && obs != null) m.Observaciones = obs.ToString();
+    if (dto.TryGetPropertyValue("proveedor", out var prov) && prov != null) m.Proveedor = prov.ToString();
+    if (dto.TryGetPropertyValue("costo", out var costo) && costo != null && decimal.TryParse(costo.ToString(), out var cVal)) m.Costo = cVal;
+    
+    if (dto.TryGetPropertyValue("archivoBase64", out var arch) && arch != null) {
+        var str = arch.ToString();
+        if (str.StartsWith("data:")) m.ArchivoBase64 = await ProcessUpload(str);
+        else m.ArchivoBase64 = str;
     }
 
-    var incId = dto.IncidenciaId ?? m.IncidenciaId;
+    Guid? incId = null;
+    if (dto.TryGetPropertyValue("incidencia_id", out var incVal) && incVal != null && Guid.TryParse(incVal.ToString(), out var gInc)) {
+        incId = gInc;
+    } else if (dto.TryGetPropertyValue("incidenciaId", out var incVal2) && incVal2 != null && Guid.TryParse(incVal2.ToString(), out var gInc2)) {
+        incId = gInc2;
+    } else if (m.IncidenciaId.HasValue) {
+        incId = m.IncidenciaId;
+    }
+
     if (incId.HasValue) {
         var inc = await db.Incidencias.FindAsync(incId.Value);
         if (inc != null) {
-            if (dto.Estado == "Completado" || dto.Estado == "Finalizado" || dto.Estado == "De baja") {
+            if (m.Estado == "Completado" || m.Estado == "Finalizado" || m.Estado == "De baja") {
                 inc.Estado = "Cerrada";
-            } else if (dto.Estado == "En progreso") {
+            } else if (m.Estado == "En progreso") {
                 inc.Estado = "En revision";
             }
         }
@@ -179,7 +208,7 @@ app.MapGet("/incidencias/{id}", [Authorize] async (Guid id, MantDb db) => {
     var i = await db.Incidencias.FindAsync(id);
     return i != null ? Results.Ok(new { incidencia = i }) : Results.NotFound();
 });
-app.MapPost("/incidencias", [Authorize] async (Incidencia dto, MantDb db, HttpContext ctx) => {
+app.MapPost("/incidencias", [Authorize] async (CreateIncidenciaDto dto, MantDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     if (rol != "admin" && sede != "Todas") {
@@ -189,13 +218,19 @@ app.MapPost("/incidencias", [Authorize] async (Incidencia dto, MantDb db, HttpCo
             if (u == null || u.Sede != sede) return Results.Forbid();
         }
     }
-    dto.Id = Guid.NewGuid();
-    db.Incidencias.Add(dto);
+    var entity = new Incidencia {
+        Id = Guid.NewGuid(),
+        ActivoId = dto.ActivoId,
+        Titulo = dto.Titulo ?? "",
+        Estado = dto.Estado ?? "Abierta",
+        RelacionadaId = dto.RelacionadaId
+    };
+    db.Incidencias.Add(entity);
     await db.SaveChangesAsync();
-    EventBus.Publish("incidencias_q", new { Action = "Created", Data = dto });
-    return Results.Created($"/incidencias/{dto.Id}", dto);
+    EventBus.Publish("incidencias_q", new { Action = "Created", Data = entity });
+    return Results.Created($"/incidencias/{entity.Id}", entity);
 });
-app.MapPut("/incidencias/{id}", [Authorize] async (Guid id, Incidencia dto, MantDb db, HttpContext ctx) => {
+app.MapPut("/incidencias/{id}", [Authorize] async (Guid id, UpdateIncidenciaDto dto, MantDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     var i = await db.Incidencias.FindAsync(id);
@@ -207,7 +242,9 @@ app.MapPut("/incidencias/{id}", [Authorize] async (Guid id, Incidencia dto, Mant
         }
     }
     if (i == null) return Results.NotFound();
-    i.Estado = dto.Estado;
+    if (!string.IsNullOrEmpty(dto.Estado)) i.Estado = dto.Estado;
+    if (!string.IsNullOrEmpty(dto.Titulo)) i.Titulo = dto.Titulo;
+    if (dto.RelacionadaId.HasValue) i.RelacionadaId = dto.RelacionadaId;
     await db.SaveChangesAsync();
     return Results.NoContent();
 });
@@ -287,6 +324,47 @@ public class Incidencia {
     public string Titulo { get; set; } = "";
     public string Estado { get; set; } = "";
     [Column("RelacionadaId"), JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
+}
+
+public class CreateMantenimientoDto {
+    [JsonPropertyName("activo_id")] public Guid ActivoId { get; set; }
+    [JsonPropertyName("biomedico_id")] public Guid? BiomedicoId { get; set; }
+    public string? Tipo { get; set; } = "Preventivo";
+    public string? Estado { get; set; } = "Pendiente";
+    public string? Descripcion { get; set; } = "";
+    [JsonPropertyName("proxima_fecha")] public string? ProximaFecha { get; set; }
+    public string? Fecha { get; set; }
+    public string? Observaciones { get; set; }
+    public string? ArchivoBase64 { get; set; }
+    [JsonPropertyName("incidencia_id")] public Guid? IncidenciaId { get; set; }
+    public decimal? Costo { get; set; }
+    public string? Proveedor { get; set; }
+}
+
+public class UpdateMantenimientoDto {
+    public string? Tipo { get; set; }
+    public string? Estado { get; set; }
+    public string? Descripcion { get; set; }
+    [JsonPropertyName("proxima_fecha")] public string? ProximaFecha { get; set; }
+    public string? Fecha { get; set; }
+    public string? Observaciones { get; set; }
+    public string? ArchivoBase64 { get; set; }
+    [JsonPropertyName("incidencia_id")] public Guid? IncidenciaId { get; set; }
+    public decimal? Costo { get; set; }
+    public string? Proveedor { get; set; }
+}
+
+public class CreateIncidenciaDto {
+    [JsonPropertyName("activo_id")] public Guid ActivoId { get; set; }
+    public string Titulo { get; set; } = "";
+    public string? Estado { get; set; } = "Abierta";
+    [JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
+}
+
+public class UpdateIncidenciaDto {
+    public string? Titulo { get; set; }
+    public string? Estado { get; set; }
+    [JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
 }
 
 static class EventBus {
