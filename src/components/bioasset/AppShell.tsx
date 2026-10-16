@@ -326,72 +326,67 @@ function LoginScreen() {
   }, [resetEmail, resetToken]);
 
 
+  const timeRemainingText = useMemo(() => {
+    if (!resetToken) return null;
+    try {
+      const parts = resetToken.split(".");
+      if (parts.length !== 3) return null;
+      const payload = JSON.parse(atob(parts[1]));
+      if (!payload.exp) return null;
+      const diffMs = payload.exp * 1000 - Date.now();
+      if (diffMs <= 0) return null;
+      const diffMins = Math.round(diffMs / 60000);
+      if (diffMins > 60) {
+        const hours = Math.round(diffMins / 60);
+        return `${hours} hora${hours > 1 ? "s" : ""}`;
+      }
+      return `${diffMins} minuto${diffMins > 1 ? "s" : ""}`;
+    } catch {
+      return null;
+    }
+  }, [resetToken]);
+
   const [view, setView] = useState<"login" | "recover" | "reset">(resetEmail ? "reset" : "login");
-
-
   const [email, setEmail] = useState(resetEmail || "");
-
-
   const [password, setPassword] = useState("");
-
-
   const [showPassword, setShowPassword] = useState(false);
-
-
   const [error, setError] = useState<string | null>(null);
-
-
   const [success, setSuccess] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
-
-
-
-
-  const handleLogin = async (e: React.FormEvent) => {
-
-
-    e.preventDefault();
-
-
+  const handleQuickResend = async () => {
+    if (!email) {
+      setView("recover");
+      return;
+    }
     setError(null);
-
-
-    const err = await login(email, password);
-
-
-    if (err) setError(err);
-
-
+    setSuccess(null);
+    setIsSending(true);
+    try {
+      await fetchApi("/auth/recover", { method: "POST", body: JSON.stringify({ email }) });
+      setSuccess(`¡Enlace seguro enviado a ${email}! Revisa tu bandeja de entrada.`);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSending(false);
+    }
   };
 
-
-
-
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const err = await login(email, password);
+    if (err) setError(err);
+  };
 
   const handleRecover = async (e: React.FormEvent) => {
-
-
     e.preventDefault();
-
-
     setError(null);
-
-
     setSuccess(null);
-
-
     try {
-
-
       await fetchApi("/auth/recover", { method: "POST", body: JSON.stringify({ email }) });
-
-
       setSuccess("Se ha enviado un enlace de recuperación a tu correo (vigencia de 15 minutos).");
-
-
     } catch (err: any) {
-
-
       setError(err.message);
 
 
@@ -862,23 +857,49 @@ function LoginScreen() {
                     <div className="space-y-1">
                       <p className="font-semibold text-sm">Enlace no válido o sin token</p>
                       <p className="text-xs leading-relaxed text-amber-900">
-                        Por motivos de seguridad y control de expiración (15 minutos), el enlace requiere un token criptográfico generado por el sistema.
+                        Por motivos de seguridad y control de expiración temporal, el enlace requiere un token criptográfico generado por el sistema.
                       </p>
                     </div>
                   </div>
+
+                  {error && (
+                    <div className="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive font-medium text-left">
+                      <AlertCircle className="size-4 shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  {success && (
+                    <div className="flex items-center gap-2 rounded-md bg-green-500/15 p-3 text-sm text-green-600 font-medium text-left">
+                      <CheckCircle2 className="size-4 shrink-0" />
+                      <span>{success}</span>
+                    </div>
+                  )}
+
                   <Button 
                     type="button" 
-                    onClick={() => { setView("recover"); setError(null); setSuccess(null); }}
+                    onClick={handleQuickResend}
+                    disabled={isSending}
                     className="w-full bg-[#F2B705] text-black hover:bg-[#DCA004]"
                   >
-                    Solicitar nuevo enlace de recuperación
+                    {isSending ? "Enviando enlace..." : "Reenviar enlace seguro con token a este correo"}
                   </Button>
+
+                  <div className="text-center pt-1">
+                    <button 
+                      type="button" 
+                      onClick={() => { setView("login"); setError(null); setSuccess(null); }}
+                      className="text-xs text-muted-foreground hover:underline"
+                    >
+                      Volver al inicio de sesión
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <form className="space-y-4" onSubmit={handleReset}>
                   <div className="rounded-md bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs text-amber-800 flex items-center gap-1.5 text-left">
                     <Clock className="size-3.5 shrink-0 text-amber-600" />
-                    <span>Enlace verificado y protegido (vigencia de 15 minutos).</span>
+                    <span>Enlace verificado y protegido ({timeRemainingText ? `válido por ${timeRemainingText}` : "vigencia temporal"}).</span>
                   </div>
 
                   <div className="space-y-2">

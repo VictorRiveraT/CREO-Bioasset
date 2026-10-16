@@ -134,13 +134,27 @@ bool VerifyPassword(string providedPassword, string hash) {
 
 
     return BCrypt.Net.BCrypt.Verify(providedPassword, hash);
-
-
 }
 
+string GenerateResetToken(string email, string secret, int minutes = 1440) {
+    var tokenHandler = new JwtSecurityTokenHandler();
+    var key = Encoding.UTF8.GetBytes(secret);
+    var tokenDescriptor = new SecurityTokenDescriptor {
+        Subject = new ClaimsIdentity(new[] {
+            new Claim("email", email),
+            new Claim("purpose", "password_reset")
+        }),
+        Expires = DateTime.UtcNow.AddMinutes(minutes),
+        SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+    };
+    var token = tokenHandler.CreateToken(tokenDescriptor);
+    return tokenHandler.WriteToken(token);
+}
 
-
-
+string BuildResetLink(string origin, string email, string secret, int minutes = 1440) {
+    var resetToken = GenerateResetToken(email, secret, minutes);
+    return $"{origin}/?reset_email={Uri.EscapeDataString(email)}&reset_token={Uri.EscapeDataString(resetToken)}";
+}
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "auth-service" }));
 
@@ -625,52 +639,48 @@ app.MapPost("/usuarios", [Authorize(Roles="admin")] async (UsuarioDto req, AuthD
 
 
     var origin = GetFrontendOrigin(ctx);
-
-
-    var resetLink = $"{origin}/?reset_email={Uri.EscapeDataString(user.Email)}";
-
+    var resetLink = BuildResetLink(origin, user.Email, app.Configuration["Jwt:Secret"], 1440);
 
     var html = $@"
+        <div style='font-family: -apple-system, BlinkMacSystemFont, ""Segoe UI"", Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>
+            <div style='text-align: center; margin-bottom: 24px;'>
+                <h1 style='color: #0f172a; font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.5px;'>Bienvenido a Creo<span style='color: #F2B705;'>+</span></h1>
+                <div style='color: #F2B705; font-size: 13px; font-weight: 700; letter-spacing: 1px;'>BIOASSET</div>
+            </div>
 
+            <div style='background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 14px 16px; margin-bottom: 24px;'>
+                <p style='color: #92400e; font-size: 13px; font-weight: 600; margin: 0;'>
+                    ⏱️ Este enlace es de un solo uso y <strong>expirará en 24 horas</strong> por motivos de seguridad.
+                </p>
+            </div>
 
-        <div style='font-family: sans-serif; padding: 20px; text-align: center;'>
+            <h2 style='color: #1e293b; font-size: 18px; margin: 0 0 12px 0;'>Tu cuenta ha sido creada exitosamente</h2>
+            <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 8px 0;'>Hola <strong>{user.Nombre}</strong>,</p>
+            <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;'>
+                Un administrador ha creado una cuenta para ti en el sistema con las siguientes credenciales temporales:
+            </p>
 
+            <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px;'>
+                <p style='margin: 4px 0; color: #334155; font-size: 14px;'><strong>Correo:</strong> {user.Email}</p>
+                <p style='margin: 4px 0; color: #334155; font-size: 14px;'><strong>Contraseña Temporal:</strong> {req.password}</p>
+            </div>
 
-            <h2 style='color: #F2B705;'>Bienvenido a Creo+ BioAsset</h2>
+            <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;'>
+                Por motivos de seguridad, es obligatorio configurar tu nueva contraseña personal haciendo clic a continuación:
+            </p>
 
+            <div style='text-align: center; margin: 28px 0;'>
+                <a href='{resetLink}' style='display: inline-block; background-color: #F2B705; color: #18181b; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.08);'>
+                    Configurar Mi Contraseña
+                </a>
+            </div>
 
-            <h3>Tu cuenta ha sido creada exitosamente</h3>
-
-
-            <p>Hola {user.Nombre},</p>
-
-
-            <p>Un administrador ha creado una cuenta para ti en el sistema.</p>
-
-
-            <p>Tus credenciales temporales son:</p>
-
-
-            <p><strong>Correo:</strong> {user.Email}</p>
-
-
-            <p><strong>Contraseña Temporal:</strong> {req.password}</p>
-
-
-            <p>Por motivos de seguridad, es obligatorio que configures una nueva contraseña antes de ingresar al sistema.</p>
-
-
-            <a href='{resetLink}' style='display:inline-block; padding: 12px 24px; background-color: #F2B705; color: black; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0;'>Configurar Mi Contraseña</a>
-
-
+            <p style='color: #64748b; font-size: 12px; margin: 24px 0 8px 0;'>Si el botón no abre directamente, copia y pega el siguiente enlace en tu navegador:</p>
+            <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; word-break: break-all; font-family: monospace; font-size: 11px; color: #334155;'>
+                {resetLink}
+            </div>
         </div>
-
-
     ";
-
-
-    
-
 
     await EmailSender.SendEmail(user.Email, "Bienvenido a Creo+ BioAsset - Configura tu cuenta", html);
 
@@ -772,45 +782,41 @@ app.MapPost("/usuarios/{id}/force-reset", [Authorize(Roles="admin")] async (Guid
 
 
     var origin = GetFrontendOrigin(ctx);
-
-
-    var resetLink = $"{origin}/?reset_email={Uri.EscapeDataString(user.Email)}";
-
+    var resetLink = BuildResetLink(origin, user.Email, app.Configuration["Jwt:Secret"], 1440);
 
     var html = $@"
+        <div style='font-family: -apple-system, BlinkMacSystemFont, ""Segoe UI"", Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>
+            <div style='text-align: center; margin-bottom: 24px;'>
+                <h1 style='color: #0f172a; font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.5px;'>Creo<span style='color: #F2B705;'>+</span></h1>
+                <div style='color: #F2B705; font-size: 13px; font-weight: 700; letter-spacing: 1px;'>BIOASSET</div>
+            </div>
 
+            <div style='background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 14px 16px; margin-bottom: 24px;'>
+                <p style='color: #92400e; font-size: 13px; font-weight: 600; margin: 0;'>
+                    ⏱️ Este enlace es de un solo uso y <strong>expirará en 24 horas</strong> por motivos de seguridad.
+                </p>
+            </div>
 
-        <div style='font-family: sans-serif; padding: 20px; text-align: center;'>
+            <h2 style='color: #1e293b; font-size: 18px; margin: 0 0 12px 0;'>Restablecimiento de Contraseña Requerido</h2>
+            <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 8px 0;'>Hola <strong>{user.Nombre}</strong>,</p>
+            <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;'>
+                Por motivos de seguridad, un administrador ha solicitado que restablezcas tu contraseña. No podrás acceder al sistema hasta configurar una nueva clave personal usando el siguiente enlace:
+            </p>
 
+            <div style='text-align: center; margin: 28px 0;'>
+                <a href='{resetLink}' style='display: inline-block; background-color: #F2B705; color: #18181b; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.08);'>
+                    Configurar Nueva Contraseña
+                </a>
+            </div>
 
-            <h2 style='color: #F2B705;'>Creo+ BioAsset</h2>
-
-
-            <h3>Restablecimiento de Contraseña Requerido</h3>
-
-
-            <p>Hola {user.Nombre},</p>
-
-
-            <p>Por motivos de seguridad, un administrador ha solicitado que restablezcas tu contraseña.</p>
-
-
-            <p>No podrás acceder a tu cuenta hasta que configures una nueva clave usando el siguiente enlace:</p>
-
-
-            <a href='{resetLink}' style='display:inline-block; padding: 12px 24px; background-color: #F2B705; color: black; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0;'>Configurar Nueva Contraseña</a>
-
-
+            <p style='color: #64748b; font-size: 12px; margin: 24px 0 8px 0;'>Si el botón no abre directamente, copia y pega el siguiente enlace en tu navegador:</p>
+            <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; word-break: break-all; font-family: monospace; font-size: 11px; color: #334155;'>
+                {resetLink}
+            </div>
         </div>
-
-
     ";
 
-
-    
-
-
-    await EmailSender.SendEmail(user.Email, "Restablecimiento de contraseña requerido", html);
+    await EmailSender.SendEmail(user.Email, "Restablecimiento de contraseña requerido - BioAsset", html);
 
 
 
@@ -869,48 +875,49 @@ if(user.Email == "victor.rivera@upch.pe" && req.email != "victor.rivera@upch.pe"
 
 
         var origin = GetFrontendOrigin(ctx);
-
-
-        var resetLink = $"{origin}/?reset_email={Uri.EscapeDataString(user.Email)}";
-
+        var resetLink = BuildResetLink(origin, user.Email, app.Configuration["Jwt:Secret"], 1440);
 
         var html = $@"
+            <div style='font-family: -apple-system, BlinkMacSystemFont, ""Segoe UI"", Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>
+                <div style='text-align: center; margin-bottom: 24px;'>
+                    <h1 style='color: #0f172a; font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.5px;'>Creo<span style='color: #F2B705;'>+</span></h1>
+                    <div style='color: #F2B705; font-size: 13px; font-weight: 700; letter-spacing: 1px;'>BIOASSET</div>
+                </div>
 
+                <div style='background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 14px 16px; margin-bottom: 24px;'>
+                    <p style='color: #92400e; font-size: 13px; font-weight: 600; margin: 0;'>
+                        ⏱️ Este enlace es de un solo uso y <strong>expirará en 24 horas</strong> por motivos de seguridad.
+                    </p>
+                </div>
 
-            <div style='font-family: sans-serif; padding: 20px; text-align: center;'>
+                <h2 style='color: #1e293b; font-size: 18px; margin: 0 0 12px 0;'>Actualización de Contraseña</h2>
+                <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 8px 0;'>Hola <strong>{user.Nombre}</strong>,</p>
+                <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;'>
+                    Un administrador ha actualizado tu contraseña manualmente. Tu nueva clave temporal es:
+                </p>
 
+                <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 24px;'>
+                    <p style='margin: 4px 0; color: #334155; font-size: 14px;'><strong>Contraseña temporal:</strong> <code>{req.password}</code></p>
+                </div>
 
-                <h2 style='color: #F2B705;'>Creo+ BioAsset</h2>
+                <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;'>
+                    Puedes iniciar sesión directamente con esta clave o personalizarla haciendo clic en el siguiente enlace:
+                </p>
 
+                <div style='text-align: center; margin: 28px 0;'>
+                    <a href='{resetLink}' style='display: inline-block; background-color: #F2B705; color: #18181b; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.08);'>
+                        Restablecer Mi Contraseña
+                    </a>
+                </div>
 
-                <h3>Actualización de Contraseña</h3>
-
-
-                <p>Hola {user.Nombre},</p>
-
-
-                <p>Un administrador ha actualizado tu contraseña manualmente.</p>
-
-
-                <p>Tu nueva contraseña temporal es: <strong>{req.password}</strong></p>
-
-
-                <p>Te recomendamos encarecidamente restablecer tu contraseña ingresando a este enlace:</p>
-
-
-                <a href='{resetLink}' style='display:inline-block; padding: 12px 24px; background-color: #F2B705; color: black; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0;'>Restablecer Contraseña</a>
-
-
+                <p style='color: #64748b; font-size: 12px; margin: 24px 0 8px 0;'>Si el botón no abre directamente, copia y pega el siguiente enlace en tu navegador:</p>
+                <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; word-break: break-all; font-family: monospace; font-size: 11px; color: #334155;'>
+                    {resetLink}
+                </div>
             </div>
-
-
         ";
 
-
-        // Do not await if we want to fire and forget, but await is safer here
-
-
-        await EmailSender.SendEmail(user.Email, "Tu contraseña ha sido actualizada por un admin", html);
+        await EmailSender.SendEmail(user.Email, "Tu contraseña ha sido actualizada por un admin - BioAsset", html);
 
 
     }
