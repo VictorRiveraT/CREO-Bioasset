@@ -348,6 +348,12 @@ app.MapPost("/reset", async (ResetDto req, AuthDb db) => {
         if (purpose != "password_reset" || !string.Equals(tokenEmail, req.email, StringComparison.OrdinalIgnoreCase)) {
             return Results.BadRequest(new { error = "El token de recuperación no coincide con la cuenta solicitada." });
         }
+        // Enforce password strength
+        if (string.IsNullOrWhiteSpace(req.newPassword) || req.newPassword.Length < 9 ||
+            !req.newPassword.Any(char.IsUpper) || !req.newPassword.Any(char.IsLower) ||
+            !req.newPassword.Any(char.IsDigit) || !req.newPassword.Any(ch => !char.IsLetterOrDigit(ch))) {
+            return Results.BadRequest(new { error = "La nueva contraseña debe tener al menos 9 caracteres, 1 mayúscula, 1 número y 1 carácter especial." });
+        }
 
         // Check if new password is same as current password (using safe helper to avoid crash on SHA256 base64 or BCrypt)
         try {
