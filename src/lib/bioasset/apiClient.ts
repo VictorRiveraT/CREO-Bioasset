@@ -16,6 +16,10 @@ export async function fetchApi(path: string, options: RequestInit = {}) {
   // Adjuntar cabecera Anti-CSRF
   headers.set("X-Requested-With", "XMLHttpRequest");
 
+  // Bypass Ngrok / Cloudflare free-tier interstitial warnings
+  headers.set("ngrok-skip-browser-warning", "true");
+  headers.set("bypass-tunnel-reminder", "true");
+
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
@@ -66,6 +70,7 @@ export async function fetchApi(path: string, options: RequestInit = {}) {
   try {
     return JSON.parse(text);
   } catch {
+    console.warn(`[apiClient] La respuesta de '${safePath}' no es JSON válido:`, text.slice(0, 150));
     return text; // fallback to text if not JSON
   }
 }

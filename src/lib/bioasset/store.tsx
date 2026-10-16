@@ -319,18 +319,53 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     try {
       const [usersRes, locsRes, equiposRes, movsRes, mantsRes, marcasRes, incidenciasRes, alertasRes] =
         await Promise.all([
-          fetchApi("/auth/usuarios").catch(() => ({ usuarios: [] })),
-          fetchApi("/inventario/ubicaciones").catch(() => ({ ubicaciones: [] })),
-          fetchApi("/inventario/activos").catch(() => ({ activos: [] })),
-          fetchApi("/inventario/movimientos").catch(() => ({ movimientos: [] })),
-          fetchApi("/mantenimiento/mantenimientos").catch(() => ({ mantenimientos: [] })),
-          fetchApi("/inventario/marcas").catch(() => ({ marcas: [] })),
-          fetchApi("/mantenimiento/incidencias").catch(() => ({ incidencias: [] })),
-          fetchApi("/alertas/alertas").catch(() => ({ alertas: [] })),
+          fetchApi("/auth/usuarios").catch((err) => {
+            console.error("[fetchDb] Error en /auth/usuarios:", err);
+            return { usuarios: [] };
+          }),
+          fetchApi("/inventario/ubicaciones").catch((err) => {
+            console.error("[fetchDb] Error en /inventario/ubicaciones:", err);
+            return { ubicaciones: [] };
+          }),
+          fetchApi("/inventario/activos").catch((err) => {
+            console.error("[fetchDb] Error en /inventario/activos:", err);
+            return { activos: [] };
+          }),
+          fetchApi("/inventario/movimientos").catch((err) => {
+            console.error("[fetchDb] Error en /inventario/movimientos:", err);
+            return { movimientos: [] };
+          }),
+          fetchApi("/mantenimiento/mantenimientos").catch((err) => {
+            console.error("[fetchDb] Error en /mantenimiento/mantenimientos:", err);
+            return { mantenimientos: [] };
+          }),
+          fetchApi("/inventario/marcas").catch((err) => {
+            console.error("[fetchDb] Error en /inventario/marcas:", err);
+            return { marcas: [] };
+          }),
+          fetchApi("/mantenimiento/incidencias").catch((err) => {
+            console.error("[fetchDb] Error en /mantenimiento/incidencias:", err);
+            return { incidencias: [] };
+          }),
+          fetchApi("/alertas/alertas").catch((err) => {
+            console.error("[fetchDb] Error en /alertas/alertas:", err);
+            return { alertas: [] };
+          }),
         ]);
 
+      const rawActivos = Array.isArray(equiposRes?.activos) ? equiposRes.activos : (Array.isArray(equiposRes) ? equiposRes : []);
+      const rawLocs = Array.isArray(locsRes?.ubicaciones) ? locsRes.ubicaciones : (Array.isArray(locsRes) ? locsRes : []);
+      const rawUsers = Array.isArray(usersRes?.usuarios) ? usersRes.usuarios : (Array.isArray(usersRes) ? usersRes : []);
+      const rawMovs = Array.isArray(movsRes?.movimientos) ? movsRes.movimientos : (Array.isArray(movsRes) ? movsRes : []);
+      const rawMants = Array.isArray(mantsRes?.mantenimientos) ? mantsRes.mantenimientos : (Array.isArray(mantsRes) ? mantsRes : []);
+      const rawMarcas = Array.isArray(marcasRes?.marcas) ? marcasRes.marcas : (Array.isArray(marcasRes) ? marcasRes : []);
+      const rawIncidencias = Array.isArray(incidenciasRes?.incidencias) ? incidenciasRes.incidencias : (Array.isArray(incidenciasRes) ? incidenciasRes : []);
+      const rawAlertas = Array.isArray(alertasRes?.alertas) ? alertasRes.alertas : (Array.isArray(alertasRes) ? alertasRes : []);
+
+      console.log(`[fetchDb] Datos cargados exitosamente: ${rawActivos.length} activos, ${rawLocs.length} ubicaciones, ${rawUsers.length} usuarios.`);
+
       setDb({
-        users: (usersRes.usuarios || []).map((u: any) => ({
+        users: rawUsers.map((u: any) => ({
           ...u,
           email: u.email,
           permisos: parseUserPermisos(u),
@@ -339,27 +374,27 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           sedeTemporal: u.sedeTemporal,
           sedeTemporalHasta: u.sedeTemporalHasta,
         })),
-        locations: (locsRes.ubicaciones || []).map((l: any) => ({
+        locations: rawLocs.map((l: any) => ({
           ...l,
           sede: l.sede || "Sede Principal",
           piso: l.piso || "Piso 1",
         })),
-        marcas: marcasRes.marcas || [],
-        equipment: (equiposRes.activos || []).map((e: any) => ({
+        marcas: rawMarcas,
+        equipment: rawActivos.map((e: any) => ({
           ...e,
           codigo: e.codigo_qr || e.codigo,
           ubicacionId: e.ubicacion_id || e.ubicacionId,
           fechaAdquisicion: e.fecha_adquisicion || e.fechaAdquisicion,
           proximoMantenimiento: e.proximo_mantenimiento || e.proximoMantenimiento,
         })),
-        movements: (movsRes.movimientos || []).map((m: any) => ({
+        movements: rawMovs.map((m: any) => ({
           ...m,
           equipoId: m.equipoId || m.equipo_id,
           origenId: m.origenId || m.origen_id,
           destinoId: m.destinoId || m.destino_id,
           usuarioId: m.usuarioId || m.usuario_id,
         })),
-        maintenance: (mantsRes.mantenimientos || []).map((m: any) => ({
+        maintenance: rawMants.map((m: any) => ({
           ...m,
           fecha: m.fecha ? m.fecha.substring(0, 10) : new Date().toISOString().substring(0, 10),
           equipoId: m.activo_id || m.equipoId,
@@ -369,17 +404,17 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           archivoBase64: m.archivoBase64,
           incidenciaId: m.incidencia_id || m.incidenciaId,
         })),
-        incidents: (incidenciasRes.incidencias || []).map((i: any) => ({
+        incidents: rawIncidencias.map((i: any) => ({
           ...i,
           activoId: i.activo_id || i.activoId,
         })),
-        alertas: (alertasRes.alertas || []).map((a: any) => ({
+        alertas: rawAlertas.map((a: any) => ({
           ...a,
           activoId: a.activo_id || a.activoId,
         })),
       });
     } catch (e) {
-      console.error("Error loading DB", e);
+      console.error("[fetchDb] Error loading DB:", e);
     } finally {
       setReady(true);
     }
