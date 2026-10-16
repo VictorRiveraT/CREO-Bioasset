@@ -100,18 +100,14 @@ function AlertGroup({
             </div>
 
             {/* Alert Message */}
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {message(e)}
-            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{message(e)}</p>
 
             {/* Bottom row: Location + Action Button */}
             <div className="flex items-center justify-between pt-2 border-t text-xs">
               <div className="flex items-center gap-1 text-muted-foreground">
                 <MapPin className="size-3.5 text-muted-foreground/70 shrink-0" />
                 <span>Ubicación:</span>
-                <span className="font-medium text-foreground">
-                  {cleanLocation(e.ubicacionId)}
-                </span>
+                <span className="font-medium text-foreground">{cleanLocation(e.ubicacionId)}</span>
               </div>
 
               {canEdit("mantenimiento") && e.id !== "ALERTA" && (
@@ -244,7 +240,9 @@ function AlertasPage() {
           icon={Wrench}
           tone="bg-info/15 text-info"
           items={enMantenimiento}
-          message={(e) => `El equipo ${e.codigo} se encuentra actualmente en proceso de mantenimiento.`}
+          message={(e) =>
+            `El equipo ${e.codigo} se encuentra actualmente en proceso de mantenimiento.`
+          }
         />
 
         <AlertGroup
@@ -263,12 +261,16 @@ function AlertasPage() {
             db.alertas.map((a: any) => {
               const eqFound = db.equipment.find((x) => x.id === a.activoId);
               return {
-                id: eqFound ? eqFound.id : (a.activoId || a.id),
+                id: eqFound ? eqFound.id : a.activoId || a.id,
                 codigo: eqFound ? eqFound.codigo : "ALERTA",
-                nombre: eqFound ? `${eqFound.nombre} — ${a.mensaje || a.tipo}` : (a.mensaje || a.tipo),
-                estado: eqFound ? eqFound.estado : (a.estado || "Activa"),
+                nombre: eqFound
+                  ? `${eqFound.nombre} — ${a.mensaje || a.tipo}`
+                  : a.mensaje || a.tipo,
+                estado: eqFound ? eqFound.estado : a.estado || "Activa",
                 ubicacionId: eqFound ? eqFound.ubicacionId : "",
-                proximoMantenimiento: eqFound ? eqFound.proximoMantenimiento : new Date().toISOString().split("T")[0],
+                proximoMantenimiento: eqFound
+                  ? eqFound.proximoMantenimiento
+                  : new Date().toISOString().split("T")[0],
               };
             }) as any
           }

@@ -61,14 +61,20 @@ function Kpi({
   search?: Record<string, any>;
 }) {
   const card = (
-    <Card className={`shadow-[var(--shadow-card)] transition-all ${to ? "hover:border-primary/50 hover:shadow-md cursor-pointer group" : ""}`}>
+    <Card
+      className={`shadow-[var(--shadow-card)] transition-all ${to ? "hover:border-primary/50 hover:shadow-md cursor-pointer group" : ""}`}
+    >
       <CardContent className="flex items-center gap-4 py-5">
-        <div className={`flex size-11 items-center justify-center rounded-lg transition-transform group-hover:scale-105 ${tone}`}>
+        <div
+          className={`flex size-11 items-center justify-center rounded-lg transition-transform group-hover:scale-105 ${tone}`}
+        >
           <Icon className="size-5" />
         </div>
         <div>
           <p className="text-2xl font-bold leading-none">{value}</p>
-          <p className="mt-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">{label}</p>
+          <p className="mt-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+            {label}
+          </p>
         </div>
       </CardContent>
     </Card>

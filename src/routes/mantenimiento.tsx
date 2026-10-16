@@ -161,7 +161,12 @@ function MantenimientoPage() {
                       <div className="flex flex-col gap-1">
                         <span>{m.descripcion}</span>
                         {m.archivoBase64 && (
-                          <a href={m.archivoBase64} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                          <a
+                            href={m.archivoBase64}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-primary hover:underline"
+                          >
                             📎 Ver Formato
                           </a>
                         )}
@@ -176,7 +181,10 @@ function MantenimientoPage() {
                         <MaintenanceDialog
                           maintenance={m}
                           trigger={
-                            <Button size="sm" variant={m.resultado === "En progreso" ? "default" : "outline"}>
+                            <Button
+                              size="sm"
+                              variant={m.resultado === "En progreso" ? "default" : "outline"}
+                            >
                               {m.resultado === "En progreso" ? "Completar" : "Editar"}
                             </Button>
                           }

@@ -37,7 +37,10 @@ function ConfiguracionPage() {
   };
 
   return (
-    <AppShell title="Configuración" description="Ajustes generales del sistema, notificaciones y catálogos.">
+    <AppShell
+      title="Configuración"
+      description="Ajustes generales del sistema, notificaciones y catálogos."
+    >
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="shadow-[var(--shadow-card)] transition-all hover:shadow-md">
           <CardHeader>
@@ -45,7 +48,9 @@ function ConfiguracionPage() {
               <Palette className="size-5 text-primary" />
               <CardTitle>Apariencia</CardTitle>
             </div>
-            <CardDescription>Personaliza cómo se ve la aplicación en tu dispositivo.</CardDescription>
+            <CardDescription>
+              Personaliza cómo se ve la aplicación en tu dispositivo.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between rounded-lg border p-4">
@@ -73,7 +78,9 @@ function ConfiguracionPage() {
               <Mail className="size-5 text-primary" />
               <CardTitle>Notificaciones y Reportes</CardTitle>
             </div>
-            <CardDescription>Generación de resúmenes operativos por correo electrónico.</CardDescription>
+            <CardDescription>
+              Generación de resúmenes operativos por correo electrónico.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between rounded-lg border p-4">
@@ -83,7 +90,12 @@ function ConfiguracionPage() {
                   Envía el resumen operativo de KPIs, alertas y mantenimientos a tu correo.
                 </p>
               </div>
-              <Button onClick={handleSendDailyReport} disabled={sendingReport} variant="outline" className="gap-2">
+              <Button
+                onClick={handleSendDailyReport}
+                disabled={sendingReport}
+                variant="outline"
+                className="gap-2"
+              >
                 <Send className="size-4" />
                 {sendingReport ? "Enviando..." : "Enviar Ahora"}
               </Button>
@@ -119,4 +131,3 @@ function ConfiguracionPage() {
     </AppShell>
   );
 }
-

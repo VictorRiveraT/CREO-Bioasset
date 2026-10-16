@@ -44,7 +44,8 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-const TUNNEL_URL = process.env.BACKEND_URL || "https://interspheral-ireland-nonspecially.ngrok-free.dev";
+const TUNNEL_URL =
+  process.env.BACKEND_URL || "https://interspheral-ireland-nonspecially.ngrok-free.dev";
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
@@ -80,10 +81,13 @@ export default {
           headers: resHeaders,
         });
       } catch (err: any) {
-        return new Response(JSON.stringify({ error: `No se pudo conectar con el backend (${err.message})` }), {
-          status: 502,
-          headers: { "content-type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ error: `No se pudo conectar con el backend (${err.message})` }),
+          {
+            status: 502,
+            headers: { "content-type": "application/json" },
+          },
+        );
       }
     }
 

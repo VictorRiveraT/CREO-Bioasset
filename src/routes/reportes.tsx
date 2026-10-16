@@ -205,12 +205,12 @@ function ReportesPage() {
     const data = filteredEquipment.map((e) => ({
       "Código Patrimonial": e.codigo,
       "Nombre del Equipo": e.nombre,
-      "Categoría": e.categoria,
-      "Marca": e.marca,
-      "Modelo": e.modelo,
+      Categoría: e.categoria,
+      Marca: e.marca,
+      Modelo: e.modelo,
       "Número de Serie": e.serie,
       "Ubicación Actual": locationName(e.ubicacionId),
-      "Estado": e.estado,
+      Estado: e.estado,
       "Fecha Adquisición": formatDate(e.fechaAdquisicion),
       "Próximo Mantenimiento": formatDate(e.proximoMantenimiento),
     }));
@@ -248,13 +248,13 @@ function ReportesPage() {
     const data = filteredMaintenance.map((m) => {
       const e = equipmentById(m.equipoId);
       return {
-        "Fecha": formatDate(m.fecha),
+        Fecha: formatDate(m.fecha),
         "Código Equipo": e?.codigo ?? "N/A",
         "Nombre Equipo": e?.nombre ?? "N/A",
-        "Tipo": m.tipo,
+        Tipo: m.tipo,
         "Biomédico Responsable": userName(m.biomedicoId),
-        "Resultado": m.resultado,
-        "Observaciones": m.observaciones || "Sin observaciones",
+        Resultado: m.resultado,
+        Observaciones: m.observaciones || "Sin observaciones",
       };
     });
     downloadCSV(data, `reporte_mantenimientos_${new Date().toISOString().slice(0, 10)}.csv`);
@@ -292,9 +292,9 @@ function ReportesPage() {
       return {
         "Código Equipo": e?.codigo ?? "N/A",
         "Nombre Equipo": e?.nombre ?? "N/A",
-        "Ubicación": e ? locationName(e.ubicacionId) : "N/A",
+        Ubicación: e ? locationName(e.ubicacionId) : "N/A",
         "Problema Reportado": i.titulo,
-        "Estado": i.estado,
+        Estado: i.estado,
       };
     });
     downloadCSV(data, `reporte_incidencias_${new Date().toISOString().slice(0, 10)}.csv`);
@@ -404,7 +404,8 @@ function ReportesPage() {
               Catálogo completo de equipos biomédicos, ubicaciones actuales y estado operativo.
             </CardDescription>
             <div className="text-xs font-medium text-muted-foreground pt-2">
-              Registros filtrados: <span className="font-bold text-foreground">{filteredEquipment.length}</span>
+              Registros filtrados:{" "}
+              <span className="font-bold text-foreground">{filteredEquipment.length}</span>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -438,7 +439,8 @@ function ReportesPage() {
               Registro cronológico de servicios preventivos, correctivos y biomédicos ejecutados.
             </CardDescription>
             <div className="text-xs font-medium text-muted-foreground pt-2">
-              Registros filtrados: <span className="font-bold text-foreground">{filteredMaintenance.length}</span>
+              Registros filtrados:{" "}
+              <span className="font-bold text-foreground">{filteredMaintenance.length}</span>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
@@ -476,7 +478,8 @@ function ReportesPage() {
               Registro de fallas técnicas reportadas, averías y trazabilidad de resolución.
             </CardDescription>
             <div className="text-xs font-medium text-muted-foreground pt-2">
-              Registros filtrados: <span className="font-bold text-foreground">{filteredIncidents.length}</span>
+              Registros filtrados:{" "}
+              <span className="font-bold text-foreground">{filteredIncidents.length}</span>
             </div>
           </CardHeader>
           <CardContent className="space-y-2">

@@ -6,7 +6,11 @@ export default defineConfig({
   },
   vite: {
     server: {
-      allowedHosts: ["canberra-rescue-journals-steal.trycloudflare.com", ".trycloudflare.com", "all"],
+      allowedHosts: [
+        "canberra-rescue-journals-steal.trycloudflare.com",
+        ".trycloudflare.com",
+        "all",
+      ],
       proxy: {
         "/api": {
           target: "http://localhost:8080",

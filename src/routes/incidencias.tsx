@@ -46,7 +46,8 @@ function IncidenciasPage() {
       const e = db.equipment.find((x) => x.id === i.activoId);
       if (!e) return false;
       const matchTerm = !term || `${e.codigo} ${e.nombre} ${i.titulo}`.toLowerCase().includes(term);
-      const matchEstado = estadoFilter === "todos" || i.estado.toLowerCase() === estadoFilter.toLowerCase();
+      const matchEstado =
+        estadoFilter === "todos" || i.estado.toLowerCase() === estadoFilter.toLowerCase();
       return matchTerm && matchEstado;
     });
   }, [db.incidents, db.equipment, q, estadoFilter]);
@@ -61,7 +62,10 @@ function IncidenciasPage() {
         canEdit("incidencias") && (
           <IncidentDialog
             trigger={
-              <Button size="sm" className="bg-[#F2B705] text-black hover:bg-[#DCA004] font-semibold gap-1.5">
+              <Button
+                size="sm"
+                className="bg-[#F2B705] text-black hover:bg-[#DCA004] font-semibold gap-1.5"
+              >
                 <Plus className="size-4" /> Reportar incidencia
               </Button>
             }

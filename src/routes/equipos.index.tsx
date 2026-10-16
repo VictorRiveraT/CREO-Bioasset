@@ -197,7 +197,9 @@ function EquiposPage() {
             <TableBody>
               {rows.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell className="font-semibold text-amber-600 dark:text-amber-400">{e.codigo}</TableCell>
+                  <TableCell className="font-semibold text-amber-600 dark:text-amber-400">
+                    {e.codigo}
+                  </TableCell>
                   <TableCell>{e.nombre}</TableCell>
                   <TableCell className="text-muted-foreground">{e.categoria}</TableCell>
                   <TableCell>{e.marca}</TableCell>
@@ -219,7 +221,12 @@ function EquiposPage() {
                       <IncidentDialog
                         equipoId={e.id}
                         trigger={
-                          <Button size="sm" variant="ghost" title="Reportar avería" className="text-muted-foreground hover:text-destructive">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="Reportar avería"
+                            className="text-muted-foreground hover:text-destructive"
+                          >
                             <AlertTriangle className="size-4" />
                           </Button>
                         }

@@ -117,7 +117,12 @@ function PublicQRPage() {
           </div>
 
           {user ? (
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate({ to: "/equipos" })}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => navigate({ to: "/equipos" })}
+            >
               <ArrowLeft className="size-4" /> Volver al inventario
             </Button>
           ) : (
@@ -154,7 +159,10 @@ function PublicQRPage() {
                     />
                   </div>
                   {loginError && <p className="text-sm text-destructive">{loginError}</p>}
-                  <Button type="submit" className="w-full bg-[#F2B705] text-black hover:bg-[#DCA004]">
+                  <Button
+                    type="submit"
+                    className="w-full bg-[#F2B705] text-black hover:bg-[#DCA004]"
+                  >
                     Ingresar
                   </Button>
                 </form>
@@ -174,7 +182,9 @@ function PublicQRPage() {
             <Card className="shadow-md border-t-4 border-t-[#F2B705]">
               <CardHeader className="pb-3 text-center">
                 <CardTitle className="text-xl">{equipo.nombre}</CardTitle>
-                <p className="text-sm font-semibold text-yellow-600 dark:text-yellow-500">{equipo.codigo}</p>
+                <p className="text-sm font-semibold text-yellow-600 dark:text-yellow-500">
+                  {equipo.codigo}
+                </p>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col">
@@ -251,7 +261,8 @@ function PublicQRPage() {
             <div className="mt-4 rounded-md overflow-hidden bg-black/10">
               {camError && (
                 <div className="p-3 text-sm text-destructive text-center bg-destructive/15">
-                  Error de cámara: Asegúrate de otorgar permisos o revisa si tu equipo cuenta con una conectada.
+                  Error de cámara: Asegúrate de otorgar permisos o revisa si tu equipo cuenta con
+                  una conectada.
                 </div>
               )}
               <Scanner

@@ -66,13 +66,7 @@ function DetalleEquipo() {
   const { id: rawId } = Route.useParams();
   const id = decryptUrlParam(rawId);
 
-  const {
-    db,
-    locationName,
-    userName,
-    addIncident,
-    canEdit,
-  } = useBio();
+  const { db, locationName, userName, addIncident, canEdit } = useBio();
 
   const [equipo, setEquipo] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
@@ -127,7 +121,9 @@ function DetalleEquipo() {
   if (!equipo) {
     return (
       <AppShell title="Equipo no encontrado">
-        <p className="text-muted-foreground mb-4">El equipo solicitado no existe o no tiene permisos para verlo.</p>
+        <p className="text-muted-foreground mb-4">
+          El equipo solicitado no existe o no tiene permisos para verlo.
+        </p>
         <Button asChild variant="outline">
           <Link to="/equipos">Volver a equipos</Link>
         </Button>
@@ -214,7 +210,8 @@ function DetalleEquipo() {
     <AppShell
       title={
         <>
-          <span className="text-amber-600 dark:text-amber-400 font-bold">{equipo.codigo}</span> — {equipo.nombre}
+          <span className="text-amber-600 dark:text-amber-400 font-bold">{equipo.codigo}</span> —{" "}
+          {equipo.nombre}
         </>
       }
       description="Ficha completa del equipo biomédico"
@@ -252,7 +249,8 @@ function DetalleEquipo() {
                   <DialogHeader>
                     <DialogTitle>Reportar falla</DialogTitle>
                     <DialogDescription>
-                      Describa el problema que presenta el equipo. El estado cambiará automáticamente a Fuera de servicio.
+                      Describa el problema que presenta el equipo. El estado cambiará
+                      automáticamente a Fuera de servicio.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
@@ -307,7 +305,11 @@ function DetalleEquipo() {
           <CardContent className="grid gap-5 sm:grid-cols-3">
             <Field
               label="Código patrimonial"
-              value={<span className="text-amber-600 dark:text-amber-400 font-semibold">{equipo.codigo}</span>}
+              value={
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                  {equipo.codigo}
+                </span>
+              }
             />
             <Field label="Nombre" value={equipo.nombre} />
             <Field label="Categoría" value={equipo.categoria} />
@@ -339,7 +341,9 @@ function DetalleEquipo() {
               <QRCodeSVG id="equipment-qr-code" value={qrUrl || equipo.codigo} size={140} />
             </div>
             <div>
-              <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{equipo.codigo}</p>
+              <p className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                {equipo.codigo}
+              </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Escanee el código para abrir la ficha pública o consultar historial.
               </p>

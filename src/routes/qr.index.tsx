@@ -50,7 +50,9 @@ function QRScannerIndexPage() {
         <div className="flex flex-col text-center">
           <div className="text-2xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
             <QrCode className="size-6 text-[#F2B705]" />
-            <span>Creo<span className="text-[#F2B705]">+</span> BioAsset</span>
+            <span>
+              Creo<span className="text-[#F2B705]">+</span> BioAsset
+            </span>
           </div>
           <p className="text-xs font-medium text-muted-foreground">Escáner de Equipos Biomédicos</p>
         </div>
@@ -67,7 +69,10 @@ function QRScannerIndexPage() {
               <div className="flex items-start gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 <AlertCircle className="size-4 shrink-0 mt-0.5" />
                 <p>
-                  No se pudo acceder a la cámara. {camError === "NotAllowedError" ? "Debes otorgar permisos de cámara en tu navegador." : "Verifica que tengas una cámara conectada y no esté en uso por otra app."}
+                  No se pudo acceder a la cámara.{" "}
+                  {camError === "NotAllowedError"
+                    ? "Debes otorgar permisos de cámara en tu navegador."
+                    : "Verifica que tengas una cámara conectada y no esté en uso por otra app."}
                 </p>
               </div>
             )}
@@ -102,7 +107,13 @@ function QRScannerIndexPage() {
                   onChange={(e) => setManualCode(e.target.value)}
                   className="h-9"
                 />
-                <Button type="submit" size="sm" variant="secondary" disabled={!manualCode.trim()} className="gap-1 shrink-0">
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="secondary"
+                  disabled={!manualCode.trim()}
+                  className="gap-1 shrink-0"
+                >
                   <Search className="size-3.5" />
                   Buscar
                 </Button>

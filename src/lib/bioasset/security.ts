@@ -5,7 +5,8 @@
 
 // Clave secreta para cifrado de parámetros en URLs
 // En producción debe ser sobreescrita por import.meta.env.VITE_URL_SECRET_KEY
-const URL_SECRET_KEY = import.meta.env.VITE_URL_SECRET_KEY || "BioAsset_Secret_Url_Key_2026_Secure!";
+const URL_SECRET_KEY =
+  import.meta.env.VITE_URL_SECRET_KEY || "BioAsset_Secret_Url_Key_2026_Secure!";
 
 /**
  * Cifra un parámetro (ej: ID de equipo, ubicación, usuario) para ser usado en URLs de forma segura.
@@ -89,7 +90,7 @@ export function parseJwtPayload(token: string): Record<string, any> | null {
       atob(base64Url)
         .split("")
         .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
+        .join(""),
     );
     return JSON.parse(jsonPayload);
   } catch (e) {

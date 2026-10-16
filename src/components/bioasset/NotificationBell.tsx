@@ -46,7 +46,8 @@ export function NotificationBell() {
     const eqSede = loc?.sede || "Sede Principal";
 
     const matchSede = userSede.toLowerCase().includes(eqSede.toLowerCase());
-    const matchSedeTemp = user.sedeTemporal && user.sedeTemporal.toLowerCase().includes(eqSede.toLowerCase());
+    const matchSedeTemp =
+      user.sedeTemporal && user.sedeTemporal.toLowerCase().includes(eqSede.toLowerCase());
 
     return matchSede || matchSedeTemp;
   };
@@ -156,15 +157,19 @@ export function NotificationBell() {
     if (!alreadyShownInSession) {
       const highCount = notifications.filter((n) => n.severidad === "alta" && !n.leido).length;
       if (highCount > 0) {
-        toast.warning(`Atención ${user.nombre}: Tienes ${highCount} alerta(s) crítica(s) en tu sede`, {
-          description: "Revisa la campanita para atender los mantenimientos o incidencias pendientes.",
-          action: {
-            label: "Ver Alertas",
-            onClick: () => {
-              navigate({ to: "/alertas" });
+        toast.warning(
+          `Atención ${user.nombre}: Tienes ${highCount} alerta(s) crítica(s) en tu sede`,
+          {
+            description:
+              "Revisa la campanita para atender los mantenimientos o incidencias pendientes.",
+            action: {
+              label: "Ver Alertas",
+              onClick: () => {
+                navigate({ to: "/alertas" });
+              },
             },
           },
-        });
+        );
       } else if (unreadCount > 0) {
         toast.info(`Bienvenido ${user.nombre}: Tienes ${unreadCount} notificación(es) en tu sede`, {
           description: "Haz clic en la campanita para ver el resumen de equipos.",
@@ -233,7 +238,9 @@ export function NotificationBell() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <Bell className="size-4 text-primary shrink-0" />
-              <h4 className="text-sm font-bold text-foreground truncate">Notificaciones de mi Sede</h4>
+              <h4 className="text-sm font-bold text-foreground truncate">
+                Notificaciones de mi Sede
+              </h4>
             </div>
             {unreadCount > 0 && (
               <Badge
@@ -316,9 +323,7 @@ export function NotificationBell() {
                 </div>
 
                 {/* Indicador no leído */}
-                {!item.leido && (
-                  <span className="size-2 rounded-full bg-red-600 shrink-0 mt-1.5" />
-                )}
+                {!item.leido && <span className="size-2 rounded-full bg-red-600 shrink-0 mt-1.5" />}
               </div>
             ))
           )}

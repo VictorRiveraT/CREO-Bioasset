@@ -35,7 +35,9 @@ export async function fetchApi(path: string, options: RequestInit = {}) {
       headers,
     });
   } catch (err: any) {
-    throw new Error("No se pudo conectar con el servidor backend (Error de red/CORS). Verifica que el servicio esté corriendo.");
+    throw new Error(
+      "No se pudo conectar con el servidor backend (Error de red/CORS). Verifica que el servicio esté corriendo.",
+    );
   }
 
   if (!response.ok) {
@@ -60,7 +62,9 @@ export async function fetchApi(path: string, options: RequestInit = {}) {
           message = text.trim();
         }
       }
-    } catch {}
+    } catch {
+      // Ignorar fallo al leer el cuerpo de error
+    }
     throw new Error(message);
   }
 
@@ -70,7 +74,10 @@ export async function fetchApi(path: string, options: RequestInit = {}) {
   try {
     return JSON.parse(text);
   } catch {
-    console.warn(`[apiClient] La respuesta de '${safePath}' no es JSON válido:`, text.slice(0, 150));
+    console.warn(
+      `[apiClient] La respuesta de '${safePath}' no es JSON válido:`,
+      text.slice(0, 150),
+    );
     return text; // fallback to text if not JSON
   }
 }

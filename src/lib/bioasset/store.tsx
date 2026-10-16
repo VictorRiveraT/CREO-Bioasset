@@ -1,57 +1,33 @@
 import {
-
   createContext,
-
   type ReactNode,
-
   useCallback,
-
   useContext,
-
   useEffect,
-
   useState,
-
   useMemo,
-
 } from "react";
 
 import type {
-
   DB,
-
   Equipment,
-
   Location,
-
   MaintenanceRecord,
-
   Movement,
-
   User,
-
   UserPermissions,
-
   ModulePermissions,
-
   Role,
-
 } from "./types";
 
 import { fetchApi } from "./apiClient";
 
 import { toast } from "sonner";
 
-
-
 const TOKEN_KEY = "bioasset.token";
 
-
-
 export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
-
   admin: {
-
     inventario: { view: true, edit: true },
 
     movimientos: { view: true, edit: true },
@@ -69,11 +45,9 @@ export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
     usuarios: { view: true, edit: true },
 
     configuracion: { view: true, edit: true },
-
   },
 
   biomedico: {
-
     inventario: { view: true, edit: true },
 
     movimientos: { view: true, edit: true },
@@ -91,11 +65,9 @@ export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
     usuarios: { view: false, edit: false },
 
     configuracion: { view: false, edit: false },
-
   },
 
   asistencial: {
-
     inventario: { view: true, edit: false },
 
     movimientos: { view: false, edit: false },
@@ -113,11 +85,9 @@ export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
     usuarios: { view: false, edit: false },
 
     configuracion: { view: false, edit: false },
-
   },
 
   auditor: {
-
     inventario: { view: true, edit: false },
 
     movimientos: { view: true, edit: false },
@@ -135,11 +105,9 @@ export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
     usuarios: { view: true, edit: false },
 
     configuracion: { view: true, edit: false },
-
   },
 
   estudiante: {
-
     inventario: { view: true, edit: false },
 
     movimientos: { view: true, edit: false },
@@ -157,45 +125,28 @@ export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
     usuarios: { view: false, edit: false },
 
     configuracion: { view: false, edit: false },
-
   },
-
 };
 
-
-
 export function parseUserPermisos(u: any): UserPermissions {
-
   const normalizedRol = (u.rol || "asistencial").toLowerCase();
 
   let permisos = DEFAULT_PERMISSIONS[normalizedRol as Role] || DEFAULT_PERMISSIONS.asistencial;
 
   try {
-
     if (u.permisos && u.permisos !== "{}" && typeof u.permisos === "string") {
-
       permisos = JSON.parse(u.permisos);
-
     } else if (u.permisos && typeof u.permisos === "object") {
-
       permisos = u.permisos;
-
     }
-
   } catch (e) {
-
     // fallback
-
   }
 
   return permisos;
-
 }
 
-
-
 interface Ctx {
-
   ready: boolean;
 
   db: DB;
@@ -261,10 +212,7 @@ interface Ctx {
   saveMarca: (marca: { id?: string; nombre: string; modelosJson: string }) => Promise<void>;
 
   deleteMarca: (id: string) => Promise<void>;
-
 }
-
-
 
 const BioContext = createContext<Ctx | null>(null);
 
@@ -317,52 +265,94 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
   const fetchDb = useCallback(async () => {
     try {
-      const [usersRes, locsRes, equiposRes, movsRes, mantsRes, marcasRes, incidenciasRes, alertasRes] =
-        await Promise.all([
-          fetchApi("/auth/usuarios").catch((err) => {
-            console.error("[fetchDb] Error en /auth/usuarios:", err);
-            return { usuarios: [] };
-          }),
-          fetchApi("/inventario/ubicaciones").catch((err) => {
-            console.error("[fetchDb] Error en /inventario/ubicaciones:", err);
-            return { ubicaciones: [] };
-          }),
-          fetchApi("/inventario/activos").catch((err) => {
-            console.error("[fetchDb] Error en /inventario/activos:", err);
-            return { activos: [] };
-          }),
-          fetchApi("/inventario/movimientos").catch((err) => {
-            console.error("[fetchDb] Error en /inventario/movimientos:", err);
-            return { movimientos: [] };
-          }),
-          fetchApi("/mantenimiento/mantenimientos").catch((err) => {
-            console.error("[fetchDb] Error en /mantenimiento/mantenimientos:", err);
-            return { mantenimientos: [] };
-          }),
-          fetchApi("/inventario/marcas").catch((err) => {
-            console.error("[fetchDb] Error en /inventario/marcas:", err);
-            return { marcas: [] };
-          }),
-          fetchApi("/mantenimiento/incidencias").catch((err) => {
-            console.error("[fetchDb] Error en /mantenimiento/incidencias:", err);
-            return { incidencias: [] };
-          }),
-          fetchApi("/alertas/alertas").catch((err) => {
-            console.error("[fetchDb] Error en /alertas/alertas:", err);
-            return { alertas: [] };
-          }),
-        ]);
+      const [
+        usersRes,
+        locsRes,
+        equiposRes,
+        movsRes,
+        mantsRes,
+        marcasRes,
+        incidenciasRes,
+        alertasRes,
+      ] = await Promise.all([
+        fetchApi("/auth/usuarios").catch((err) => {
+          console.error("[fetchDb] Error en /auth/usuarios:", err);
+          return { usuarios: [] };
+        }),
+        fetchApi("/inventario/ubicaciones").catch((err) => {
+          console.error("[fetchDb] Error en /inventario/ubicaciones:", err);
+          return { ubicaciones: [] };
+        }),
+        fetchApi("/inventario/activos").catch((err) => {
+          console.error("[fetchDb] Error en /inventario/activos:", err);
+          return { activos: [] };
+        }),
+        fetchApi("/inventario/movimientos").catch((err) => {
+          console.error("[fetchDb] Error en /inventario/movimientos:", err);
+          return { movimientos: [] };
+        }),
+        fetchApi("/mantenimiento/mantenimientos").catch((err) => {
+          console.error("[fetchDb] Error en /mantenimiento/mantenimientos:", err);
+          return { mantenimientos: [] };
+        }),
+        fetchApi("/inventario/marcas").catch((err) => {
+          console.error("[fetchDb] Error en /inventario/marcas:", err);
+          return { marcas: [] };
+        }),
+        fetchApi("/mantenimiento/incidencias").catch((err) => {
+          console.error("[fetchDb] Error en /mantenimiento/incidencias:", err);
+          return { incidencias: [] };
+        }),
+        fetchApi("/alertas/alertas").catch((err) => {
+          console.error("[fetchDb] Error en /alertas/alertas:", err);
+          return { alertas: [] };
+        }),
+      ]);
 
-      const rawActivos = Array.isArray(equiposRes?.activos) ? equiposRes.activos : (Array.isArray(equiposRes) ? equiposRes : []);
-      const rawLocs = Array.isArray(locsRes?.ubicaciones) ? locsRes.ubicaciones : (Array.isArray(locsRes) ? locsRes : []);
-      const rawUsers = Array.isArray(usersRes?.usuarios) ? usersRes.usuarios : (Array.isArray(usersRes) ? usersRes : []);
-      const rawMovs = Array.isArray(movsRes?.movimientos) ? movsRes.movimientos : (Array.isArray(movsRes) ? movsRes : []);
-      const rawMants = Array.isArray(mantsRes?.mantenimientos) ? mantsRes.mantenimientos : (Array.isArray(mantsRes) ? mantsRes : []);
-      const rawMarcas = Array.isArray(marcasRes?.marcas) ? marcasRes.marcas : (Array.isArray(marcasRes) ? marcasRes : []);
-      const rawIncidencias = Array.isArray(incidenciasRes?.incidencias) ? incidenciasRes.incidencias : (Array.isArray(incidenciasRes) ? incidenciasRes : []);
-      const rawAlertas = Array.isArray(alertasRes?.alertas) ? alertasRes.alertas : (Array.isArray(alertasRes) ? alertasRes : []);
+      const rawActivos = Array.isArray(equiposRes?.activos)
+        ? equiposRes.activos
+        : Array.isArray(equiposRes)
+          ? equiposRes
+          : [];
+      const rawLocs = Array.isArray(locsRes?.ubicaciones)
+        ? locsRes.ubicaciones
+        : Array.isArray(locsRes)
+          ? locsRes
+          : [];
+      const rawUsers = Array.isArray(usersRes?.usuarios)
+        ? usersRes.usuarios
+        : Array.isArray(usersRes)
+          ? usersRes
+          : [];
+      const rawMovs = Array.isArray(movsRes?.movimientos)
+        ? movsRes.movimientos
+        : Array.isArray(movsRes)
+          ? movsRes
+          : [];
+      const rawMants = Array.isArray(mantsRes?.mantenimientos)
+        ? mantsRes.mantenimientos
+        : Array.isArray(mantsRes)
+          ? mantsRes
+          : [];
+      const rawMarcas = Array.isArray(marcasRes?.marcas)
+        ? marcasRes.marcas
+        : Array.isArray(marcasRes)
+          ? marcasRes
+          : [];
+      const rawIncidencias = Array.isArray(incidenciasRes?.incidencias)
+        ? incidenciasRes.incidencias
+        : Array.isArray(incidenciasRes)
+          ? incidenciasRes
+          : [];
+      const rawAlertas = Array.isArray(alertasRes?.alertas)
+        ? alertasRes.alertas
+        : Array.isArray(alertasRes)
+          ? alertasRes
+          : [];
 
-      console.log(`[fetchDb] Datos cargados exitosamente: ${rawActivos.length} activos, ${rawLocs.length} ubicaciones, ${rawUsers.length} usuarios.`);
+      console.log(
+        `[fetchDb] Datos cargados exitosamente: ${rawActivos.length} activos, ${rawLocs.length} ubicaciones, ${rawUsers.length} usuarios.`,
+      );
 
       setDb({
         users: rawUsers.map((u: any) => ({
@@ -426,7 +416,11 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     if (token) {
       fetchApi("/auth/me")
         .then((res) => {
-          if (res.user.permisos && typeof res.user.permisos === "string" && res.user.permisos.includes('"forzarReset":true')) {
+          if (
+            res.user.permisos &&
+            typeof res.user.permisos === "string" &&
+            res.user.permisos.includes('"forzarReset":true')
+          ) {
             throw new Error("force_reset");
           }
           const finalUser = { ...res.user, permisos: parseUserPermisos(res.user) };
@@ -482,8 +476,6 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-
-
   const filteredDb = useMemo(() => {
     if (!user) return db;
 
@@ -491,8 +483,6 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     if (!userSedeRaw || userSedeRaw.toLowerCase().includes("todas") || user.rol === "admin") {
       return db;
     }
-
-
 
     // Si tiene una sede temporal asignada y aún es válida
 
@@ -503,65 +493,57 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     today.setHours(0, 0, 0, 0);
 
     if (user.sedeTemporal && user.sedeTemporal !== "Ninguna" && user.sedeTemporalHasta) {
-
       const expirationDate = new Date(user.sedeTemporalHasta);
 
       if (expirationDate >= today) {
-
         hasValidTemporary = true;
-
       }
-
     }
-
-
 
     // Parse multiple sedes
 
-    let accesosExtra: {sede: string, hasta: string}[] = [];
+    let accesosExtra: { sede: string; hasta: string }[] = [];
 
     try {
-
       if (user.sedeTemporal && user.sedeTemporal.startsWith("[")) {
-
         accesosExtra = JSON.parse(user.sedeTemporal).filter((x: any) => new Date(x.hasta) >= today);
-
       } else if (user.sedeTemporal && user.sedeTemporal !== "Ninguna" && hasValidTemporary) {
-
         accesosExtra = [{ sede: user.sedeTemporal, hasta: user.sedeTemporalHasta || "" }];
-
       }
-
-    } catch(e) {}
-
-
+    } catch {
+      // Ignorar fallo de parseo JSON si el valor no es un arreglo
+    }
 
     // Si su sede temporal válida es "Todas", le damos acceso completo
 
-    if (accesosExtra.some(x => x.sede === "Todas")) return db;
-
-
+    if (accesosExtra.some((x) => x.sede === "Todas")) return db;
 
     const userSedeLower = userSedeRaw.toLowerCase();
     const locs = db.locations.filter((l) => {
       const lSedeLower = (l.sede || "Sede Principal").toLowerCase();
-      if (lSedeLower === userSedeLower || lSedeLower.includes(userSedeLower) || userSedeLower.includes(lSedeLower)) return true;
-      if (accesosExtra.some((x) => x.sede.toLowerCase().includes(lSedeLower) || lSedeLower.includes(x.sede.toLowerCase()))) return true;
+      if (
+        lSedeLower === userSedeLower ||
+        lSedeLower.includes(userSedeLower) ||
+        userSedeLower.includes(lSedeLower)
+      )
+        return true;
+      if (
+        accesosExtra.some(
+          (x) =>
+            x.sede.toLowerCase().includes(lSedeLower) || lSedeLower.includes(x.sede.toLowerCase()),
+        )
+      )
+        return true;
       return false;
     });
 
     const locIds = new Set(locs.map((l) => l.id));
 
-
-
     const eqs = db.equipment.filter((e) => locIds.has(e.ubicacionId));
 
     const eqIds = new Set(eqs.map((e) => e.id));
 
-
-
     return {
-
       ...db,
 
       locations: locs,
@@ -574,15 +556,10 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
       incidents: db.incidents.filter((i) => eqIds.has(i.activoId)),
       alertas: db.alertas.filter((a) => eqIds.has(a.activoId)),
-
     };
-
   }, [db, user]);
 
-
-
   const value: Ctx = {
-
     ready,
 
     db: filteredDb,
@@ -612,9 +589,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     canEdit: (mod) => user?.permisos?.[mod]?.edit ?? false,
 
     addEquipment: async (e) => {
-
       const payload = {
-
         codigo: e.codigo,
 
         nombre: e.nombre,
@@ -636,23 +611,18 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         proximoMantenimiento: e.proximoMantenimiento,
 
         criticidad: (e as any).criticidad,
-
       };
 
       const res = await fetchApi("/inventario/activos", {
-
         method: "POST",
 
         body: JSON.stringify(payload),
-
       });
 
       await fetchApi("/inventario/movimientos", {
-
         method: "POST",
 
         body: JSON.stringify({
-
           equipo_id: res.activo.id,
 
           origen_id: null,
@@ -666,33 +636,25 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           motivo: "Alta inicial",
 
           observaciones: "Registro automático al crear equipo",
-
         }),
-
       });
 
       await fetchDb();
 
       return res;
-
     },
 
     updateEquipment: async (id, patch) => {
-
       await fetchApi(`/inventario/activos/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 
       await fetchDb();
-
     },
 
     addMovement: async (m) => {
-
       await fetchApi("/inventario/movimientos", {
-
         method: "POST",
 
         body: JSON.stringify({
-
           equipoId: m.equipoId,
 
           origenId: m.origenId,
@@ -706,23 +668,17 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           motivo: m.motivo,
 
           observaciones: m.observaciones,
-
         }),
-
       });
 
       await fetchDb();
-
     },
 
     addMaintenance: async (m) => {
-
       await fetchApi("/mantenimiento/mantenimientos", {
-
         method: "POST",
 
         body: JSON.stringify({
-
           activo_id: m.equipoId,
 
           biomedico_id: user?.id,
@@ -742,23 +698,17 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           archivoBase64: m.archivoBase64,
 
           incidencia_id: m.incidenciaId,
-
         }),
-
       });
 
       await fetchDb();
-
     },
 
     updateMaintenance: async (id, m) => {
-
       await fetchApi(`/mantenimiento/mantenimientos/${id}`, {
-
         method: "PUT",
 
         body: JSON.stringify({
-
           estado: m.resultado,
 
           descripcion: m.descripcion,
@@ -770,71 +720,50 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           observaciones: m.observaciones,
 
           archivoBase64: m.archivoBase64,
-
         }),
-
       });
 
       await fetchDb();
-
     },
 
     saveLocation: async (l) => {
-
       if (l.id) {
-
         await fetchApi(`/inventario/ubicaciones/${l.id}`, {
-
           method: "PUT",
 
           body: JSON.stringify(l),
-
         });
-
       } else {
-
         await fetchApi("/inventario/ubicaciones", { method: "POST", body: JSON.stringify(l) });
-
       }
 
       await fetchDb();
-
     },
 
     toggleLocation: async (id) => {
-
       const loc = db.locations.find((x) => x.id === id);
 
       if (loc) {
-
         await fetchApi(`/inventario/ubicaciones/${id}`, {
-
           method: "PUT",
 
           body: JSON.stringify({ ...loc, activo: !loc.activo }),
-
         });
 
         await fetchDb();
-
       }
-
     },
 
     deleteLocation: async (id) => {
-
       await fetchApi(`/inventario/ubicaciones/${id}`, { method: "DELETE" });
 
       await fetchDb();
-
     },
 
     toggleUser: async (id) => {
-
       await fetchApi(`/auth/usuarios/${id}/toggle`, { method: "PUT" });
 
       await fetchDb();
-
     },
 
     addUser: async (u) => {
@@ -856,27 +785,24 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     },
 
     deleteUser: async (id) => {
-
       await fetchApi(`/auth/usuarios/${id}`, { method: "DELETE" });
 
       await fetchDb();
-
     },
 
     addIncident: async (i) => {
-
       await fetchApi("/mantenimiento/incidencias", { method: "POST", body: JSON.stringify(i) });
 
       await fetchDb();
-
     },
 
     updateIncident: async (id, i) => {
-
-      await fetchApi(`/mantenimiento/incidencias/${id}`, { method: "PUT", body: JSON.stringify(i) });
+      await fetchApi(`/mantenimiento/incidencias/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(i),
+      });
 
       await fetchDb();
-
     },
 
     locationName: (id) => {
@@ -890,27 +816,22 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     userName: (id) => db.users.find((u) => u.id === id)?.nombre ?? "N/A",
 
     saveMarca: async (marca) => {
-
       if (marca.id) {
-
-        await fetchApi(`/inventario/marcas/${marca.id}`, { method: "PUT", body: JSON.stringify(marca) });
-
+        await fetchApi(`/inventario/marcas/${marca.id}`, {
+          method: "PUT",
+          body: JSON.stringify(marca),
+        });
       } else {
-
         await fetchApi("/inventario/marcas", { method: "POST", body: JSON.stringify(marca) });
-
       }
 
       await fetchDb();
-
     },
 
     deleteMarca: async (id) => {
-
       await fetchApi(`/inventario/marcas/${id}`, { method: "DELETE" });
 
       await fetchDb();
-
     },
 
     equipmentById: (id) => {
@@ -924,31 +845,20 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         proximoMantenimiento: (e as any).proximo_mantenimiento || e.proximoMantenimiento,
       };
     },
-
   };
 
-
-
   return <BioContext.Provider value={value}>{children}</BioContext.Provider>;
-
 }
 
-
-
 export function useBio() {
-
   const ctx = useContext(BioContext);
 
   if (!ctx) throw new Error("useBio debe usarse dentro de BioAssetProvider");
 
   return ctx;
-
 }
 
-
-
 export function daysUntil(dateStr: string) {
-
   if (!dateStr) return 0;
 
   const target = new Date(`${dateStr}T00:00:00`).getTime();
@@ -958,31 +868,22 @@ export function daysUntil(dateStr: string) {
   today.setHours(0, 0, 0, 0);
 
   return Math.round((target - today.getTime()) / 86400000);
-
 }
 
-
-
 export function formatDate(value: string) {
-
   if (!value) return "N/A";
 
   const d = new Date(value.length <= 10 ? `${value}T00:00:00` : value);
 
   return d.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
-
 }
 
-
-
 export function formatDateTime(value: string) {
-
   if (!value) return "N/A";
 
   const d = new Date(value);
 
   return d.toLocaleString("es-PE", {
-
     day: "2-digit",
 
     month: "short",
@@ -992,8 +893,5 @@ export function formatDateTime(value: string) {
     hour: "2-digit",
 
     minute: "2-digit",
-
   });
-
 }
-

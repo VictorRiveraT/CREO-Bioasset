@@ -1,27 +1,19 @@
 import type { DB, Equipment, MaintenanceRecord, Movement } from "./types";
 
-
-
 const day = 86400000;
 
 const iso = (offsetDays: number, hour = 9) => {
-
   const d = new Date(Date.now() + offsetDays * day);
 
   d.setHours(hour, 0, 0, 0);
 
   return d.toISOString();
-
 };
 
 const dateOnly = (offsetDays: number) => iso(offsetDays).slice(0, 10);
 
-
-
 export const seedUsers = [
-
   {
-
     id: "u1",
 
     nombre: "Brigitte Bernal",
@@ -30,12 +22,21 @@ export const seedUsers = [
 
     rol: "admin" as const,
 
-    activo: true, permisos: { inventario: true, mantenimiento: true, reportes: true, usuarios: true, ubicaciones: true, alertas: true, movimientos: true, incidencias: true, configuracion: true },
-
+    activo: true,
+    permisos: {
+      inventario: true,
+      mantenimiento: true,
+      reportes: true,
+      usuarios: true,
+      ubicaciones: true,
+      alertas: true,
+      movimientos: true,
+      incidencias: true,
+      configuracion: true,
+    },
   },
 
   {
-
     id: "u2",
 
     nombre: "Carlos Quispe",
@@ -44,12 +45,21 @@ export const seedUsers = [
 
     rol: "biomedico" as const,
 
-    activo: true, permisos: { inventario: true, mantenimiento: true, reportes: true, usuarios: true, ubicaciones: true, alertas: true, movimientos: true, incidencias: true, configuracion: true },
-
+    activo: true,
+    permisos: {
+      inventario: true,
+      mantenimiento: true,
+      reportes: true,
+      usuarios: true,
+      ubicaciones: true,
+      alertas: true,
+      movimientos: true,
+      incidencias: true,
+      configuracion: true,
+    },
   },
 
   {
-
     id: "u3",
 
     nombre: "María Torres",
@@ -58,12 +68,21 @@ export const seedUsers = [
 
     rol: "biomedico" as const,
 
-    activo: true, permisos: { inventario: true, mantenimiento: true, reportes: true, usuarios: true, ubicaciones: true, alertas: true, movimientos: true, incidencias: true, configuracion: true },
-
+    activo: true,
+    permisos: {
+      inventario: true,
+      mantenimiento: true,
+      reportes: true,
+      usuarios: true,
+      ubicaciones: true,
+      alertas: true,
+      movimientos: true,
+      incidencias: true,
+      configuracion: true,
+    },
   },
 
   {
-
     id: "u4",
 
     nombre: "Luis Ramírez",
@@ -73,15 +92,10 @@ export const seedUsers = [
     rol: "asistencial" as const,
 
     activo: true,
-
   },
-
 ];
 
-
-
 export const INITIAL_LOCATIONS = [
-
   { id: "loc1", nombre: "UCI Adultos", descripcion: "Unidad de Cuidados Intensivos", activo: true },
 
   { id: "loc2", nombre: "Emergencia", descripcion: "Área de emergencias médicas", activo: true },
@@ -89,7 +103,6 @@ export const INITIAL_LOCATIONS = [
   { id: "loc3", nombre: "Quirófano 1", descripcion: "Sala de operaciones principal", activo: true },
 
   {
-
     id: "loc4",
 
     nombre: "Hospitalización Piso 3",
@@ -97,23 +110,17 @@ export const INITIAL_LOCATIONS = [
     descripcion: "Habitaciones 301-320",
 
     activo: true,
-
   },
 
   { id: "loc5", nombre: "Triaje", descripcion: "Área de evaluación inicial", activo: true },
-
 ];
 
-
-
 export const INITIAL_EQUIPMENT = Array.from({ length: 45 }).map((_, i) => ({
-
   id: `eq-${i + 1}`,
 
   codigo: `BIO-${(i + 1).toString().padStart(4, "0")}`,
 
   nombre: [
-
     "Monitor Signos Vitales",
 
     "Bomba de Infusión",
@@ -123,7 +130,6 @@ export const INITIAL_EQUIPMENT = Array.from({ length: 45 }).map((_, i) => ({
     "Ventilador Mecánico",
 
     "Máquina de Anestesia",
-
   ][i % 5],
 
   categoria: ["Monitoreo", "Soporte Vida", "Reanimacion", "Soporte Vida", "Soporte Vida"][i % 5],
@@ -149,17 +155,12 @@ export const INITIAL_EQUIPMENT = Array.from({ length: 45 }).map((_, i) => ({
   criticidad: ["Alta", "Media", "Alta", "Alta", "Alta"][i % 5],
 
   activo: true,
-
 }));
 
-
-
 export const INITIAL_MAINTENANCE = Array.from({ length: 30 }).map((_, i) => {
-
   const d = new Date(Date.now() - i * 86400000 * 2);
 
   return {
-
     id: `mt-${i + 1}`,
 
     equipoId: `eq-${(i % 45) + 1}`,
@@ -177,15 +178,10 @@ export const INITIAL_MAINTENANCE = Array.from({ length: 30 }).map((_, i) => {
     observaciones: "Sin observaciones adicionales.",
 
     proximaFecha: new Date(Date.now() + i * 86400000).toISOString().substring(0, 10),
-
   };
-
 });
 
-
-
 export const seedLocations = [
-
   { id: "l1", nombre: "Consultorio 1", descripcion: "Medicina general", activo: true },
 
   { id: "l2", nombre: "Consultorio 2", descripcion: "Ginecología", activo: true },
@@ -205,21 +201,14 @@ export const seedLocations = [
   { id: "l9", nombre: "Emergencia", descripcion: "Tópico de emergencia", activo: true },
 
   { id: "l10", nombre: "Sala de partos", descripcion: "Fuera de uso temporal", activo: false },
-
 ];
 
-
-
 type Row = [string, string, string, string, string, string, string, string, number, number];
-
-
 
 // nombre, categoria, marca, modelo, serie, ubicacion, estado, adquisicion(daysAgo), proxMant(offset)
 
 const rows: Row[] = [
-
   [
-
     "Ecógrafo",
 
     "Diagnóstico por imagen",
@@ -239,11 +228,9 @@ const rows: Row[] = [
     -900,
 
     7,
-
   ],
 
   [
-
     "Monitor multiparámetro",
 
     "Monitoreo",
@@ -263,11 +250,9 @@ const rows: Row[] = [
     -700,
 
     21,
-
   ],
 
   [
-
     "Electrocardiógrafo",
 
     "Diagnóstico por imagen",
@@ -287,11 +272,9 @@ const rows: Row[] = [
     -540,
 
     -5,
-
   ],
 
   [
-
     "Desfibrilador",
 
     "Soporte vital",
@@ -311,11 +294,9 @@ const rows: Row[] = [
     -1100,
 
     45,
-
   ],
 
   [
-
     "Bomba de infusión",
 
     "Terapia",
@@ -335,11 +316,9 @@ const rows: Row[] = [
     -420,
 
     3,
-
   ],
 
   [
-
     "Oxímetro de pulso",
 
     "Monitoreo",
@@ -359,11 +338,9 @@ const rows: Row[] = [
     -300,
 
     60,
-
   ],
 
   [
-
     "Ventilador mecánico",
 
     "Soporte vital",
@@ -383,11 +360,9 @@ const rows: Row[] = [
     -1300,
 
     14,
-
   ],
 
   [
-
     "Aspirador de secreciones",
 
     "Terapia",
@@ -407,11 +382,9 @@ const rows: Row[] = [
     -650,
 
     30,
-
   ],
 
   [
-
     "Incubadora neonatal",
 
     "Soporte vital",
@@ -431,11 +404,9 @@ const rows: Row[] = [
     -800,
 
     -12,
-
   ],
 
   [
-
     "Rayos X portátil",
 
     "Diagnóstico por imagen",
@@ -455,11 +426,9 @@ const rows: Row[] = [
     -1500,
 
     -30,
-
   ],
 
   [
-
     "Electrobisturí",
 
     "Terapia",
@@ -479,11 +448,9 @@ const rows: Row[] = [
     -1250,
 
     10,
-
   ],
 
   [
-
     "Centrífuga de laboratorio",
 
     "Laboratorio",
@@ -503,11 +470,9 @@ const rows: Row[] = [
     -480,
 
     90,
-
   ],
 
   [
-
     "Microscopio binocular",
 
     "Laboratorio",
@@ -527,11 +492,9 @@ const rows: Row[] = [
     -960,
 
     120,
-
   ],
 
   [
-
     "Analizador hematológico",
 
     "Laboratorio",
@@ -551,11 +514,9 @@ const rows: Row[] = [
     -520,
 
     5,
-
   ],
 
   [
-
     "Lámpara quirúrgica",
 
     "Terapia",
@@ -575,13 +536,11 @@ const rows: Row[] = [
     -1400,
 
     75,
-
   ],
 
   ["Nebulizador", "Terapia", "Omron", "NE-C801", "SN-NB-1560", "l1", "Operativo", "", -260, 40],
 
   [
-
     "Tensiómetro digital",
 
     "Monitoreo",
@@ -601,11 +560,9 @@ const rows: Row[] = [
     -180,
 
     25,
-
   ],
 
   [
-
     "Cuna de calor radiante",
 
     "Soporte vital",
@@ -625,11 +582,9 @@ const rows: Row[] = [
     -740,
 
     -2,
-
   ],
 
   [
-
     "Autoclave",
 
     "Laboratorio",
@@ -649,11 +604,9 @@ const rows: Row[] = [
     -1600,
 
     18,
-
   ],
 
   [
-
     "Bomba de jeringa",
 
     "Terapia",
@@ -673,13 +626,11 @@ const rows: Row[] = [
     -2000,
 
     365,
-
   ],
 
   ["Monitor fetal", "Monitoreo", "Bistos", "BT-350", "SN-MF-1920", "l2", "Operativo", "", -600, 12],
 
   [
-
     "Desfibrilador externo automático",
 
     "Soporte vital",
@@ -699,17 +650,11 @@ const rows: Row[] = [
     -350,
 
     150,
-
   ],
-
 ];
 
-
-
 export function buildSeed(): DB {
-
   const equipment: Equipment[] = rows.map((r, i) => ({
-
     id: `e${i + 1}`,
 
     codigo: `BIO-${String(i + 1).padStart(3, "0")}`,
@@ -733,21 +678,14 @@ export function buildSeed(): DB {
     proximoMantenimiento: dateOnly(r[9]),
 
     activo: true,
-
   }));
-
-
 
   const movements: Movement[] = [];
 
   const maintenance: MaintenanceRecord[] = [];
 
-
-
   equipment.forEach((e, i) => {
-
     movements.push({
-
       id: `m-${e.id}-1`,
 
       equipoId: e.id,
@@ -763,11 +701,9 @@ export function buildSeed(): DB {
       motivo: "Ingreso al inventario",
 
       observaciones: "Registro inicial del equipo en almacén.",
-
     });
 
     movements.push({
-
       id: `m-${e.id}-2`,
 
       equipoId: e.id,
@@ -783,13 +719,9 @@ export function buildSeed(): DB {
       motivo: "Asignación a servicio",
 
       observaciones: "Traslado a su área operativa.",
-
     });
 
-
-
     maintenance.push({
-
       id: `mt-${e.id}-1`,
 
       equipoId: e.id,
@@ -801,11 +733,8 @@ export function buildSeed(): DB {
       biomedicoId: i % 2 === 0 ? "u2" : "u3",
 
       descripcion:
-
         i % 3 === 0
-
           ? "Reemplazo de componente defectuoso y pruebas funcionales."
-
           : "Limpieza interna, calibración y verificación eléctrica.",
 
       resultado: i % 3 === 0 ? "Reparado" : "Conforme",
@@ -813,14 +742,8 @@ export function buildSeed(): DB {
       observaciones: "Equipo entregado al servicio en condiciones operativas.",
 
       proximaFecha: e.proximoMantenimiento,
-
     });
-
   });
 
-
-
   return { users: seedUsers, locations: seedLocations, equipment, movements, maintenance };
-
 }
-
