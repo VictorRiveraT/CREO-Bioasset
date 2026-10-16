@@ -200,23 +200,70 @@ public class RabbitMqListener : BackgroundService {
             }
             if (queue == "mantenimientos_q" && action == "Created") {
                 var tipo = data.GetProperty("Tipo").GetString();
+                var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "https://creo-bioasset-one.vercel.app";
                 
                 string html = $@"
-                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd;'>
-                    <div style='background-color: #22c55e; padding: 20px; text-align: center;'>
-                        <h1 style='color: #fff; margin: 0;'>BioAsset Services</h1>
-                    </div>
-                    <div style='padding: 30px; background-color: #fcfcfc;'>
-                        <p style='color: #666; font-size: 12px; font-weight: bold;'>ACTUALIZACIÓN DE TICKET</p>
-                        <h2 style='color: #333;'>Hola Victor Rivera</h2>
-                        <p style='color: #555;'>Tu servicio cambió de estado. Un nuevo mantenimiento ha sido registrado en el portal.</p>
+                <div style='font-family: -apple-system, BlinkMacSystemFont, ""Segoe UI"", Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: auto; background-color: #f1f5f9; padding: 24px 16px;'>
+                    <div style='background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);'>
                         
-                        <div style='background-color: #fff; border: 1px solid #eee; border-radius: 8px; padding: 20px; margin-top: 20px;'>
-                            <p style='color: #888; font-size: 12px; margin: 0;'>Tipo de Mantenimiento</p>
-                            <h3 style='margin-top: 5px; color: #333;'>{tipo}</h3>
+                        <!-- HEADER BANNER -->
+                        <div style='background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px 28px; color: #ffffff;'>
+                            <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                                <tr>
+                                    <td valign='middle'>
+                                        <div style='background-color: #f59e0b; color: #0f172a; font-weight: 900; font-size: 16px; padding: 4px 10px; border-radius: 6px; display: inline-block; letter-spacing: -0.5px; vertical-align: middle;'>
+                                            CREO<span style='font-weight: 400;'>+</span>
+                                        </div>
+                                        <span style='color: #94a3b8; font-size: 13px; font-weight: 700; margin-left: 8px; letter-spacing: 1px; vertical-align: middle;'>BIOASSET</span>
+                                    </td>
+                                    <td align='right' valign='middle'>
+                                        <span style='background-color: rgba(255, 255, 255, 0.1); color: #e2e8f0; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px;'>
+                                            MANTENIMIENTO
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                            <div style='margin-top: 16px;'>
+                                <h1 style='margin: 0; font-size: 20px; font-weight: 700; color: #ffffff;'>Actualización de Ticket de Mantenimiento</h1>
+                                <p style='margin: 4px 0 0 0; color: #94a3b8; font-size: 12px;'>Notificación de servicio y orden de trabajo</p>
+                            </div>
+                        </div>
+
+                        <!-- MAIN BODY -->
+                        <div style='padding: 28px 24px;'>
+                            <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 8px 0;'>Hola <strong>Victor Rivera</strong>,</p>
+                            <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;'>
+                                Tu servicio ha cambiado de estado. Se ha registrado un nuevo procedimiento de mantenimiento en la plataforma institucional <strong>CREO+ BioAsset</strong>:
+                            </p>
                             
-                            <p style='color: #888; font-size: 12px; margin: 0; margin-top: 15px;'>Estado actual</p>
-                            <span style='display: inline-block; background-color: #eab308; color: #fff; padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 14px; margin-top: 5px;'>En progreso</span>
+                            <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin: 20px 0;'>
+                                <div style='margin-bottom: 14px;'>
+                                    <div style='color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase;'>Tipo de Mantenimiento</div>
+                                    <div style='color: #0f172a; font-size: 16px; font-weight: 700; margin-top: 2px;'>{tipo}</div>
+                                </div>
+                                <div>
+                                    <div style='color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase;'>Estado Actual</div>
+                                    <div style='margin-top: 4px;'>
+                                        <span style='display: inline-block; background-color: #f59e0b; color: #0f172a; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 13px;'>En progreso</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style='text-align: center; margin: 28px 0 10px 0;'>
+                                <a href='{frontendUrl}/mantenimiento' style='display: inline-block; background-color: #f59e0b; color: #0f172a; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.08);'>
+                                    Ver en Mantenimiento &rarr;
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- FOOTER -->
+                        <div style='background-color: #f8fafc; padding: 20px; border-top: 1px solid #e2e8f0; text-align: center;'>
+                            <p style='margin: 0; color: #64748b; font-size: 12px;'>
+                                Este es un mensaje institucional automático del sistema <strong>CREO+ BioAsset</strong>.
+                            </p>
+                            <p style='margin: 4px 0 0 0; color: #94a3b8; font-size: 11px;'>
+                                © 2026 CREO+ BioAsset • Plataforma de Gestión Biomédica Hospitalaria.
+                            </p>
                         </div>
                     </div>
                 </div>";
