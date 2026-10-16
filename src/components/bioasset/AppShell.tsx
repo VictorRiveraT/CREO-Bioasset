@@ -1145,101 +1145,52 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
 
 
-        <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-card/90 px-3 py-2.5 backdrop-blur sm:px-6 md:px-8">
+        <header className="sticky top-0 z-20 border-b bg-card/90 px-3 py-2.5 backdrop-blur sm:px-6 md:px-8">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <Sheet open={open} onOpenChange={setOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="icon" className="md:hidden shrink-0">
+                    <Menu className="size-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 border-sidebar-border bg-sidebar p-0">
+                  <SheetTitle className="sr-only">Navegación</SheetTitle>
+                  <Brand />
+                  <NavList onNavigate={() => setOpen(false)} />
+                  <div className="mt-auto border-t border-sidebar-border p-4">
+                    <Button variant="secondary" size="sm" className="w-full" onClick={logout}>
+                      <LogOut className="size-4" /> Cerrar sesión
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
 
-
-          <Sheet open={open} onOpenChange={setOpen}>
-
-
-            <SheetTrigger asChild>
-
-
-              <Button variant="outline" size="icon" className="md:hidden">
-
-
-                <Menu className="size-4" />
-
-
-              </Button>
-
-
-            </SheetTrigger>
-
-
-            <SheetContent side="left" className="w-64 border-sidebar-border bg-sidebar p-0">
-
-
-              <SheetTitle className="sr-only">Navegación</SheetTitle>
-
-
-              <Brand />
-
-
-              <NavList onNavigate={() => setOpen(false)} />
-
-
-              <div className="mt-auto border-t border-sidebar-border p-4">
-
-
-                <Button variant="secondary" size="sm" className="w-full" onClick={logout}>
-
-
-                  <LogOut className="size-4" /> Cerrar sesión
-
-
-                </Button>
-
-
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-base sm:text-lg font-semibold tracking-tight">{title}</h1>
+                {description && (
+                  <p className="truncate text-xs text-muted-foreground">{description}</p>
+                )}
               </div>
-
-
-            </SheetContent>
-
-
-          </Sheet>
-
-
-
-
-
-          <div className="min-w-0 flex-1 flex items-center justify-between">
-
-
-            <div>
-
-
-              <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
-
-
-              {description && (
-
-
-                <p className="truncate text-xs text-muted-foreground">{description}</p>
-
-
-              )}
-
-
             </div>
 
-
-
-
-
-            <div className="flex items-center gap-3">
-
-              {/* Campanita de Notificaciones y Alertas Popup */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <NotificationBell />
-
+              {actions && (
+                <div className="hidden sm:flex items-center gap-2">
+                  {actions}
+                </div>
+              )}
             </div>
-
-
           </div>
 
-
-          {actions}
-
-
+          {actions && (
+            <div className="mt-2.5 flex items-center justify-end sm:hidden pt-2 border-t border-border/40">
+              <div className="flex items-center gap-2 w-full justify-end [&>*]:shrink-0">
+                {actions}
+              </div>
+            </div>
+          )}
         </header>
 
 

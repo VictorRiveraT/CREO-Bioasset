@@ -550,7 +550,7 @@ function UbicacionesPage() {
 
                             <AccordionContent className="p-0">
 
-                              <Table>
+                              <Table className="min-w-[650px]">
 
                                 <TableHeader>
 

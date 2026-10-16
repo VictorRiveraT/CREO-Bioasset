@@ -670,7 +670,7 @@ function UsuariosPage() {
 
       <Card className="shadow-[var(--shadow-card)]">
 
-        <CardHeader className="pb-4 border-b">
+        <CardHeader className="p-4 sm:p-6 pb-4 border-b">
 
           <div className="flex flex-col sm:flex-row gap-4">
 
@@ -692,11 +692,11 @@ function UsuariosPage() {
 
             </div>
 
-            <div className="flex gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-4">
 
               <Select value={filterRol} onValueChange={setFilterRol}>
 
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
 
                   <SelectValue placeholder="Rol" />
 
@@ -722,7 +722,7 @@ function UsuariosPage() {
 
               <Select value={filterSede} onValueChange={setFilterSede}>
 
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
 
                   <SelectValue placeholder="Sede" />
 
@@ -754,9 +754,9 @@ function UsuariosPage() {
 
         </CardHeader>
 
-        <CardContent className="overflow-x-auto py-4">
+        <CardContent className="p-0">
 
-          <Table>
+          <Table className="min-w-[750px]">
 
             <TableHeader>
 

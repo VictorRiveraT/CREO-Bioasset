@@ -511,9 +511,8 @@ function Dashboard() {
 
         </CardHeader>
 
-        <CardContent className="overflow-x-auto">
-
-          <Table>
+        <CardContent className="p-0">
+          <Table className="min-w-[700px]">
 
             <TableHeader>
 

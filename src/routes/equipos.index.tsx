@@ -289,9 +289,8 @@ function EquiposPage() {
 
       <Card className="shadow-[var(--shadow-card)]">
 
-        <CardContent className="overflow-x-auto py-4">
-
-          <Table>
+        <CardContent className="p-0">
+          <Table className="min-w-[950px]">
 
             <TableHeader>
 
