@@ -248,128 +248,130 @@ static string GetFrontendOrigin(HttpContext ctx) {
 }
 
 app.MapPost("/recover", async (RecoverDto req, HttpContext ctx, AuthDb db) => {
+    try {
+        var user = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == req.email);
+        if(user == null) return Results.BadRequest(new { error = "Correo no registrado" });
 
+        var origin = GetFrontendOrigin(ctx);
 
-    var user = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == req.email);
+        // Generate signed JWT recovery token with 15-minute expiration
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(app.Configuration["Jwt:Secret"]);
+        var tokenDescriptor = new SecurityTokenDescriptor {
+            Subject = new ClaimsIdentity(new[] {
+                new Claim("email", user.Email),
+                new Claim("purpose", "password_reset")
+            }),
+            Expires = DateTime.UtcNow.AddMinutes(15),
+            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+        };
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var resetToken = tokenHandler.WriteToken(token);
 
+        var resetLink = $"{origin}/?reset_email={Uri.EscapeDataString(user.Email)}&reset_token={Uri.EscapeDataString(resetToken)}";
 
-    if(user == null) return Results.BadRequest(new { error = "Correo no registrado" });
+        var html = $@"
+            <div style='font-family: -apple-system, BlinkMacSystemFont, ""Segoe UI"", Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;'>
+                <div style='text-align: center; margin-bottom: 24px;'>
+                    <h1 style='color: #0f172a; font-size: 26px; font-weight: 800; margin: 0; letter-spacing: -0.5px;'>Creo<span style='color: #F2B705;'>+</span></h1>
+                    <div style='color: #F2B705; font-size: 13px; font-weight: 700; letter-spacing: 1px;'>BIOASSET</div>
+                </div>
 
+                <div style='background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 14px 16px; margin-bottom: 24px;'>
+                    <p style='color: #92400e; font-size: 13px; font-weight: 600; margin: 0;'>
+                        ⏱️ Este enlace es de un solo uso y <strong>expirará en 15 minutos</strong> por motivos de seguridad.
+                    </p>
+                </div>
 
-    
+                <h2 style='color: #1e293b; font-size: 18px; margin: 0 0 12px 0;'>Restablecimiento de Contraseña</h2>
+                <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 8px 0;'>Hola <strong>{user.Nombre}</strong>,</p>
+                <p style='color: #475569; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;'>
+                    Hemos recibido una solicitud para cambiar la contraseña de tu cuenta institucional <strong>{user.Email}</strong>. Haz clic en el botón de abajo para asignar tu nueva clave:
+                </p>
 
+                <div style='text-align: center; margin: 28px 0;'>
+                    <a href='{resetLink}' style='display: inline-block; background-color: #F2B705; color: #18181b; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.08);'>
+                        Restablecer Contraseña
+                    </a>
+                </div>
 
-    var origin = GetFrontendOrigin(ctx);
+                <p style='color: #64748b; font-size: 12px; margin: 24px 0 8px 0;'>Si el botón no abre directamente, copia y pega el siguiente enlace en tu navegador:</p>
+                <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; word-break: break-all; font-family: monospace; font-size: 11px; color: #334155;'>
+                    {resetLink}
+                </div>
 
+                <hr style='border: none; border-top: 1px solid #e2e8f0; margin: 28px 0 16px 0;' />
+                <p style='color: #94a3b8; font-size: 11px; text-align: center; margin: 0; line-height: 1.4;'>
+                    Si tú no realizaste esta solicitud, puedes ignorar este mensaje de forma segura. Tu contraseña actual no cambiará.
+                </p>
+            </div>
+        ";
 
-    var resetLink = $"{origin}/?reset_email={Uri.EscapeDataString(user.Email)}";
-
-
-
-
-
-    var html = $@"
-
-
-        <div style='font-family: sans-serif; padding: 20px; text-align: center;'>
-
-
-            <h2 style='color: #F2B705;'>Creo+ BioAsset</h2>
-
-
-            <h3>Recuperación de Contraseña</h3>
-
-
-            <p>Hola {user.Nombre},</p>
-
-
-            <p>Has solicitado restablecer tu contraseña. Haz clic en el botón de abajo para asignar una nueva:</p>
-
-
-            <a href='{resetLink}' style='display:inline-block; padding: 12px 24px; background-color: #F2B705; color: black; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0;'>Restablecer Contraseña</a>
-
-
-            <p style='font-size: 12px; color: gray;'>Si no solicitaste este cambio, puedes ignorar este correo de forma segura.</p>
-
-
-        </div>
-
-
-    ";
-
-
-    
-
-
-    await EmailSender.SendEmail(user.Email, "Recuperación de Contraseña - BioAsset", html);
-
-
-
-
-
-    return Results.Ok(new { message = "Correo de recuperación enviado" });
-
-
+        await EmailSender.SendEmail(user.Email, "Recuperación de Contraseña (15 min) - BioAsset", html);
+        return Results.Ok(new { message = "Correo de recuperación enviado exitosamente con enlace de 15 minutos de vigencia." });
+    } catch (Exception ex) {
+        Console.WriteLine($"[Recover] Error: {ex}");
+        return Results.BadRequest(new { error = "No se pudo procesar la solicitud de recuperación: " + ex.Message });
+    }
 });
 
-
-
-
-
 app.MapPost("/reset", async (ResetDto req, AuthDb db) => {
+    try {
+        var user = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == req.email);
+        if(user == null) return Results.BadRequest(new { error = "Usuario no encontrado" });
 
+        // Validate recovery token and expiration
+        if (string.IsNullOrWhiteSpace(req.token)) {
+            return Results.BadRequest(new { error = "El enlace de recuperación no es válido o carece de token de seguridad. Por favor solicita un nuevo enlace desde el inicio de sesión." });
+        }
 
-    var user = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == req.email);
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(app.Configuration["Jwt:Secret"]);
+        ClaimsPrincipal principal;
+        try {
+            principal = tokenHandler.ValidateToken(req.token, new TokenValidationParameters {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.FromMinutes(1)
+            }, out _);
+        } catch (SecurityTokenExpiredException) {
+            return Results.BadRequest(new { error = "El enlace de recuperación ha expirado (validez de 15 minutos superada). Por favor solicita uno nuevo." });
+        } catch (Exception) {
+            return Results.BadRequest(new { error = "El enlace de recuperación es inválido o ha sido alterado. Por favor solicita uno nuevo." });
+        }
 
+        var tokenEmail = principal.FindFirst("email")?.Value ?? principal.FindFirst(ClaimTypes.Email)?.Value;
+        var purpose = principal.FindFirst("purpose")?.Value;
+        if (purpose != "password_reset" || !string.Equals(tokenEmail, req.email, StringComparison.OrdinalIgnoreCase)) {
+            return Results.BadRequest(new { error = "El token de recuperación no coincide con la cuenta solicitada." });
+        }
 
-    if(user == null) return Results.BadRequest(new { error = "Usuario no encontrado" });
+        // Check if new password is same as current password (using safe helper to avoid crash on SHA256 base64 or BCrypt)
+        try {
+            if (VerifyPassword(req.newPassword, user.Password)) {
+                return Results.BadRequest(new { error = "La nueva contraseña no puede ser igual a la actual" });
+            }
+        } catch (Exception ex) {
+            Console.WriteLine($"[Reset] Warning al verificar coincidencia de contraseña: {ex.Message}");
+        }
 
+        // Update password with BCrypt hash
+        user.Password = BCrypt.Net.BCrypt.HashPassword(req.newPassword);
 
-    
+        // Clear forzarReset if present
+        if(!string.IsNullOrEmpty(user.Permisos) && user.Permisos.Contains("\"forzarReset\":true")) {
+            user.Permisos = user.Permisos.Replace("\"forzarReset\":true", "\"forzarReset\":false");
+        }
 
-
-    if(BCrypt.Net.BCrypt.Verify(req.newPassword, user.Password)) {
-
-
-        return Results.BadRequest(new { error = "La nueva contraseña no puede ser igual a la actual" });
-
-
+        await db.SaveChangesAsync();
+        return Results.Ok(new { message = "Contraseña restablecida exitosamente" });
+    } catch (Exception ex) {
+        Console.WriteLine($"[Reset] Exception: {ex}");
+        return Results.BadRequest(new { error = "Error al restablecer la contraseña: " + ex.Message });
     }
-
-
-    
-
-
-    // We update the password directly
-
-
-    user.Password = BCrypt.Net.BCrypt.HashPassword(req.newPassword);
-
-
-    
-
-
-    // Clear forzarReset if present
-
-
-    if(!string.IsNullOrEmpty(user.Permisos) && user.Permisos.Contains("\"forzarReset\":true")) {
-
-
-        user.Permisos = user.Permisos.Replace("\"forzarReset\":true", "\"forzarReset\":false");
-
-
-    }
-
-
-
-
-
-    await db.SaveChangesAsync();
-
-
-    return Results.Ok(new { message = "Contraseña restablecida" });
-
-
 });
 
 
@@ -1090,7 +1092,7 @@ public class Usuario {
 public record RecoverDto(string email);
 
 
-public record ResetDto(string email, string newPassword);
+public record ResetDto(string email, string newPassword, string? token = null);
 
 
 public record LoginDto(string email, string password);

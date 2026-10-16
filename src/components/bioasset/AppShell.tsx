@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 
 
-import { useState, type ReactNode, useEffect } from "react";
+import { useState, type ReactNode, useEffect, useMemo } from "react";
 
 
 import {
@@ -59,6 +59,9 @@ import {
 
 
   CheckCircle2,
+
+
+  Clock,
 
 
 } from "lucide-react";
@@ -302,6 +305,27 @@ function LoginScreen() {
   const resetEmail = searchParams.get("reset_email");
 
 
+  const resetToken = searchParams.get("reset_token");
+
+
+  // Validar vigencia del token de recuperacion (15 minutos)
+  const tokenStatus = useMemo(() => {
+    if (!resetEmail) return null;
+    if (!resetToken) return "missing_token";
+    try {
+      const parts = resetToken.split(".");
+      if (parts.length !== 3) return "invalid";
+      const payload = JSON.parse(atob(parts[1]));
+      if (payload.exp && Date.now() >= payload.exp * 1000) {
+        return "expired";
+      }
+      return "valid";
+    } catch {
+      return "invalid";
+    }
+  }, [resetEmail, resetToken]);
+
+
   const [view, setView] = useState<"login" | "recover" | "reset">(resetEmail ? "reset" : "login");
 
 
@@ -362,7 +386,7 @@ function LoginScreen() {
       await fetchApi("/auth/recover", { method: "POST", body: JSON.stringify({ email }) });
 
 
-      setSuccess("Se ha enviado un enlace de recuperación a tu correo.");
+      setSuccess("Se ha enviado un enlace de recuperación a tu correo (vigencia de 15 minutos).");
 
 
     } catch (err: any) {
@@ -392,6 +416,17 @@ function LoginScreen() {
     setSuccess(null);
 
 
+    if (tokenStatus === "expired") {
+      setError("El enlace de recuperación ha expirado (validez de 15 minutos). Por favor solicita uno nuevo.");
+      return;
+    }
+
+    if (tokenStatus === "missing_token" || tokenStatus === "invalid") {
+      setError("El enlace no contiene un token de seguridad válido. Por favor solicita uno nuevo.");
+      return;
+    }
+
+
     if (!passwordRegex.test(password)) {
 
 
@@ -407,10 +442,10 @@ function LoginScreen() {
     try {
 
 
-      await fetchApi("/auth/reset", { method: "POST", body: JSON.stringify({ email, newPassword: password }) });
+      await fetchApi("/auth/reset", { method: "POST", body: JSON.stringify({ email, newPassword: password, token: resetToken }) });
 
 
-      setSuccess("Contraseña restablecida exitosamente.");
+      setSuccess("Contraseña restablecida exitosamente. Redirigiendo al inicio de sesión...");
 
 
       setPassword("");
@@ -795,146 +830,107 @@ function LoginScreen() {
 
 
           {view === "reset" && (
-
-
-            <form className="space-y-4" onSubmit={handleReset}>
-
-
+            <div className="space-y-4">
               <div className="text-center mb-4">
-
-
                 <h3 className="font-semibold text-lg">Restablecer contraseña</h3>
-
-
                 <p className="text-sm text-muted-foreground">Ingresa tu nueva contraseña para {email}.</p>
-
-
               </div>
 
-
-              <div className="space-y-2">
-
-
-                <div className="space-y-2"><Label className="text-left block">Correo</Label><Input type="email" value={email} readOnly className="bg-muted text-muted-foreground" /></div>
-
-
-              <Label htmlFor="new-password" className="text-left block">
-
-
-                  Nueva contraseña
-
-
-                </Label>
-
-
-                <div className="relative">
-
-
-                  <Input
-
-
-                    id="new-password"
-
-
-                    type={showPassword ? "text" : "password"}
-
-
-                    value={password}
-
-
-                    onChange={(e) => setPassword(e.target.value)}
-
-
-                    required
-
-
-                  />
-
-
-                  <button
-
-
-                    type="button"
-
-
-                    onClick={() => setShowPassword(!showPassword)}
-
-
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-
-
+              {tokenStatus === "expired" ? (
+                <div className="space-y-4 text-left">
+                  <div className="flex items-start gap-3 rounded-lg bg-destructive/15 p-4 text-destructive">
+                    <AlertCircle className="size-5 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-semibold text-sm">Enlace de recuperación expirado</p>
+                      <p className="text-xs leading-relaxed text-destructive/90">
+                        Por motivos de seguridad, los enlaces para restablecer contraseña expiran después de 15 minutos. Debes generar uno nuevo.
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    type="button" 
+                    onClick={() => { setView("recover"); setError(null); setSuccess(null); }}
+                    className="w-full bg-[#F2B705] text-black hover:bg-[#DCA004]"
                   >
-
-
-                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-
-
-                  </button>
-
-
+                    Solicitar nuevo enlace
+                  </Button>
                 </div>
-
-
-                <p className="text-[10px] text-muted-foreground mt-1 leading-tight text-left">
-
-
-                  Debe tener mínimo 9 caracteres, 1 mayúscula, 1 número y 1 carácter especial.
-
-
-                </p>
-
-
-              </div>
-
-
-              {error && (
-
-
-                <div className="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive font-medium">
-
-
-                  <AlertCircle className="size-4 shrink-0" />
-
-
-                  <span>{error}</span>
-
-
+              ) : tokenStatus === "missing_token" || tokenStatus === "invalid" ? (
+                <div className="space-y-4 text-left">
+                  <div className="flex items-start gap-3 rounded-lg bg-amber-500/15 p-4 text-amber-800">
+                    <AlertCircle className="size-5 shrink-0 mt-0.5 text-amber-700" />
+                    <div className="space-y-1">
+                      <p className="font-semibold text-sm">Enlace no válido o sin token</p>
+                      <p className="text-xs leading-relaxed text-amber-900">
+                        Por motivos de seguridad y control de expiración (15 minutos), el enlace requiere un token criptográfico generado por el sistema.
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    type="button" 
+                    onClick={() => { setView("recover"); setError(null); setSuccess(null); }}
+                    className="w-full bg-[#F2B705] text-black hover:bg-[#DCA004]"
+                  >
+                    Solicitar nuevo enlace de recuperación
+                  </Button>
                 </div>
+              ) : (
+                <form className="space-y-4" onSubmit={handleReset}>
+                  <div className="rounded-md bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs text-amber-800 flex items-center gap-1.5 text-left">
+                    <Clock className="size-3.5 shrink-0 text-amber-600" />
+                    <span>Enlace verificado y protegido (vigencia de 15 minutos).</span>
+                  </div>
 
+                  <div className="space-y-2">
+                    <Label className="text-left block">Correo</Label>
+                    <Input type="email" value={email} readOnly className="bg-muted text-muted-foreground" />
+                  </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password" className="text-left block">
+                      Nueva contraseña
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="new-password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1 leading-tight text-left">
+                      Debe tener mínimo 9 caracteres, 1 mayúscula, 1 número y 1 carácter especial.
+                    </p>
+                  </div>
+
+                  {error && (
+                    <div className="flex items-center gap-2 rounded-md bg-destructive/15 p-3 text-sm text-destructive font-medium text-left">
+                      <AlertCircle className="size-4 shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  {success && (
+                    <div className="flex items-center gap-2 rounded-md bg-green-500/15 p-3 text-sm text-green-600 font-medium text-left">
+                      <CheckCircle2 className="size-4 shrink-0" />
+                      <span>{success}</span>
+                    </div>
+                  )}
+
+                  <Button type="submit" className="w-full bg-[#F2B705] text-black hover:bg-[#DCA004]">
+                    Confirmar
+                  </Button>
+                </form>
               )}
-
-
-              {success && (
-
-
-                <div className="flex items-center gap-2 rounded-md bg-green-500/15 p-3 text-sm text-green-600 font-medium">
-
-
-                  <CheckCircle2 className="size-4 shrink-0" />
-
-
-                  <span>{success}</span>
-
-
-                </div>
-
-
-              )}
-
-
-              <Button type="submit" className="w-full bg-[#F2B705] text-black hover:bg-[#DCA004]">
-
-
-                Confirmar
-
-
-              </Button>
-
-
-            </form>
-
-
+            </div>
           )}
 
 
