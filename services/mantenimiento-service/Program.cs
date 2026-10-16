@@ -240,6 +240,8 @@ using (var scope = app.Services.CreateScope()) {
             BEGIN
                 ALTER TABLE [mantenimiento].[Incidencias] ADD RelacionadaId UNIQUEIDENTIFIER NULL
             END
+            UPDATE [mantenimiento].[Mantenimientos] SET Fecha = proxima_fecha WHERE Fecha IS NULL;
+            UPDATE [mantenimiento].[Mantenimientos] SET Descripcion = 'Mantenimiento preventivo general' WHERE Descripcion IS NULL;
         ");
     } catch (Exception e) {
         Console.WriteLine(e);
@@ -269,12 +271,12 @@ public class Mantenimiento {
     [Column("biomedico_id"), JsonPropertyName("biomedico_id")] public Guid BiomedicoId { get; set; }
     public string Tipo { get; set; } = "";
     public string Estado { get; set; } = "";
-    public string Descripcion { get; set; } = "";
+    public string? Descripcion { get; set; } = "";
     [Column("proxima_fecha"), JsonPropertyName("proxima_fecha")] public string? ProximaFecha { get; set; }
     public string? Fecha { get; set; }
     public string? Observaciones { get; set; }
     public string? ArchivoBase64 { get; set; }
-    [Column("incidencia_id"), JsonPropertyName("incidencia_id")] public Guid? IncidenciaId { get; set; }
+    [Column("IncidenciaId"), JsonPropertyName("incidencia_id")] public Guid? IncidenciaId { get; set; }
     public decimal? Costo { get; set; }
     public string? Proveedor { get; set; }
 }
@@ -284,7 +286,7 @@ public class Incidencia {
     [Column("activo_id"), JsonPropertyName("activo_id")] public Guid ActivoId { get; set; }
     public string Titulo { get; set; } = "";
     public string Estado { get; set; } = "";
-    [Column("relacionada_id"), JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
+    [Column("RelacionadaId"), JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
 }
 
 static class EventBus {
