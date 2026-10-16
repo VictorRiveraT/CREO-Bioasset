@@ -44,7 +44,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-const TUNNEL_URL = process.env.BACKEND_URL || "https://freely-authorization-contribute-vol.trycloudflare.com";
+const TUNNEL_URL = process.env.BACKEND_URL || "https://interspheral-ireland-nonspecially.ngrok-free.dev";
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
