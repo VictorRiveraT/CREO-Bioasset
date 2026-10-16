@@ -62,8 +62,7 @@ import {
 
 
   Clock,
-
-
+  QrCode,
 } from "lucide-react";
 
 
@@ -129,8 +128,7 @@ const NAV: NavItem[] = [
 
 
   { to: "/equipos", label: "Inventario", icon: Boxes, module: "inventario" },
-
-
+  { to: "/qr", label: "Escanear QR", icon: QrCode },
   { to: "/trazabilidad", label: "Movimientos", icon: RouteIcon, module: "movimientos" },
 
 

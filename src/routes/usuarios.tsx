@@ -90,7 +90,7 @@ import {
 
 } from "@/components/ui/select";
 
-import { Pencil, Trash2, Power, PowerOff, MoreHorizontal, Search, Eye, EyeOff } from "lucide-react";
+import { Pencil, Trash2, Power, PowerOff, MoreHorizontal, Search, Eye, EyeOff, X } from "lucide-react";
 
 import {
 
@@ -748,10 +748,23 @@ function UsuariosPage() {
 
               </Select>
 
+            
+              {(search || filterRol !== "todos" || filterSede !== "todas") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearch("");
+                    setFilterRol("todos");
+                    setFilterSede("todas");
+                  }}
+                  className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  <X className="mr-1 size-3.5" /> Limpiar
+                </Button>
+              )}
             </div>
-
           </div>
-
         </CardHeader>
 
         <CardContent className="p-0">

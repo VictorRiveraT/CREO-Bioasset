@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { MaintenanceDialog } from "@/components/bioasset/dialogs";
 import { encryptUrlParam } from "@/lib/bioasset/security";
@@ -59,6 +59,8 @@ function MantenimientoPage() {
       });
   }, [db.maintenance, db.equipment, q, tipo]);
 
+  const hasFilters = Boolean(q || tipo !== "todos");
+
   return (
     <AppShell
       title="Mantenimiento"
@@ -97,9 +99,26 @@ function MantenimientoPage() {
             </SelectContent>
           </Select>
         </CardContent>
+
+        {hasFilters && (
+          <div className="flex items-center justify-between px-6 pb-3 pt-0 text-xs text-muted-foreground border-t">
+            <span>Filtros activos: {rows.length} registro(s)</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setQ("");
+                setTipo("todos");
+              }}
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <X className="mr-1 size-3.5" /> Limpiar filtros
+            </Button>
+          </div>
+        )}
       </Card>
 
-      <Card className="shadow-[var(--shadow-card)]">
+      <Card className="shadow-[var(--shadow-card)] mt-4">
         <CardContent className="p-0">
           <Table className="min-w-[850px]">
             <TableHeader>
@@ -141,11 +160,11 @@ function MantenimientoPage() {
                     <TableCell className="max-w-sm text-muted-foreground">
                       <div className="flex flex-col gap-1">
                         <span>{m.descripcion}</span>
-                      {m.archivoBase64 && (
-                        <a href={m.archivoBase64} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
-                          📎 Ver Formato
-                        </a>
-                      )}
+                        {m.archivoBase64 && (
+                          <a href={m.archivoBase64} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                            📎 Ver Formato
+                          </a>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>{m.resultado}</TableCell>
@@ -167,6 +186,13 @@ function MantenimientoPage() {
                   </TableRow>
                 );
               })}
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
+                    No se encontraron mantenimientos con los filtros aplicados.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

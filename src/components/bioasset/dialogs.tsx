@@ -2796,27 +2796,37 @@ export function MarcaDialog({ trigger }: { trigger: ReactNode }) {
 
 
 
-export function IncidentDialog({ equipoId, trigger }: { equipoId: string; trigger: ReactNode }) {
-
-
-  const { addIncident, updateEquipment } = useBio();
-
-
+export function IncidentDialog({
+  equipoId,
+  trigger,
+}: {
+  equipoId?: string;
+  trigger: ReactNode;
+}) {
+  const { db, addIncident, updateEquipment } = useBio();
   const [open, setOpen] = useState(false);
+  const [selectedEquipoId, setSelectedEquipoId] = useState(equipoId || "");
   const [incidentTitle, setIncidentTitle] = useState("");
 
   useEffect(() => {
     if (open) {
+      setSelectedEquipoId(equipoId || "");
       setIncidentTitle("");
     }
-  }, [open]);
+  }, [open, equipoId]);
+
+  const targetId = equipoId || selectedEquipoId;
+  const targetEquipo = db.equipment.find((e) => e.id === targetId);
 
   const handleReportIncident = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!incidentTitle) return;
+    if (!targetId || !incidentTitle.trim()) {
+      toast.error("Seleccione un equipo e ingrese la descripción de la falla");
+      return;
+    }
     try {
-      await addIncident({ activo_id: equipoId, titulo: incidentTitle, estado: "Abierta" });
-      await updateEquipment(equipoId, { estado: "Fuera de servicio" });
+      await addIncident({ activo_id: targetId, titulo: incidentTitle.trim(), estado: "Abierta" });
+      await updateEquipment(targetId, { estado: "Fuera de servicio" });
       setOpen(false);
       setIncidentTitle("");
       toast.success("Falla reportada correctamente");
@@ -2826,109 +2836,68 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId: string; trigge
     }
   };
 
-
-
-
-
   return (
-
-
     <Dialog open={open} onOpenChange={setOpen}>
-
-
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-
-
-      <DialogContent>
-
-
+      <DialogContent className="sm:max-w-[480px]">
         <form onSubmit={handleReportIncident}>
-
-
           <DialogHeader>
-
-
-            <DialogTitle>Reportar falla</DialogTitle>
-
-
+            <DialogTitle>Reportar falla / incidencia</DialogTitle>
             <DialogDescription>
-
-
-              Describa el problema que presenta el equipo. El estado cambiará a Inoperativo.
-
-
+              Describa el problema que presenta el equipo. El estado del activo cambiará automáticamente a Fuera de servicio.
             </DialogDescription>
-
-
           </DialogHeader>
 
-
           <div className="grid gap-4 py-4">
-
+            {!equipoId ? (
+              <div className="grid gap-2">
+                <Label>Equipo afectado</Label>
+                <Select value={selectedEquipoId} onValueChange={setSelectedEquipoId} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccione el equipo..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {db.equipment
+                      .filter((e) => e.estado !== "De baja")
+                      .map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.codigo} — {e.nombre} ({e.marca})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="rounded-md bg-muted/50 p-3 text-sm">
+                <span className="text-xs text-muted-foreground block">Equipo seleccionado:</span>
+                <span className="font-semibold text-yellow-500">{targetEquipo?.codigo}</span> — {targetEquipo?.nombre}
+              </div>
+            )}
 
             <div className="grid gap-2">
-
-
               <Label>Descripción de la falla</Label>
-
-
-              <Input
-
-
+              <Textarea
+                placeholder="Describa la avería o síntoma presentado por el equipo..."
                 value={incidentTitle}
-
-
                 onChange={(e) => setIncidentTitle(e.target.value)}
-
-
                 required
-
-
+                rows={3}
               />
-
-
             </div>
-
-
           </div>
 
-
           <DialogFooter>
-
-
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-
-
               Cancelar
-
-
             </Button>
-
-
-            <Button type="submit" variant="destructive">
-
-
-              Reportar
-
-
+            <Button type="submit" variant="destructive" disabled={!targetId || !incidentTitle.trim()}>
+              Reportar incidencia
             </Button>
-
-
           </DialogFooter>
-
-
         </form>
-
-
       </DialogContent>
-
-
     </Dialog>
-
-
   );
-
-
 }
 
 

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowRight, Plus, Search } from "lucide-react";
+import { ArrowRight, Plus, Search, X } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { MovementDialog } from "@/components/bioasset/dialogs";
 import { encryptUrlParam } from "@/lib/bioasset/security";
@@ -64,6 +64,8 @@ function TrazabilidadPage() {
       });
   }, [db.movements, db.equipment, q, ubi]);
 
+  const hasFilters = Boolean(q || ubi !== "todas");
+
   return (
     <AppShell
       title="Trazabilidad"
@@ -124,9 +126,26 @@ function TrazabilidadPage() {
             </SelectContent>
           </Select>
         </CardContent>
+
+        {hasFilters && (
+          <div className="flex items-center justify-between px-6 pb-3 pt-0 text-xs text-muted-foreground border-t">
+            <span>Filtros activos: {rows.length} movimiento(s)</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setQ("");
+                setUbi("todas");
+              }}
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <X className="mr-1 size-3.5" /> Limpiar filtros
+            </Button>
+          </div>
+        )}
       </Card>
 
-      <Card className="shadow-[var(--shadow-card)]">
+      <Card className="shadow-[var(--shadow-card)] mt-4">
         <CardContent className="p-0">
           <Table className="min-w-[750px]">
             <TableHeader>
@@ -167,11 +186,18 @@ function TrazabilidadPage() {
                     <TableCell>{m.motivo}</TableCell>
                     <TableCell>{userName(m.usuarioId)}</TableCell>
                     <TableCell className="max-w-xs text-muted-foreground">
-                      {m.observaciones}
+                      {m.observaciones || "Sin observaciones"}
                     </TableCell>
                   </TableRow>
                 );
               })}
+              {rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                    No se encontraron movimientos registrados con los filtros aplicados.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
