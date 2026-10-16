@@ -44,7 +44,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-const TUNNEL_URL = process.env.BACKEND_URL || "https://holdings-accurately-checking-attended.trycloudflare.com";
+const TUNNEL_URL = process.env.BACKEND_URL || "https://freely-authorization-contribute-vol.trycloudflare.com";
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
