@@ -105,9 +105,7 @@ app.UseAuthentication();
 
 app.UseAuthorization();
 
-
-
-
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/metricas", [Authorize] async (AnaliticaDb db) => Results.Ok(new { metricas = await db.Metricas.ToListAsync() }));
 

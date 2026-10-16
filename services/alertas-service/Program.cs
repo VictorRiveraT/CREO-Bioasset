@@ -36,6 +36,8 @@ app.UseCors(b => b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
 app.MapGet("/alertas", [Authorize] async (AlertasDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
