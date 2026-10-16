@@ -4,7 +4,7 @@
 
 ---
 
-## 🏛 Arquitectura del Sistema
+## Arquitectura del Sistema
 
 La solución está construida sobre una arquitectura desacoplada de microservicios con comunicación asíncrona basada en eventos:
 
@@ -56,27 +56,27 @@ flowchart TD
 
 ---
 
-## 🚀 Capacidades y Seguridad Implementada
+## Capacidades y Seguridad Implementada
 
-### 🔐 Seguridad y Criptografía
+### Seguridad y Criptografía
 * **Tokens de Recuperación Efímeros**: Los enlaces de reseteo de contraseña utilizan tokens criptográficos únicos con vigencia estricta de **10 minutos**, almacenamiento hash SHA-256 e invalidación automática tras su primer uso.
 * **Almacenamiento Seguro**: Cifrado y salting de contraseñas de alta entropía.
 * **Aislamiento Multi-Sede Estricto**: Políticas a nivel de servicio que impiden mutaciones (`POST`, `PUT`, `DELETE`) fuera de la jurisdicción física asignada a cada usuario.
 * **Revocación de Sesión Activa**: Interceptores frontend y validación periódica que expulsan sesiones revocadas o inactivadas en menos de 5 segundos.
 
-### 🎨 Experiencia de Usuario (UI/UX) y Diseño Responsivo
+### Experiencia de Usuario (UI/UX) y Diseño Responsivo
 * **Adaptación Mobile-First**: Experiencia móvil nativa con menús tipo drawer, controles táctiles y tablas con vista condensada en tarjetas.
 * **Tarjetas de Alerta Optimizadas**: Diseño visual en 3 niveles (código de activo monospace, descripción completa sin saltos de línea forzados y pie con ubicación y botón de atención inmediata).
 * **Accesibilidad y Contraste**: Paleta de colores ajustada para alto contraste (`amber-600` / `amber-400` en modo claro y oscuro) conforme a estándares WCAG.
 * **Saneamiento de Datos**: Transformación de placeholders técnicos (`___EMPTY___`, `N/A`) a etiquetas claras para el usuario final (*"Sin asignar"*).
 
-### 📧 Sistema de Notificaciones y Correos Unificados
+### Sistema de Notificaciones y Correos Unificados
 * **Diseño Transaccional Corporativo**: Plantillas HTML unificadas bajo el manual de marca de CREO BioAsset (cabecera institucional, insignias de prioridad por color, botón de llamada a la acción y pie de confidencialidad médica).
 * **Disparo Diario Automatizado**: Rutina y endpoint de trigger para reportes ejecutivos diarios de inventario y estado clínico.
 
 ---
 
-## 🛠 Requisitos y Puesta en Marcha
+## Requisitos y Puesta en Marcha
 
 ### Prerrequisitos
 * [Node.js](https://nodejs.org/) v20+ y `npm`
@@ -120,7 +120,7 @@ npm run dev
 
 ---
 
-## 🧪 Calidad de Código y Estándares
+## Calidad de Código y Estándares
 
 El proyecto cuenta con validación estricta de linters, formateo automatizado y cero tolerancia a errores de compilación:
 
@@ -133,7 +133,7 @@ El proyecto cuenta con validación estricta de linters, formateo automatizado y 
 
 ---
 
-## 📂 Estructura de Directorios
+## Estructura de Directorios
 
 ```text
 CREO-Bioasset/
