@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Clock, Wrench, XCircle, Building2, X } from "lucide-react";
+import { AlertTriangle, Clock, Wrench, XCircle, Building2, X, MapPin } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { DueBadge, StatusBadge } from "@/components/bioasset/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -51,46 +52,77 @@ function AlertGroup({
 }) {
   const { locationName, canEdit } = useBio();
 
+  const cleanLocation = (id?: string) => {
+    if (!id) return "Sin asignar";
+    const name = locationName(id);
+    if (!name || name === "___EMPTY___" || name === "N/A") return "Sin asignar";
+    return name;
+  };
+
   return (
     <Card className="shadow-[var(--shadow-card)]">
-      <CardHeader className="flex-row items-center gap-3 space-y-0 pb-3">
+      <CardHeader className="flex-row items-center gap-3 space-y-0 pb-3 border-b">
         <div className={`flex size-9 items-center justify-center rounded-lg ${tone}`}>
           <Icon className="size-4" />
         </div>
         <CardTitle className="text-base flex items-center justify-between w-full">
           <span>{title}</span>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+          <Badge variant="secondary" className="font-semibold text-xs">
             {items.length}
-          </span>
+          </Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 pt-3">
         {items.map((e) => (
           <div
             key={e.id}
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/30 transition-colors"
+            className="rounded-lg border bg-card p-3 shadow-xs space-y-2 hover:border-primary/40 hover:shadow-sm transition-all"
           >
-            <div className="space-y-0.5">
+            {/* Top row: Code pill + Name, and Status + Due Badges */}
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <Link
                 to="/equipos/$id"
                 params={{ id: encryptUrlParam(e.id) }}
-                className="text-sm font-semibold text-primary hover:underline"
+                className="group flex flex-wrap items-center gap-1.5 flex-1 min-w-[200px]"
               >
-                {e.codigo} — {e.nombre}
+                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                  {e.codigo}
+                </span>
+                <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {e.nombre}
+                </span>
               </Link>
-              <p className="text-xs text-muted-foreground">{message(e)}</p>
-              <p className="text-xs text-muted-foreground">
-                Ubicación: <span className="font-medium text-foreground">{locationName(e.ubicacionId)}</span>
-              </p>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <StatusBadge status={e.estado} />
+                <DueBadge days={daysUntil(e.proximoMantenimiento)} />
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <StatusBadge status={e.estado} />
-              <DueBadge days={daysUntil(e.proximoMantenimiento)} />
+
+            {/* Alert Message */}
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {message(e)}
+            </p>
+
+            {/* Bottom row: Location + Action Button */}
+            <div className="flex items-center justify-between pt-2 border-t text-xs">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <MapPin className="size-3.5 text-muted-foreground/70 shrink-0" />
+                <span>Ubicación:</span>
+                <span className="font-medium text-foreground">
+                  {cleanLocation(e.ubicacionId)}
+                </span>
+              </div>
+
               {canEdit("mantenimiento") && e.id !== "ALERTA" && (
                 <MaintenanceDialog
                   equipoId={e.id}
                   trigger={
-                    <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2.5 text-xs gap-1.5 border-primary/40 hover:bg-primary/10 hover:text-primary shrink-0 font-medium"
+                    >
                       <Wrench className="size-3 text-primary" />
                       Atender
                     </Button>
@@ -101,7 +133,7 @@ function AlertGroup({
           </div>
         ))}
         {items.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-4">
+          <p className="text-sm text-muted-foreground text-center py-6">
             Sin alertas en esta categoría.
           </p>
         )}
@@ -153,40 +185,38 @@ function AlertasPage() {
       description={`${totalAlertas} alertas de mantenimiento y operatividad activas`}
     >
       {/* Sede Filter Bar */}
-      <Card className="shadow-[var(--shadow-card)] mb-6">
-        <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 py-3.5">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Building2 className="size-4 text-muted-foreground" />
-            <span>Filtrar alertas por sede:</span>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Select value={sedeFilter} onValueChange={setSedeFilter}>
-              <SelectTrigger className="w-full sm:w-[220px]">
-                <SelectValue placeholder="Todas las sedes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas las sedes</SelectItem>
-                {sedes.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-card border rounded-lg px-4 py-2.5 shadow-[var(--shadow-card)]">
+        <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-muted-foreground">
+          <Building2 className="size-4 text-primary" />
+          <span>Filtrar alertas por sede:</span>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Select value={sedeFilter} onValueChange={setSedeFilter}>
+            <SelectTrigger className="w-full sm:w-[220px] h-8 text-xs">
+              <SelectValue placeholder="Todas las sedes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas las sedes</SelectItem>
+              {sedes.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            {sedeFilter !== "todas" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSedeFilter("todas")}
-                className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
-              >
-                <X className="mr-1 size-3.5" /> Limpiar
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+          {sedeFilter !== "todas" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSedeFilter("todas")}
+              className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
+            >
+              <X className="mr-1 size-3.5" /> Limpiar
+            </Button>
+          )}
+        </div>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <AlertGroup

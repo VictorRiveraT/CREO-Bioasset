@@ -879,7 +879,13 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
     },
 
-    locationName: (id) => db.locations.find((l) => l.id === id)?.nombre ?? "N/A",
+    locationName: (id) => {
+      const found = db.locations.find((l) => l.id === id);
+      if (!found || !found.nombre || found.nombre === "___EMPTY___" || found.nombre === "N/A") {
+        return "Sin asignar";
+      }
+      return found.nombre;
+    },
 
     userName: (id) => db.users.find((u) => u.id === id)?.nombre ?? "N/A",
 

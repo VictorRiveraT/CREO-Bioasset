@@ -214,7 +214,7 @@ function DetalleEquipo() {
     <AppShell
       title={
         <>
-          <span className="text-yellow-500">{equipo.codigo}</span> — {equipo.nombre}
+          <span className="text-amber-600 dark:text-amber-400 font-bold">{equipo.codigo}</span> — {equipo.nombre}
         </>
       }
       description="Ficha completa del equipo biomédico"
@@ -307,7 +307,7 @@ function DetalleEquipo() {
           <CardContent className="grid gap-5 sm:grid-cols-3">
             <Field
               label="Código patrimonial"
-              value={<span className="text-yellow-500 font-semibold">{equipo.codigo}</span>}
+              value={<span className="text-amber-600 dark:text-amber-400 font-semibold">{equipo.codigo}</span>}
             />
             <Field label="Nombre" value={equipo.nombre} />
             <Field label="Categoría" value={equipo.categoria} />
@@ -339,7 +339,7 @@ function DetalleEquipo() {
               <QRCodeSVG id="equipment-qr-code" value={qrUrl || equipo.codigo} size={140} />
             </div>
             <div>
-              <p className="text-sm font-bold text-yellow-500">{equipo.codigo}</p>
+              <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{equipo.codigo}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Escanee el código para abrir la ficha pública o consultar historial.
               </p>

@@ -197,7 +197,7 @@ function EquiposPage() {
             <TableBody>
               {rows.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell className="font-medium text-yellow-500">{e.codigo}</TableCell>
+                  <TableCell className="font-semibold text-amber-600 dark:text-amber-400">{e.codigo}</TableCell>
                   <TableCell>{e.nombre}</TableCell>
                   <TableCell className="text-muted-foreground">{e.categoria}</TableCell>
                   <TableCell>{e.marca}</TableCell>

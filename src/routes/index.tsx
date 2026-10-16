@@ -310,7 +310,7 @@ function Dashboard() {
                     <Link
                       to="/equipos/$id"
                       params={{ id: encryptUrlParam(e.id) }}
-                      className="font-medium text-yellow-500 hover:underline"
+                      className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
                     >
                       {e.codigo}
                     </Link>
