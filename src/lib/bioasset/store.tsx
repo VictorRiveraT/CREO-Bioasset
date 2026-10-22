@@ -34,7 +34,7 @@ export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
 
     mantenimiento: { view: true, edit: true },
 
-    ubicaciones: { view: true, edit: false },
+    ubicaciones: { view: true, edit: true },
 
     incidencias: { view: true, edit: true },
 
@@ -586,7 +586,10 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
     canView: (mod) => user?.permisos?.[mod]?.view ?? false,
 
-    canEdit: (mod) => user?.permisos?.[mod]?.edit ?? false,
+    canEdit: (mod) => {
+      if (user?.rol === "admin") return true;
+      return user?.permisos?.[mod]?.edit ?? false;
+    },
 
     addEquipment: async (e) => {
       const payload = {
@@ -701,6 +704,24 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         }),
       });
 
+      if (m.equipoId) {
+        const patchPayload: Record<string, any> = {};
+        if (m.resultado === "En progreso" || m.resultado === "En proceso") {
+          patchPayload.estado = "En mantenimiento";
+        } else if (m.resultado === "Completado") {
+          patchPayload.estado = "Operativo";
+          if (m.proximaFecha) {
+            patchPayload.proximoMantenimiento = m.proximaFecha;
+          }
+        }
+        if (Object.keys(patchPayload).length > 0) {
+          await fetchApi(`/inventario/activos/${m.equipoId}`, {
+            method: "PATCH",
+            body: JSON.stringify(patchPayload),
+          }).catch((e) => console.warn("Failed to sync equipment status:", e));
+        }
+      }
+
       await fetchDb();
     },
 
@@ -722,6 +743,25 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           archivoBase64: m.archivoBase64,
         }),
       });
+
+      const targetEquipoId = m.equipoId || db.maintenance.find((x) => x.id === id)?.equipoId;
+      if (targetEquipoId) {
+        const patchPayload: Record<string, any> = {};
+        if (m.resultado === "En progreso" || m.resultado === "En proceso") {
+          patchPayload.estado = "En mantenimiento";
+        } else if (m.resultado === "Completado") {
+          patchPayload.estado = "Operativo";
+          if (m.proximaFecha) {
+            patchPayload.proximoMantenimiento = m.proximaFecha;
+          }
+        }
+        if (Object.keys(patchPayload).length > 0) {
+          await fetchApi(`/inventario/activos/${targetEquipoId}`, {
+            method: "PATCH",
+            body: JSON.stringify(patchPayload),
+          }).catch((e) => console.warn("Failed to sync equipment status:", e));
+        }
+      }
 
       await fetchDb();
     },
@@ -813,7 +853,15 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       return found.nombre;
     },
 
-    userName: (id) => db.users.find((u) => u.id === id)?.nombre ?? "N/A",
+    userName: (id) => {
+      if (!id) return "Sin asignar";
+      const found = db.users.find((u) => u.id === id);
+      if (found && found.nombre) return found.nombre;
+      if (typeof id === "string" && !id.includes("-") && id.trim().length > 1) {
+        return id;
+      }
+      return "Técnico Asignado";
+    },
 
     saveMarca: async (marca) => {
       if (marca.id) {
@@ -860,38 +908,50 @@ export function useBio() {
 
 export function daysUntil(dateStr: string) {
   if (!dateStr) return 0;
-
-  const target = new Date(`${dateStr}T00:00:00`).getTime();
-
+  const clean = dateStr.substring(0, 10);
+  const parts = clean.split("-");
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const target = new Date(y, m, d).getTime();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((target - today.getTime()) / 86400000);
+  }
+  const target = new Date(dateStr).getTime();
   const today = new Date();
-
   today.setHours(0, 0, 0, 0);
-
   return Math.round((target - today.getTime()) / 86400000);
 }
 
 export function formatDate(value: string) {
   if (!value) return "N/A";
-
-  const d = new Date(value.length <= 10 ? `${value}T00:00:00` : value);
-
-  return d.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
+  const clean = value.substring(0, 10);
+  const parts = clean.split("-");
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const dt = new Date(y, m, d);
+    return dt.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
+  }
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? value : d.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export function formatDateTime(value: string) {
   if (!value) return "N/A";
-
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    return formatDate(value);
+  }
   const d = new Date(value);
-
+  if (isNaN(d.getTime())) return value;
   return d.toLocaleString("es-PE", {
     day: "2-digit",
-
     month: "short",
-
     year: "numeric",
-
     hour: "2-digit",
-
     minute: "2-digit",
   });
 }

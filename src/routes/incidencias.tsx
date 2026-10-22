@@ -164,18 +164,27 @@ function IncidenciasPage() {
                         <span className="text-sm">{i.titulo}</span>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            i.estado === "Abierta"
-                              ? "bg-destructive/15 text-destructive border-destructive/30 font-semibold"
-                              : i.estado === "En revision"
-                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-semibold"
-                                : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-semibold"
-                          }
-                        >
-                          {i.estado}
-                        </Badge>
+                        <div className="flex flex-col gap-1 items-start">
+                          <Badge
+                            variant="outline"
+                            className={
+                              i.estado === "Abierta"
+                                ? "bg-destructive/15 text-destructive border-destructive/30 font-semibold"
+                                : i.estado === "En revision"
+                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-semibold"
+                                  : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-semibold"
+                            }
+                          >
+                            {i.estado}
+                          </Badge>
+                          {db.maintenance.some((m) => m.incidenciaId === i.id) && (
+                            <Link to="/mantenimiento">
+                              <Badge variant="secondary" className="text-[10px] hover:underline">
+                                Mantenimiento vinculado
+                              </Badge>
+                            </Link>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         {canEdit("mantenimiento") && i.estado !== "Cerrada" && e && (

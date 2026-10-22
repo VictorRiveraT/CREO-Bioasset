@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { daysUntil, formatDate, useBio } from "@/lib/bioasset/store";
+import { daysUntil, formatDate, formatDateTime, useBio } from "@/lib/bioasset/store";
 import { MaintenanceDialog } from "@/components/bioasset/dialogs";
 import type { Equipment } from "@/lib/bioasset/types";
 import { encryptUrlParam } from "@/lib/bioasset/security";
@@ -95,7 +95,7 @@ function AlertGroup({
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <StatusBadge status={e.estado} />
-                <DueBadge days={daysUntil(e.proximoMantenimiento)} />
+                <DueBadge days={daysUntil(e.proximoMantenimiento)} status={e.estado} />
               </div>
             </div>
 
@@ -171,14 +171,43 @@ function AlertasPage() {
     [eq],
   );
   const enMantenimiento = useMemo(() => eq.filter((e) => e.estado === "En mantenimiento"), [eq]);
-  const fueraServicio = useMemo(() => eq.filter((e) => e.estado === "Fuera de servicio"), [eq]);
+  const fueraServicio = useMemo(
+    () => eq.filter((e) => e.estado === "Fuera de servicio" || e.estado === "Inoperativo"),
+    [eq],
+  );
 
-  const totalAlertas = vencidos.length + proximos.length + fueraServicio.length;
+  const incidenciasAbiertas = useMemo(() => {
+    return (db.incidents || []).filter((inc) => {
+      if (inc.estado === "Cerrada" || inc.estado === "Resuelta") return false;
+      if (!sedeLocations) return true;
+      const eqFound = db.equipment.find((x) => x.id === inc.activoId);
+      if (!eqFound) return true;
+      return sedeLocations.has(eqFound.ubicacionId);
+    });
+  }, [db.incidents, db.equipment, sedeLocations]);
+
+  const criticalAlerts = useMemo(() => {
+    return (db.alertas || []).filter((a: any) => {
+      if (a.estado === "Atendida" || a.estado === "Resuelta") return false;
+      if (!sedeLocations) return true;
+      const eqFound = db.equipment.find((x) => x.id === a.activoId);
+      if (!eqFound) return true;
+      return sedeLocations.has(eqFound.ubicacionId);
+    });
+  }, [db.alertas, db.equipment, sedeLocations]);
+
+  const totalAlertas =
+    vencidos.length +
+    proximos.length +
+    enMantenimiento.length +
+    fueraServicio.length +
+    incidenciasAbiertas.length +
+    criticalAlerts.length;
 
   return (
     <AppShell
       title="Centro de Alertas"
-      description={`${totalAlertas} alertas de mantenimiento y operatividad activas`}
+      description={`${totalAlertas} alertas de mantenimiento, averías y operatividad activas`}
     >
       {/* Sede Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-card border rounded-lg px-4 py-2.5 shadow-[var(--shadow-card)]">
@@ -246,36 +275,139 @@ function AlertasPage() {
         />
 
         <AlertGroup
-          title="Equipos fuera de servicio"
+          title="Equipos fuera de servicio / Inoperativos"
           icon={XCircle}
           tone="bg-destructive/15 text-destructive"
           items={fueraServicio}
-          message={(e) => `El equipo ${e.codigo} presenta falla técnica y está inoperativo.`}
+          message={(e) => `El equipo ${e.codigo} presenta falla técnica o estado inoperativo.`}
         />
 
-        <AlertGroup
-          title="Notificaciones Críticas del Sistema"
-          icon={AlertTriangle}
-          tone="bg-purple-500/20 text-purple-600 dark:text-purple-400"
-          items={
-            db.alertas.map((a: any) => {
+        {/* Incidencias / Averías Abiertas */}
+        <Card className="shadow-[var(--shadow-card)]">
+          <CardHeader className="flex-row items-center gap-3 space-y-0 pb-3 border-b">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-orange-500/15 text-orange-600 dark:text-orange-400">
+              <Wrench className="size-4" />
+            </div>
+            <CardTitle className="text-base flex items-center justify-between w-full">
+              <span>Incidencias / Averías Abiertas</span>
+              <Badge variant="secondary" className="font-semibold text-xs">
+                {incidenciasAbiertas.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-3">
+            {incidenciasAbiertas.map((inc) => {
+              const eqFound = db.equipment.find((x) => x.id === inc.activoId);
+              return (
+                <div
+                  key={inc.id}
+                  className="rounded-lg border bg-card p-3 shadow-xs space-y-2 hover:border-primary/40 hover:shadow-sm transition-all"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-[200px]">
+                      {eqFound && (
+                        <Link
+                          to="/equipos/$id"
+                          params={{ id: encryptUrlParam(eqFound.id) }}
+                          className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 hover:underline"
+                        >
+                          {eqFound.codigo}
+                        </Link>
+                      )}
+                      <span className="text-sm font-semibold text-foreground">
+                        {inc.titulo}
+                      </span>
+                    </div>
+                    <Badge variant="destructive" className="text-[10px] uppercase">
+                      {inc.estado}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {eqFound ? `${eqFound.nombre} · ${eqFound.marca || ""} ${eqFound.modelo || ""}` : "Equipo reportado con falla"}
+                  </p>
+                  <div className="flex items-center justify-between pt-2 border-t text-xs">
+                    <span className="text-muted-foreground">
+                      Fecha: {formatDateTime(inc.fecha || inc.fechaCreacion || new Date().toISOString())}
+                    </span>
+                    <Link
+                      to="/incidencias"
+                      className="text-xs text-primary font-semibold hover:underline"
+                    >
+                      Ir a incidencias →
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+            {incidenciasAbiertas.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Sin incidencias abiertas pendientes.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Notificaciones Críticas del Sistema (RabbitMQ) */}
+        <Card className="shadow-[var(--shadow-card)]">
+          <CardHeader className="flex-row items-center gap-3 space-y-0 pb-3 border-b">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-purple-500/20 text-purple-600 dark:text-purple-400">
+              <AlertTriangle className="size-4" />
+            </div>
+            <CardTitle className="text-base flex items-center justify-between w-full">
+              <span>Eventos Críticos (Bus RabbitMQ)</span>
+              <Badge variant="secondary" className="font-semibold text-xs">
+                {criticalAlerts.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-3">
+            {criticalAlerts.map((a: any) => {
               const eqFound = db.equipment.find((x) => x.id === a.activoId);
-              return {
-                id: eqFound ? eqFound.id : a.activoId || a.id,
-                codigo: eqFound ? eqFound.codigo : "ALERTA",
-                nombre: eqFound
-                  ? `${eqFound.nombre} — ${a.mensaje || a.tipo}`
-                  : a.mensaje || a.tipo,
-                estado: eqFound ? eqFound.estado : a.estado || "Activa",
-                ubicacionId: eqFound ? eqFound.ubicacionId : "",
-                proximoMantenimiento: eqFound
-                  ? eqFound.proximoMantenimiento
-                  : new Date().toISOString().split("T")[0],
-              };
-            }) as any
-          }
-          message={() => `Evento crítico del bus de mensajería (RabbitMQ).`}
-        />
+              return (
+                <div
+                  key={a.id}
+                  className="rounded-lg border bg-card p-3 shadow-xs space-y-2 hover:border-purple-500/40 hover:shadow-sm transition-all"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-[200px]">
+                      <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                        ID #{a.id?.substring(0, 8)}
+                      </span>
+                      <span className="text-sm font-semibold text-foreground">
+                        {a.tipo || "Alerta de Telemetría"}
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="border-purple-500/30 text-purple-600 dark:text-purple-300 text-[10px] font-semibold">
+                      {a.severidad || "Alta"} · {a.estado || "Activa"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {a.mensaje || "Evento crítico transmitido por el bus de mensajería asíncrona."}
+                  </p>
+                  <div className="flex items-center justify-between pt-2 border-t text-xs">
+                    <span className="text-muted-foreground font-mono text-[11px]">
+                      Origen: RabbitMQ · {formatDateTime(a.fechaCreacion || a.fecha || new Date().toISOString())}
+                    </span>
+                    {eqFound && (
+                      <Link
+                        to="/equipos/$id"
+                        params={{ id: encryptUrlParam(eqFound.id) }}
+                        className="text-xs text-primary font-semibold hover:underline"
+                      >
+                        Ver {eqFound.codigo} →
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {criticalAlerts.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Sin eventos críticos activos en el bus de mensajería.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppShell>
   );

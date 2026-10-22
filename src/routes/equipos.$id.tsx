@@ -139,6 +139,10 @@ function DetalleEquipo() {
     .filter((m) => m.equipoId === equipo.id)
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
 
+  const activeAlert = (db.alertas || []).find(
+    (a) => a.activoId === equipo.id && a.estado !== "Atendida" && a.estado !== "Resuelta",
+  );
+
   const qrUrl = typeof window !== "undefined" ? `${window.location.origin}/qr/${equipo.id}` : "";
 
   const downloadQR = () => {
@@ -296,6 +300,26 @@ function DetalleEquipo() {
         </Link>
       </Button>
 
+      {activeAlert && (
+        <div className="mb-4 rounded-lg border border-purple-500/40 bg-purple-500/10 p-4 text-purple-900 dark:text-purple-200 flex items-start gap-3 shadow-xs">
+          <AlertTriangle className="size-5 shrink-0 text-purple-600 dark:text-purple-400 mt-0.5" />
+          <div className="flex-1 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-xs uppercase tracking-wide">
+                Alerta Crítica Activa (Bus RabbitMQ #{activeAlert.id?.substring(0, 8)})
+              </span>
+              <Badge variant="outline" className="border-purple-500/40 text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300">
+                {activeAlert.severidad || "Alta"}
+              </Badge>
+            </div>
+            <p className="mt-1 font-medium">{activeAlert.mensaje || activeAlert.tipo}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Registrado: {formatDateTime(activeAlert.fechaCreacion || activeAlert.fecha || new Date().toISOString())}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Info general */}
         <Card className="shadow-[var(--shadow-card)] lg:col-span-2">
@@ -324,7 +348,7 @@ function DetalleEquipo() {
               value={
                 <span className="flex items-center gap-2">
                   {formatDate(equipo.proximoMantenimiento)}
-                  <DueBadge days={daysUntil(equipo.proximoMantenimiento)} />
+                  <DueBadge days={daysUntil(equipo.proximoMantenimiento)} status={equipo.estado} />
                 </span>
               }
             />
@@ -385,9 +409,11 @@ function DetalleEquipo() {
               <li key={m.id} className="relative">
                 <span className="absolute -left-[31px] top-1 size-3 rounded-full bg-primary ring-4 ring-background" />
                 <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                  {m.origenId ? locationName(m.origenId) : "Ingreso"}
-                  <ArrowRight className="size-3.5 text-muted-foreground" />
-                  {locationName(m.destinoId)}
+                  <span className="text-xs text-muted-foreground font-normal">Origen:</span>
+                  <span className="font-semibold">{m.origenId ? locationName(m.origenId) : "Alta inicial"}</span>
+                  <ArrowRight className="size-3.5 text-primary shrink-0" />
+                  <span className="text-xs text-muted-foreground font-normal">Destino:</span>
+                  <span className="font-semibold text-primary">{locationName(m.destinoId)}</span>
                   <Badge variant="secondary">{m.motivo}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">

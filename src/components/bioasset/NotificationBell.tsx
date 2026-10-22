@@ -30,11 +30,30 @@ export interface NotificationItem {
   leido: boolean;
 }
 
+const STORAGE_KEY = "bioasset_read_notifications";
+
 export function NotificationBell() {
   const navigate = useNavigate();
   const { db, user } = useBio();
   const [open, setOpen] = useState(false);
-  const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
+  const [readIds, setReadIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const saveReadIds = (newSet: Set<string>) => {
+    setReadIds(newSet);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Helper para verificar si un equipo pertenece a la sede autorizada del usuario
   const isEquipmentInUserSede = (eq: any) => {
@@ -56,9 +75,9 @@ export function NotificationBell() {
   const notifications = useMemo(() => {
     const list: NotificationItem[] = [];
 
-    // 1. Mantenimientos Vencidos o Próximos
+    // 1. Mantenimientos Vencidos o Próximos (excluyendo equipos de baja)
     db.equipment.forEach((e) => {
-      if (!e.activo) return;
+      if (!e.activo || e.estado === "De baja") return;
       if (!isEquipmentInUserSede(e)) return;
 
       const days = daysUntil(e.proximoMantenimiento);
@@ -190,7 +209,8 @@ export function NotificationBell() {
   }, [unreadCount, notifications, user, navigate]);
 
   const handleNotificationClick = (item: NotificationItem) => {
-    setReadIds((prev) => new Set([...prev, item.id]));
+    const next = new Set([...readIds, item.id]);
+    saveReadIds(next);
     setOpen(false);
 
     if (item.equipoId) {
@@ -203,7 +223,7 @@ export function NotificationBell() {
 
   const handleMarkAllRead = () => {
     const allIds = notifications.map((n) => n.id);
-    setReadIds(new Set(allIds));
+    saveReadIds(new Set(allIds));
     toast.success("Notificaciones marcadas como leídas");
   };
 

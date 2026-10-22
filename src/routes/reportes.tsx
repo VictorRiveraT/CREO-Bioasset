@@ -159,6 +159,8 @@ function ReportesPage() {
     return new Set(db.locations.filter((l) => l.sede === sedeFilter).map((l) => l.id));
   }, [db.locations, sedeFilter]);
 
+  const isInvalidDateRange = Boolean(fechaDesde && fechaHasta && fechaDesde > fechaHasta);
+
   const filterSummary = useMemo(() => {
     const parts = [];
     parts.push(`Sede: ${sedeFilter === "todas" ? "Todas las sedes" : sedeFilter}`);
@@ -171,16 +173,18 @@ function ReportesPage() {
 
   // 1. Filtered Equipment
   const filteredEquipment = useMemo(() => {
+    if (isInvalidDateRange) return [];
     return db.equipment.filter((e) => {
       if (sedeLocations && !sedeLocations.has(e.ubicacionId)) return false;
       if (fechaDesde && e.fechaAdquisicion && e.fechaAdquisicion < fechaDesde) return false;
       if (fechaHasta && e.fechaAdquisicion && e.fechaAdquisicion > fechaHasta) return false;
       return true;
     });
-  }, [db.equipment, sedeLocations, fechaDesde, fechaHasta]);
+  }, [db.equipment, sedeLocations, fechaDesde, fechaHasta, isInvalidDateRange]);
 
   // 2. Filtered Maintenance
   const filteredMaintenance = useMemo(() => {
+    if (isInvalidDateRange) return [];
     return db.maintenance.filter((m) => {
       const e = equipmentById(m.equipoId);
       if (sedeLocations && e && !sedeLocations.has(e.ubicacionId)) return false;
@@ -189,19 +193,27 @@ function ReportesPage() {
       if (fechaHasta && mDate && mDate > fechaHasta) return false;
       return true;
     });
-  }, [db.maintenance, equipmentById, sedeLocations, fechaDesde, fechaHasta]);
+  }, [db.maintenance, equipmentById, sedeLocations, fechaDesde, fechaHasta, isInvalidDateRange]);
 
   // 3. Filtered Incidents
   const filteredIncidents = useMemo(() => {
+    if (isInvalidDateRange) return [];
     return db.incidents.filter((i) => {
       const e = equipmentById(i.activoId);
       if (sedeLocations && e && !sedeLocations.has(e.ubicacionId)) return false;
+      const iDate = (i.fecha || (i as any).fechaCreacion || "").substring(0, 10);
+      if (fechaDesde && iDate && iDate < fechaDesde) return false;
+      if (fechaHasta && iDate && iDate > fechaHasta) return false;
       return true;
     });
-  }, [db.incidents, equipmentById, sedeLocations]);
+  }, [db.incidents, equipmentById, sedeLocations, fechaDesde, fechaHasta, isInvalidDateRange]);
 
   // Inventory Exports
   const exportInventoryCSV = () => {
+    if (isInvalidDateRange) {
+      toast.error("Rango de fechas no válido: La fecha 'Desde' no puede ser posterior a 'Hasta'.");
+      return;
+    }
     const data = filteredEquipment.map((e) => ({
       "Código Patrimonial": e.codigo,
       "Nombre del Equipo": e.nombre,
@@ -218,6 +230,10 @@ function ReportesPage() {
   };
 
   const printInventoryPDF = () => {
+    if (isInvalidDateRange) {
+      toast.error("Rango de fechas no válido: La fecha 'Desde' no puede ser posterior a 'Hasta'.");
+      return;
+    }
     const headers = [
       "Código",
       "Nombre",
@@ -245,6 +261,10 @@ function ReportesPage() {
 
   // Maintenance Exports
   const exportMaintenanceCSV = () => {
+    if (isInvalidDateRange) {
+      toast.error("Rango de fechas no válido: La fecha 'Desde' no puede ser posterior a 'Hasta'.");
+      return;
+    }
     const data = filteredMaintenance.map((m) => {
       const e = equipmentById(m.equipoId);
       return {
@@ -261,6 +281,10 @@ function ReportesPage() {
   };
 
   const printMaintenancePDF = () => {
+    if (isInvalidDateRange) {
+      toast.error("Rango de fechas no válido: La fecha 'Desde' no puede ser posterior a 'Hasta'.");
+      return;
+    }
     const headers = [
       "Fecha",
       "Código",
@@ -287,6 +311,10 @@ function ReportesPage() {
 
   // Incident Exports
   const exportIncidentsCSV = () => {
+    if (isInvalidDateRange) {
+      toast.error("Rango de fechas no válido: La fecha 'Desde' no puede ser posterior a 'Hasta'.");
+      return;
+    }
     const data = filteredIncidents.map((i) => {
       const e = equipmentById(i.activoId);
       return {
@@ -301,6 +329,10 @@ function ReportesPage() {
   };
 
   const printIncidentsPDF = () => {
+    if (isInvalidDateRange) {
+      toast.error("Rango de fechas no válido: La fecha 'Desde' no puede ser posterior a 'Hasta'.");
+      return;
+    }
     const headers = ["Código", "Equipo", "Ubicación", "Problema Reportado", "Estado"];
     const rows = filteredIncidents.map((i) => {
       const e = equipmentById(i.activoId);
@@ -388,6 +420,15 @@ function ReportesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {isInvalidDateRange && (
+        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 p-3.5 text-xs text-destructive flex items-center gap-2.5 shadow-xs">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span className="font-semibold">
+            Rango de fechas no válido: La fecha inicial no puede ser posterior a la fecha final. Corrija los valores para generar reportes.
+          </span>
+        </div>
+      )}
 
       {/* Report Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

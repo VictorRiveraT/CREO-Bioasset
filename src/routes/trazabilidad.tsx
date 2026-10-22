@@ -177,10 +177,12 @@ function TrazabilidadPage() {
                       <span className="text-muted-foreground">{e?.nombre}</span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      <span className="inline-flex items-center gap-2">
-                        {m.origenId ? locationName(m.origenId) : "Ingreso"}
-                        <ArrowRight className="size-3.5 text-muted-foreground" />
-                        {locationName(m.destinoId)}
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                        <span className="text-muted-foreground font-normal">
+                          {m.origenId ? locationName(m.origenId) : "Alta inicial"}
+                        </span>
+                        <ArrowRight className="size-3 text-primary shrink-0" />
+                        <span className="text-primary font-semibold">{locationName(m.destinoId)}</span>
                       </span>
                     </TableCell>
                     <TableCell>{m.motivo}</TableCell>

@@ -36,7 +36,15 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/ubicaciones", [Authorize] async (InvDb db) => Results.Ok(new { ubicaciones = await db.Ubicaciones.ToListAsync() }));
-app.MapPost("/ubicaciones", [Authorize(Roles = "admin")] async (Ubicacion dto, InvDb db) => { db.Ubicaciones.Add(dto); await db.SaveChangesAsync(); return Results.Created("", dto); });
+app.MapPost("/ubicaciones", [Authorize(Roles = "admin")] async (Ubicacion dto, InvDb db) => {
+    var existing = await db.Ubicaciones.AnyAsync(u => u.Nombre.ToLower() == dto.Nombre.ToLower() && u.Sede.ToLower() == dto.Sede.ToLower() && u.Piso.ToLower() == dto.Piso.ToLower());
+    if (existing) {
+        return Results.BadRequest(new { error = $"Ya existe el área '{dto.Nombre}' en {dto.Sede}, {dto.Piso}." });
+    }
+    db.Ubicaciones.Add(dto);
+    await db.SaveChangesAsync();
+    return Results.Created("", dto);
+});
 app.MapPut("/ubicaciones/{id}", [Authorize(Roles = "admin")] async (Guid id, Ubicacion dto, InvDb db) => {
     var u = await db.Ubicaciones.FindAsync(id);
     if(u!=null) { u.Nombre = dto.Nombre; u.Descripcion = dto.Descripcion; u.Activo = dto.Activo; u.Sede = dto.Sede; u.Piso = dto.Piso; await db.SaveChangesAsync(); }
@@ -153,6 +161,12 @@ app.MapPost("/activos", [Authorize(Roles = "admin,inventario,biomedico")] async 
     if (rol != "admin" && sede != "Todas") {
         var u = await db.Ubicaciones.FindAsync(dto.UbicacionId);
         if (u == null || u.Sede != sede) return Results.Forbid();
+    }
+    if (await db.Activos.AnyAsync(a => a.Codigo.ToLower() == dto.Codigo.ToLower())) {
+        return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el código patrimonial '{dto.Codigo}'." });
+    }
+    if (!string.IsNullOrEmpty(dto.Serie) && await db.Activos.AnyAsync(a => a.Serie.ToLower() == dto.Serie.ToLower())) {
+        return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el número de serie '{dto.Serie}'." });
     }
     dto.Id = Guid.NewGuid();
     db.Activos.Add(dto);

@@ -214,7 +214,7 @@ function EquiposPage() {
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {formatDate(e.proximoMantenimiento)}{" "}
-                    <DueBadge days={daysUntil(e.proximoMantenimiento)} />
+                    <DueBadge days={daysUntil(e.proximoMantenimiento)} status={e.estado} />
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">

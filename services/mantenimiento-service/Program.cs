@@ -58,8 +58,6 @@ async Task<string?> ProcessUpload(string? base64Str) {
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-
-
 app.MapGet("/mantenimientos", [Authorize] async (MantDb db, HttpContext ctx, int page = 1, int limit = 1000) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
@@ -80,10 +78,12 @@ app.MapGet("/mantenimientos", [Authorize] async (MantDb db, HttpContext ctx, int
     var items = await q.OrderByDescending(m => m.Fecha).Skip((page - 1) * limit).Take(limit).ToListAsync();
     return Results.Ok(new { mantenimientos = items, total, page, limit });
 });
+
 app.MapGet("/mantenimientos/{id}", [Authorize] async (Guid id, MantDb db) => {
     var m = await db.Mantenimientos.FindAsync(id);
     return m != null ? Results.Ok(new { mantenimiento = m }) : Results.NotFound();
 });
+
 app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (CreateMantenimientoDto dto, MantDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
@@ -126,10 +126,24 @@ app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (Cre
         }
     }
 
+    // Update equipment next maintenance date & status directly
+    var activoTarget = await db.Activos.FindAsync(entity.ActivoId);
+    if (activoTarget != null) {
+        if (!string.IsNullOrEmpty(entity.ProximaFecha)) {
+            activoTarget.ProximoMantenimiento = entity.ProximaFecha;
+        }
+        if (entity.Estado == "Completado" || entity.Estado == "Finalizado") {
+            activoTarget.Estado = "Operativo";
+        } else if (entity.Estado == "En progreso") {
+            activoTarget.Estado = "En mantenimiento";
+        }
+    }
+
     await db.SaveChangesAsync();
     EventBus.Publish("mantenimientos_q", new { Action = "Created", Data = entity });
     return Results.Created($"/mantenimientos/{entity.Id}", entity);
 });
+
 app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, System.Text.Json.Nodes.JsonObject dto, MantDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
@@ -179,6 +193,19 @@ app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async 
         }
     }
 
+    // Synchronize equipment next maintenance date and state
+    var activoTarget = await db.Activos.FindAsync(m.ActivoId);
+    if (activoTarget != null) {
+        if (!string.IsNullOrEmpty(m.ProximaFecha)) {
+            activoTarget.ProximoMantenimiento = m.ProximaFecha;
+        }
+        if (m.Estado == "Completado" || m.Estado == "Finalizado") {
+            activoTarget.Estado = "Operativo";
+        } else if (m.Estado == "En progreso") {
+            activoTarget.Estado = "En mantenimiento";
+        }
+    }
+
     await db.SaveChangesAsync();
     EventBus.Publish("mantenimientos_q", new { Action = "Updated", Data = m });
     return Results.NoContent();
@@ -204,10 +231,12 @@ app.MapGet("/incidencias", [Authorize] async (MantDb db, HttpContext ctx, int pa
     var items = await q.Skip((page - 1) * limit).Take(limit).ToListAsync();
     return Results.Ok(new { incidencias = items, total, page, limit });
 });
+
 app.MapGet("/incidencias/{id}", [Authorize] async (Guid id, MantDb db) => {
     var i = await db.Incidencias.FindAsync(id);
     return i != null ? Results.Ok(new { incidencia = i }) : Results.NotFound();
 });
+
 app.MapPost("/incidencias", [Authorize] async (CreateIncidenciaDto dto, MantDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
@@ -230,6 +259,7 @@ app.MapPost("/incidencias", [Authorize] async (CreateIncidenciaDto dto, MantDb d
     EventBus.Publish("incidencias_q", new { Action = "Created", Data = entity });
     return Results.Created($"/incidencias/{entity.Id}", entity);
 });
+
 app.MapPut("/incidencias/{id}", [Authorize] async (Guid id, UpdateIncidenciaDto dto, MantDb db, HttpContext ctx) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
@@ -298,9 +328,18 @@ public class MantDb : DbContext {
         modelBuilder.Entity<InvActivo>().ToTable("Activos", "inventario");
     }
 }
-public class InvUbicacion { [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } public string Sede { get; set; } = ""; }
-public class InvActivo { [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } public Guid UbicacionId { get; set; } }
 
+public class InvUbicacion { 
+    [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } 
+    public string Sede { get; set; } = ""; 
+}
+
+public class InvActivo { 
+    [System.ComponentModel.DataAnnotations.Key] public Guid Id { get; set; } 
+    public Guid UbicacionId { get; set; } 
+    public string? Estado { get; set; }
+    public string? ProximoMantenimiento { get; set; }
+}
 
 public class Mantenimiento {
     [Key] public Guid Id { get; set; } = Guid.NewGuid();

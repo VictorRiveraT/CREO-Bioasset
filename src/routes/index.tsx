@@ -328,7 +328,7 @@ function Dashboard() {
                   </TableCell>
                   <TableCell>{formatDate(e.proximoMantenimiento)}</TableCell>
                   <TableCell>
-                    <DueBadge days={daysUntil(e.proximoMantenimiento)} />
+                    <DueBadge days={daysUntil(e.proximoMantenimiento)} status={e.estado} />
                   </TableCell>
                 </TableRow>
               ))}

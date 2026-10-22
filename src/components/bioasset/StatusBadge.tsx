@@ -2,27 +2,39 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { EquipmentStatus } from "@/lib/bioasset/types";
 
-const MAP: Record<EquipmentStatus, string> = {
+const MAP: Record<string, string> = {
   Operativo: "bg-success/15 text-success border-success/30",
-  "En mantenimiento": "bg-warning/20 text-warning-foreground border-warning/40",
+  "En mantenimiento": "bg-amber-500/20 text-amber-800 dark:text-white dark:bg-amber-600/50 border-amber-500/50 font-semibold",
   "Fuera de servicio": "bg-destructive/15 text-destructive border-destructive/30",
+  Inoperativo: "bg-destructive/15 text-destructive border-destructive/30",
   "De baja": "bg-muted text-muted-foreground border-border",
 };
 
-export function StatusBadge({ status }: { status: EquipmentStatus }) {
+export function StatusBadge({ status }: { status: EquipmentStatus | string }) {
+  const cls = MAP[status] || "bg-muted text-muted-foreground border-border";
   return (
-    <Badge variant="outline" className={cn("font-medium whitespace-nowrap shrink-0", MAP[status])}>
+    <Badge variant="outline" className={cn("font-medium whitespace-nowrap shrink-0", cls)}>
       {status}
     </Badge>
   );
 }
 
-export function DueBadge({ days }: { days: number }) {
+export function DueBadge({ days, status }: { days: number; status?: string }) {
+  if (status === "De baja") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-muted bg-muted/40 text-muted-foreground whitespace-nowrap shrink-0"
+      >
+        No aplica (Equipo de baja)
+      </Badge>
+    );
+  }
   if (days < 0)
     return (
       <Badge
         variant="outline"
-        className="border-destructive/30 bg-destructive/15 text-destructive whitespace-nowrap shrink-0"
+        className="border-destructive/30 bg-destructive/15 text-destructive whitespace-nowrap shrink-0 font-semibold"
       >
         Vencido ({Math.abs(days)} d)
       </Badge>
@@ -31,7 +43,7 @@ export function DueBadge({ days }: { days: number }) {
     return (
       <Badge
         variant="outline"
-        className="border-warning/40 bg-warning/20 text-warning-foreground whitespace-nowrap shrink-0"
+        className="border-amber-500/40 bg-amber-500/20 text-amber-800 dark:text-amber-200 whitespace-nowrap shrink-0 font-semibold"
       >
         En {days} d
       </Badge>
@@ -39,7 +51,7 @@ export function DueBadge({ days }: { days: number }) {
   return (
     <Badge
       variant="outline"
-      className="border-success/30 bg-success/15 text-success whitespace-nowrap shrink-0"
+      className="border-success/30 bg-success/15 text-success whitespace-nowrap shrink-0 font-medium"
     >
       En {days} d
     </Badge>

@@ -152,9 +152,18 @@ function MantenimientoPage() {
                       <span className="text-muted-foreground">{e?.nombre}</span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={m.tipo === "Correctivo" ? "destructive" : "secondary"}>
-                        {m.tipo}
-                      </Badge>
+                      <div className="flex flex-col gap-1 items-start">
+                        <Badge variant={m.tipo === "Correctivo" ? "destructive" : "secondary"}>
+                          {m.tipo}
+                        </Badge>
+                        {m.incidenciaId && (
+                          <Link to="/incidencias">
+                            <Badge variant="outline" className="text-[10px] text-amber-600 dark:text-amber-400 border-amber-500/30 hover:underline">
+                              Incidencia vinculada
+                            </Badge>
+                          </Link>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{userName(m.biomedicoId)}</TableCell>
                     <TableCell className="max-w-sm text-muted-foreground">

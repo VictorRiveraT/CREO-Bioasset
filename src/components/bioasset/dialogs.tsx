@@ -94,6 +94,7 @@ export function EquipmentDialog({
   const [open, setOpen] = useState(false);
 
   const [confirm, setConfirm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const activeLocations = db.locations.filter((l) => l.activo);
 
@@ -130,35 +131,33 @@ export function EquipmentDialog({
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
-    if (equipment) {
-      await updateEquipment(equipment.id, form as Partial<Equipment>);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      if (equipment) {
+        await updateEquipment(equipment.id, form as Partial<Equipment>);
+        toast.success(`Equipo ${form.codigo} actualizado`);
+      } else {
+        const res = await addEquipment(form as Omit<Equipment, "id" | "activo">);
+        toast.success(`Equipo ${form.codigo} registrado`);
 
-      toast.success(`Equipo ${form.codigo} actualizado`);
-    } else {
-      const res = await addEquipment(form as Omit<Equipment, "id" | "activo">);
-
-      toast.success(`Equipo ${form.codigo} registrado`);
-
-      if (res && res.qrImage) {
-        const a = document.createElement("a");
-
-        a.href = res.qrImage;
-
-        a.download = `qr_${form.codigo}.png`;
-
-        document.body.appendChild(a);
-
-        a.click();
-
-        document.body.removeChild(a);
-
-        toast.success("Descargando QR...");
+        if (res && res.qrImage) {
+          const a = document.createElement("a");
+          a.href = res.qrImage;
+          a.download = `qr_${form.codigo}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          toast.success("Descargando QR...");
+        }
       }
+      setConfirm(false);
+      setOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || "Error al procesar el equipo");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setConfirm(false);
-
-    setOpen(false);
   };
 
   return (
@@ -180,7 +179,26 @@ export function EquipmentDialog({
 
             onSubmit={(e) => {
               e.preventDefault();
-
+              if (!equipment) {
+                const normCod = form.codigo.trim().toLowerCase();
+                const existsCod = db.equipment.some(
+                  (eq) => (eq.codigo || "").trim().toLowerCase() === normCod,
+                );
+                if (existsCod) {
+                  toast.error(`El código patrimonial "${form.codigo}" ya se encuentra registrado.`);
+                  return;
+                }
+                const normSerie = form.serie.trim().toLowerCase();
+                if (normSerie) {
+                  const existsSerie = db.equipment.some(
+                    (eq) => (eq.serie || "").trim().toLowerCase() === normSerie,
+                  );
+                  if (existsSerie) {
+                    toast.error(`El número de serie "${form.serie}" ya está registrado en otro equipo.`);
+                    return;
+                  }
+                }
+              }
               setConfirm(true);
             }}
           >
@@ -194,8 +212,15 @@ export function EquipmentDialog({
 
                 onChange={(e) => set("codigo", e.target.value)}
 
+                disabled={!!equipment}
+
                 required
               />
+              {equipment && (
+                <p className="text-[11px] text-muted-foreground">
+                  El código patrimonial es identificador único y no puede editarse.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -434,9 +459,11 @@ export function EquipmentDialog({
           </AlertDialogHeader>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
 
-            <AlertDialogAction onClick={save}>Confirmar</AlertDialogAction>
+            <AlertDialogAction onClick={save} disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : "Confirmar"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -655,9 +682,11 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
           </AlertDialogHeader>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
 
-            <AlertDialogAction onClick={save}>Confirmar</AlertDialogAction>
+            <AlertDialogAction onClick={save} disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : "Confirmar"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1145,9 +1174,11 @@ export function MaintenanceDialog({
           </AlertDialogHeader>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isSubmitting}>Cancelar</AlertDialogCancel>
 
-            <AlertDialogAction onClick={save}>Confirmar</AlertDialogAction>
+            <AlertDialogAction onClick={save} disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : "Confirmar"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

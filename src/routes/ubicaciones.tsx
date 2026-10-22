@@ -81,13 +81,12 @@ export const Route = createFileRoute("/ubicaciones")({
 });
 
 function SedeDialog({ trigger }: { trigger: React.ReactNode }) {
-  const { saveLocation } = useBio();
+  const { db, saveLocation } = useBio();
 
   const [open, setOpen] = useState(false);
-
   const [nombre, setNombre] = useState("");
-
   const [pisos, setPisos] = useState("1");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -107,28 +106,44 @@ function SedeDialog({ trigger }: { trigger: React.ReactNode }) {
 
           onSubmit={async (e) => {
             e.preventDefault();
-
-            const n = parseInt(pisos) || 1;
-
-            for (let i = 1; i <= n; i++) {
-              await saveLocation({
-                id: undefined,
-
-                nombre: "___EMPTY___",
-
-                descripcion: "",
-
-                activo: false,
-
-                sede: nombre,
-
-                piso: `Piso ${i}`,
-              });
+            if (isSubmitting) return;
+            const trimmed = nombre.trim();
+            if (!trimmed) return;
+            const exists = db.locations.some(
+              (l) => (l.sede || "").trim().toLowerCase() === trimmed.toLowerCase(),
+            );
+            if (exists) {
+              toast.error(`Ya existe una sede registrada con el nombre "${trimmed}".`);
+              return;
             }
+            setIsSubmitting(true);
+            try {
+              const n = parseInt(pisos) || 1;
 
-            toast.success(`Sede creada con ${n} piso(s)`);
+              for (let i = 1; i <= n; i++) {
+                await saveLocation({
+                  id: undefined,
 
-            setOpen(false);
+                  nombre: "___EMPTY___",
+
+                  descripcion: "",
+
+                  activo: false,
+
+                  sede: trimmed,
+
+                  piso: `Piso ${i}`,
+                });
+              }
+
+              toast.success(`Sede creada con ${n} piso(s)`);
+
+              setOpen(false);
+            } catch (err: any) {
+              toast.error(err.message || "Error al crear la sede");
+            } finally {
+              setIsSubmitting(false);
+            }
           }}
         >
           <div className="space-y-2">
@@ -169,12 +184,12 @@ function SedeDialog({ trigger }: { trigger: React.ReactNode }) {
         </form>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
             Cancelar
           </Button>
 
-          <Button type="submit" form="sede-form">
-            Guardar
+          <Button type="submit" form="sede-form" disabled={isSubmitting}>
+            {isSubmitting ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -199,9 +214,10 @@ function LocationDialog({
 
   presetPiso?: string;
 }) {
-  const { saveLocation } = useBio();
+  const { db, saveLocation } = useBio();
 
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [nombre, setNombre] = useState(
     location?.nombre === "___EMPTY___" ? "" : (location?.nombre ?? ""),
@@ -235,26 +251,54 @@ function LocationDialog({
 
           className="space-y-4"
 
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
+            if (isSubmitting) return;
+            const trimmed = nombre.trim();
+            if (!trimmed) {
+              toast.error("El nombre del área es obligatorio.");
+              return;
+            }
+            if (trimmed === "___EMPTY___" || trimmed.toLowerCase() === "n/a") {
+              toast.error("El nombre ingresado no es válido.");
+              return;
+            }
+            const exists = db.locations.some(
+              (l) =>
+                l.id !== location?.id &&
+                (l.nombre || "").trim().toLowerCase() === trimmed.toLowerCase() &&
+                (l.sede || "").trim().toLowerCase() === (sede || "").trim().toLowerCase() &&
+                (l.piso || "").trim().toLowerCase() === (piso || "").trim().toLowerCase() &&
+                l.nombre !== "___EMPTY___",
+            );
+            if (exists) {
+              toast.error(`Ya existe el área "${trimmed}" en ${sede} - ${piso}.`);
+              return;
+            }
+            setIsSubmitting(true);
+            try {
+              await saveLocation({
+                id: location?.id,
 
-            saveLocation({
-              id: location?.id,
+                nombre: trimmed,
 
-              nombre,
+                descripcion,
 
-              descripcion,
+                activo: location?.activo ?? true,
 
-              activo: location?.activo ?? true,
+                sede,
 
-              sede,
+                piso,
+              });
 
-              piso,
-            });
+              toast.success(location ? "Área actualizada" : "Área creada");
 
-            toast.success(location ? "Área actualizada" : "Área creada");
-
-            setOpen(false);
+              setOpen(false);
+            } catch (err: any) {
+              toast.error(err.message || "Error al guardar el área");
+            } finally {
+              setIsSubmitting(false);
+            }
           }}
         >
           <div className="space-y-2">
@@ -281,12 +325,12 @@ function LocationDialog({
         </form>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
             Cancelar
           </Button>
 
-          <Button type="submit" form="loc-form">
-            Guardar
+          <Button type="submit" form="loc-form" disabled={isSubmitting}>
+            {isSubmitting ? "Guardando..." : "Guardar"}
           </Button>
         </DialogFooter>
       </DialogContent>

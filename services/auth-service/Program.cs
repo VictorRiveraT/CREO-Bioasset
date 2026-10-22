@@ -456,106 +456,20 @@ app.MapGet("/me", [Authorize] (HttpContext ctx, AuthDb db) => {
 
 
 app.MapGet("/usuarios", [Authorize] async (AuthDb db, HttpContext ctx) => {
-
-
-    var all = await db.Usuarios.Select(u => new { id = u.Id, nombre = u.Nombre, email = u.Email, rol = u.Rol, activo = u.Activo, permisos = u.Permisos, sede = u.Sede, accesoHasta = u.AccesoHasta, sedeTemporal = u.SedeTemporal, sedeTemporalHasta = u.SedeTemporalHasta }).ToListAsync();
-
-
-    
-
-
-    var miSede = ctx.User.FindFirst("sede")?.Value ?? "Todas";
-
-
-    var miSedeTempRaw = ctx.User.FindFirst("sedeTemporal")?.Value ?? "[]";
-
-
-    
-
-
-    if (miSede == "Todas") {
-
-
-        return Results.Ok(new { usuarios = all });
-
-
-    }
-
-
-
-
-
-    var allowed = new System.Collections.Generic.HashSet<string> { miSede };
-
-
-    try {
-
-
-        var extra = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<string>>(miSedeTempRaw);
-
-
-        if (extra != null) foreach(var s in extra) allowed.Add(s);
-
-
-    } catch {}
-
-
-
-
-
-    var filtered = all.Where(u => {
-
-
-        if (u.sede != null && allowed.Contains(u.sede)) return true;
-
-
-        if (!string.IsNullOrEmpty(u.sedeTemporal) && u.sedeTemporal != "Ninguna" && u.sedeTemporal != "[]") {
-
-
-            try {
-
-
-                if (u.sedeTemporal.StartsWith("[")) {
-
-
-                    var uExtra = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<string>>(u.sedeTemporal);
-
-
-                    if (uExtra != null && uExtra.Any(s => allowed.Contains(s))) return true;
-
-
-                } else {
-
-
-                    if (allowed.Contains(u.sedeTemporal)) return true;
-
-
-                }
-
-
-            } catch {}
-
-
-        }
-
-
-        return false;
-
-
-    }).ToList();
-
-
-
-
-
-    return Results.Ok(new { usuarios = filtered });
-
-
+    var all = await db.Usuarios.Select(u => new { 
+        id = u.Id, 
+        nombre = u.Nombre, 
+        email = u.Email, 
+        rol = u.Rol, 
+        activo = u.Activo, 
+        permisos = u.Permisos, 
+        sede = u.Sede, 
+        accesoHasta = u.AccesoHasta, 
+        sedeTemporal = u.SedeTemporal, 
+        sedeTemporalHasta = u.SedeTemporalHasta 
+    }).ToListAsync();
+    return Results.Ok(new { usuarios = all });
 });
-
-
-
-
 
 app.MapPost("/usuarios", [Authorize(Roles="admin")] async (UsuarioDto req, AuthDb db, HttpContext ctx) => {
 

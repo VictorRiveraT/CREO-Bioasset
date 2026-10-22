@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { AlertCircle, ArrowLeft, Search, QrCode } from "lucide-react";
+import { useBio } from "@/lib/bioasset/store";
 
 export const Route = createFileRoute("/qr/")({
   head: () => ({
@@ -18,8 +19,19 @@ export const Route = createFileRoute("/qr/")({
 
 function QRScannerIndexPage() {
   const navigate = useNavigate();
+  const { user, ready } = useBio();
   const [camError, setCamError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState("");
+
+  useEffect(() => {
+    if (ready && !user) {
+      navigate({ to: "/" });
+    }
+  }, [ready, user, navigate]);
+
+  if (!ready || !user) {
+    return null;
+  }
 
   const handleManualSearch = (e: React.FormEvent) => {
     e.preventDefault();
