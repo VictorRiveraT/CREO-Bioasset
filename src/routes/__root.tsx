@@ -35,12 +35,14 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: any; reset: () => void }) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
+
+  const errObj = error instanceof Error ? error : new Error(String(error || "Unknown error"));
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -51,17 +53,17 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
-        {error && (
+        {errObj && (
           <div className="mt-4 p-3 bg-destructive/10 text-destructive text-xs font-mono rounded text-left overflow-auto max-h-48 border border-destructive/20">
-            <p className="font-bold">{error.name}: {error.message}</p>
-            {error.stack && <pre className="mt-1 text-[10px] whitespace-pre-wrap">{error.stack}</pre>}
+            <p className="font-bold">{errObj.name}: {errObj.message}</p>
+            {errObj.stack && <pre className="mt-1 text-[10px] whitespace-pre-wrap">{errObj.stack}</pre>}
           </div>
         )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
               router.invalidate();
-              reset();
+              reset?.();
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >

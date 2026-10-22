@@ -212,12 +212,7 @@ function DetalleEquipo() {
 
   return (
     <AppShell
-      title={
-        <>
-          <span className="text-amber-600 dark:text-amber-400 font-bold">{equipo.codigo}</span> —{" "}
-          {equipo.nombre}
-        </>
-      }
+      title={`${equipo.codigo} — ${equipo.nombre}`}
       description="Ficha completa del equipo biomédico"
       actions={
         <div className="flex flex-wrap gap-2">

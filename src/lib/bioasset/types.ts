@@ -108,6 +108,8 @@ export interface Incident {
   activoId: string;
   titulo: string;
   estado: string;
+  fecha?: string;
+  fechaCreacion?: string;
 }
 
 export interface DB {
@@ -128,4 +130,6 @@ export interface Alerta {
   mensaje: string;
   severidad: string;
   estado: string;
+  fecha?: string;
+  fechaCreacion?: string;
 }

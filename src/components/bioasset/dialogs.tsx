@@ -477,6 +477,7 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
   const [open, setOpen] = useState(false);
 
   const [confirm, setConfirm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [form, setForm] = useState({
     equipoId: equipoId ?? db.equipment[0]?.id ?? "",
@@ -500,30 +501,38 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
 
   const equipo = equipmentById(form.equipoId);
 
-  const save = () => {
+  const save = async () => {
+    if (isSubmitting) return;
     if (!equipo || !form.destinoId) return;
 
-    addMovement({
-      equipoId: form.equipoId,
+    setIsSubmitting(true);
+    try {
+      await addMovement({
+        equipoId: form.equipoId,
 
-      origenId: equipo.ubicacionId,
+        origenId: equipo.ubicacionId,
 
-      destinoId: form.destinoId,
+        destinoId: form.destinoId,
 
-      fecha: new Date().toISOString(),
+        fecha: new Date().toISOString(),
 
-      motivo: form.motivo,
+        motivo: form.motivo,
 
-      observaciones: form.observaciones,
-    });
+        observaciones: form.observaciones,
+      });
 
-    toast.success("Traslado registrado y ubicación actualizada");
+      toast.success("Traslado registrado y ubicación actualizada");
 
-    setConfirm(false);
+      setConfirm(false);
 
-    setOpen(false);
+      setOpen(false);
 
-    setForm((f) => ({ ...f, destinoId: "", motivo: "", observaciones: "" }));
+      setForm((f) => ({ ...f, destinoId: "", motivo: "", observaciones: "" }));
+    } catch (err: any) {
+      toast.error(err?.message || "Error al registrar traslado");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -716,6 +725,7 @@ export function MaintenanceDialog({
   const [open, setOpen] = useState(false);
 
   const [confirm, setConfirm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Set initial state. If we have a maintenance record, use its values.
 
@@ -827,69 +837,77 @@ export function MaintenanceDialog({
   };
 
   const save = async () => {
-    const payload = {
-      equipoId: form.equipoId,
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        equipoId: form.equipoId,
 
-      tipo: form.tipo as "Preventivo" | "Correctivo",
+        tipo: form.tipo as "Preventivo" | "Correctivo",
 
-      fecha: form.fecha,
+        fecha: form.fecha,
 
-      biomedicoId: form.biomedicoId,
+        biomedicoId: form.biomedicoId,
 
-      descripcion: "Formato técnico detallado",
+        descripcion: "Formato técnico detallado",
 
-      resultado: form.resultado,
+        resultado: form.resultado,
 
-      observaciones: JSON.stringify({
-        causas: form.observaciones,
+        observaciones: JSON.stringify({
+          causas: form.observaciones,
 
-        perturbacion: form.perturbacion,
+          perturbacion: form.perturbacion,
 
-        acciones: form.acciones,
+          acciones: form.acciones,
 
-        recomendaciones: form.recomendaciones,
-      }),
+          recomendaciones: form.recomendaciones,
+        }),
 
-      proximaFecha: form.proximaFecha,
+        proximaFecha: form.proximaFecha,
 
-      archivoBase64: form.archivoBase64,
+        archivoBase64: form.archivoBase64,
 
-      incidenciaId: incidenciaId || maintenance?.incidenciaId || undefined,
-    };
+        incidenciaId: incidenciaId || maintenance?.incidenciaId || undefined,
+      };
 
-    if (maintenance) {
-      await updateMaintenance(maintenance.id, payload);
-    } else {
-      await addMaintenance(payload);
-    }
-
-    // Update equipment based on resultado
-
-    if (form.resultado === "Completado") {
-      await updateEquipment(form.equipoId, { estado: "Operativo" });
-    } else if (form.resultado === "De baja") {
-      await updateEquipment(form.equipoId, { estado: "De baja" });
-    } else if (form.resultado === "En progreso") {
-      await updateEquipment(form.equipoId, { estado: "En mantenimiento" });
-    }
-
-    // Update incident if applicable
-
-    const tiedIncident = incidenciaId ?? maintenance?.incidenciaId;
-
-    if (tiedIncident) {
-      if (form.resultado === "Completado" || form.resultado === "De baja") {
-        await updateIncident(tiedIncident, { estado: "Cerrada" });
-      } else if (form.resultado === "En progreso") {
-        await updateIncident(tiedIncident, { estado: "En revision" });
+      if (maintenance) {
+        await updateMaintenance(maintenance.id, payload);
+      } else {
+        await addMaintenance(payload);
       }
+
+      // Update equipment based on resultado
+
+      if (form.resultado === "Completado") {
+        await updateEquipment(form.equipoId, { estado: "Operativo" });
+      } else if (form.resultado === "De baja") {
+        await updateEquipment(form.equipoId, { estado: "De baja" });
+      } else if (form.resultado === "En progreso") {
+        await updateEquipment(form.equipoId, { estado: "En mantenimiento" });
+      }
+
+      // Update incident if applicable
+
+      const tiedIncident = incidenciaId ?? maintenance?.incidenciaId;
+
+      if (tiedIncident) {
+        if (form.resultado === "Completado" || form.resultado === "De baja") {
+          await updateIncident(tiedIncident, { estado: "Cerrada" });
+        } else if (form.resultado === "En progreso") {
+          await updateIncident(tiedIncident, { estado: "En revision" });
+        }
+      }
+
+      toast.success("Registro de mantenimiento actualizado");
+
+      setConfirm(false);
+
+      setOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || "Error al registrar mantenimiento");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    toast.success("Registro de mantenimiento actualizado");
-
-    setConfirm(false);
-
-    setOpen(false);
   };
 
   return (

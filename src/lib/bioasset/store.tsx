@@ -14,6 +14,7 @@ import type {
   Location,
   MaintenanceRecord,
   Movement,
+  Incident,
   User,
   UserPermissions,
   ModulePermissions,
@@ -473,6 +474,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       maintenance: [],
       incidents: [],
       marcas: [],
+      alertas: [],
     });
   }, []);
 
@@ -912,7 +914,7 @@ export function daysUntil(dateStr: any) {
   if (!str) return 0;
   const clean = str.substring(0, 10);
   const parts = clean.split("-");
-  if (parts.length === 3) {
+  if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
     const y = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10) - 1;
     const d = parseInt(parts[2], 10);
@@ -936,7 +938,7 @@ export function formatDate(value: any) {
   if (!str) return "N/A";
   const clean = str.substring(0, 10);
   const parts = clean.split("-");
-  if (parts.length === 3) {
+  if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
     const y = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10) - 1;
     const d = parseInt(parts[2], 10);

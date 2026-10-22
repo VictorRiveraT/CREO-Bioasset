@@ -147,7 +147,7 @@ function LoginScreen() {
     try {
       const parts = resetToken.split(".");
       if (parts.length !== 3) return "invalid";
-      const payload = JSON.parse(atob(parts[1]));
+      const payload = JSON.parse(atob(parts[1] || ""));
       if (payload.exp && Date.now() >= payload.exp * 1000) {
         return "expired";
       }
@@ -162,7 +162,7 @@ function LoginScreen() {
     try {
       const parts = resetToken.split(".");
       if (parts.length !== 3) return null;
-      const payload = JSON.parse(atob(parts[1]));
+      const payload = JSON.parse(atob(parts[1] || ""));
       if (!payload.exp) return null;
       const diffMs = payload.exp * 1000 - Date.now();
       if (diffMs <= 0) return null;

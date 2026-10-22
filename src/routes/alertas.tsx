@@ -183,7 +183,7 @@ function AlertasPage() {
   );
   const enMantenimiento = useMemo(() => eq.filter((e) => e.estado === "En mantenimiento"), [eq]);
   const fueraServicio = useMemo(
-    () => eq.filter((e) => e.estado === "Fuera de servicio" || e.estado === "Inoperativo"),
+    () => eq.filter((e) => (e.estado as string) === "Fuera de servicio" || (e.estado as string) === "Inoperativo"),
     [eq],
   );
 

@@ -151,11 +151,11 @@ function UsuariosPage() {
 
         sede,
 
-        accesoHasta: accesoHasta ? new Date(accesoHasta).toISOString() : null,
+        accesoHasta: accesoHasta ? new Date(accesoHasta).toISOString() : undefined,
 
         sedeTemporal: JSON.stringify(accesosExtra),
 
-        sedeTemporalHasta: null,
+        sedeTemporalHasta: undefined,
       });
 
       toast.success("Usuario registrado exitosamente");
@@ -733,9 +733,9 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
         rol,
         permisos,
         sede,
-        accesoHasta: accesoHasta ? new Date(accesoHasta).toISOString() : null,
+        accesoHasta: accesoHasta ? new Date(accesoHasta).toISOString() : undefined,
         sedeTemporal: JSON.stringify(accesosExtra),
-        sedeTemporalHasta: null,
+        sedeTemporalHasta: undefined,
       });
       toast.success("Usuario actualizado exitosamente");
       setEditOpen(false);
