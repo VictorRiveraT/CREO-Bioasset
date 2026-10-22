@@ -231,11 +231,13 @@ function EquiposPage() {
                           </Button>
                         }
                       />
-                      <Button asChild variant="outline" size="sm">
-                        <Link to="/equipos/$id" params={{ id: encryptUrlParam(e.id) }}>
-                          Ver detalle
-                        </Link>
-                      </Button>
+                      {e && e.id && (
+                        <Button asChild variant="outline" size="sm">
+                          <Link to="/equipos/$id" params={{ id: encryptUrlParam(e.id) }}>
+                            Ver detalle
+                          </Link>
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

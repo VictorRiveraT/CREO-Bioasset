@@ -906,47 +906,58 @@ export function useBio() {
   return ctx;
 }
 
-export function daysUntil(dateStr: string) {
+export function daysUntil(dateStr: any) {
   if (!dateStr) return 0;
-  const clean = dateStr.substring(0, 10);
+  const str = String(dateStr).trim();
+  if (!str) return 0;
+  const clean = str.substring(0, 10);
   const parts = clean.split("-");
   if (parts.length === 3) {
     const y = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10) - 1;
     const d = parseInt(parts[2], 10);
-    const target = new Date(y, m, d).getTime();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return Math.round((target - today.getTime()) / 86400000);
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      const target = new Date(y, m, d).getTime();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return Math.round((target - today.getTime()) / 86400000);
+    }
   }
-  const target = new Date(dateStr).getTime();
+  const target = new Date(str).getTime();
+  if (isNaN(target)) return 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return Math.round((target - today.getTime()) / 86400000);
 }
 
-export function formatDate(value: string) {
+export function formatDate(value: any) {
   if (!value) return "N/A";
-  const clean = value.substring(0, 10);
+  const str = String(value).trim();
+  if (!str) return "N/A";
+  const clean = str.substring(0, 10);
   const parts = clean.split("-");
   if (parts.length === 3) {
     const y = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10) - 1;
     const d = parseInt(parts[2], 10);
-    const dt = new Date(y, m, d);
-    return dt.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+      const dt = new Date(y, m, d);
+      return dt.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
+    }
   }
-  const d = new Date(value);
-  return isNaN(d.getTime()) ? value : d.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? str : d.toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-export function formatDateTime(value: string) {
+export function formatDateTime(value: any) {
   if (!value) return "N/A";
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
-    return formatDate(value);
+  const str = String(value).trim();
+  if (!str) return "N/A";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    return formatDate(str);
   }
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return str;
   return d.toLocaleString("es-PE", {
     day: "2-digit",
     month: "short",

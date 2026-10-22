@@ -147,14 +147,20 @@ function IncidenciasPage() {
                     <TableRow key={i.id}>
                       <TableCell>
                         <div className="flex flex-col">
-                          <Link
-                            to="/equipos/$id"
-                            params={{ id: e ? encryptUrlParam(e.id) : "" }}
-                            className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
-                          >
-                            {e?.codigo}
-                          </Link>
-                          <span className="text-xs text-muted-foreground">{e?.nombre}</span>
+                          {e && e.id ? (
+                            <Link
+                              to="/equipos/$id"
+                              params={{ id: encryptUrlParam(e.id) }}
+                              className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                            >
+                              {e.codigo}
+                            </Link>
+                          ) : (
+                            <span className="font-semibold text-muted-foreground">
+                              {e?.codigo || i.activoId?.substring(0, 8) || "N/A"}
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground">{e?.nombre || ""}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
@@ -177,7 +183,7 @@ function IncidenciasPage() {
                           >
                             {i.estado}
                           </Badge>
-                          {db.maintenance.some((m) => m.incidenciaId === i.id) && (
+                          {(db.maintenance || []).some((m) => m.incidenciaId === i.id) && (
                             <Link to="/mantenimiento">
                               <Badge variant="secondary" className="text-[10px] hover:underline">
                                 Mantenimiento vinculado

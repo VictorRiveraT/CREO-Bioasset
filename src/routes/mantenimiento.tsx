@@ -48,12 +48,12 @@ function MantenimientoPage() {
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return [...db.maintenance]
-      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+    return [...(db.maintenance || [])]
+      .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""))
       .filter((m) => {
         const e = db.equipment.find((x) => x.id === m.equipoId);
         if (!e) return false;
-        const match = !term || `${e.codigo} ${e.nombre}`.toLowerCase().includes(term);
+        const match = !term || `${e.codigo || ""} ${e.nombre || ""}`.toLowerCase().includes(term);
         const inTipo = tipo === "todos" || m.tipo === tipo;
         return match && inTipo;
       });
@@ -142,14 +142,20 @@ function MantenimientoPage() {
                       {formatDateTime(m.fecha)}
                     </TableCell>
                     <TableCell>
-                      <Link
-                        to="/equipos/$id"
-                        params={{ id: e ? encryptUrlParam(e.id) : "" }}
-                        className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
-                      >
-                        {e?.codigo}
-                      </Link>{" "}
-                      <span className="text-muted-foreground">{e?.nombre}</span>
+                      {e && e.id ? (
+                        <Link
+                          to="/equipos/$id"
+                          params={{ id: encryptUrlParam(e.id) }}
+                          className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                        >
+                          {e.codigo}
+                        </Link>
+                      ) : (
+                        <span className="font-semibold text-muted-foreground">
+                          {e?.codigo || m.equipoId?.substring(0, 8) || "N/A"}
+                        </span>
+                      )}{" "}
+                      <span className="text-muted-foreground">{e?.nombre || ""}</span>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1 items-start">

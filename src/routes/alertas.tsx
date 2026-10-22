@@ -80,18 +80,29 @@ function AlertGroup({
           >
             {/* Top row: Code pill + Name, and Status + Due Badges */}
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <Link
-                to="/equipos/$id"
-                params={{ id: encryptUrlParam(e.id) }}
-                className="group flex flex-wrap items-center gap-1.5 flex-1 min-w-[200px]"
-              >
-                <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0">
-                  {e.codigo}
-                </span>
-                <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                  {e.nombre}
-                </span>
-              </Link>
+              {e && e.id ? (
+                <Link
+                  to="/equipos/$id"
+                  params={{ id: encryptUrlParam(e.id) }}
+                  className="group flex flex-wrap items-center gap-1.5 flex-1 min-w-[200px]"
+                >
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                    {e.codigo}
+                  </span>
+                  <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                    {e.nombre}
+                  </span>
+                </Link>
+              ) : (
+                <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-[200px]">
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                    {e?.codigo || "N/A"}
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {e?.nombre || "Equipo no disponible"}
+                  </span>
+                </div>
+              )}
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <StatusBadge status={e.estado} />
@@ -110,7 +121,7 @@ function AlertGroup({
                 <span className="font-medium text-foreground">{cleanLocation(e.ubicacionId)}</span>
               </div>
 
-              {canEdit("mantenimiento") && e.id !== "ALERTA" && (
+              {canEdit("mantenimiento") && e.id && e.id !== "ALERTA" && (
                 <MaintenanceDialog
                   equipoId={e.id}
                   trigger={
@@ -305,7 +316,7 @@ function AlertasPage() {
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-[200px]">
-                      {eqFound && (
+                      {eqFound && eqFound.id ? (
                         <Link
                           to="/equipos/$id"
                           params={{ id: encryptUrlParam(eqFound.id) }}
@@ -313,7 +324,11 @@ function AlertasPage() {
                         >
                           {eqFound.codigo}
                         </Link>
-                      )}
+                      ) : eqFound ? (
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+                          {eqFound.codigo}
+                        </span>
+                      ) : null}
                       <span className="text-sm font-semibold text-foreground">
                         {inc.titulo}
                       </span>
@@ -388,7 +403,7 @@ function AlertasPage() {
                     <span className="text-muted-foreground font-mono text-[11px]">
                       Origen: RabbitMQ · {formatDateTime(a.fechaCreacion || a.fecha || new Date().toISOString())}
                     </span>
-                    {eqFound && (
+                    {eqFound && eqFound.id && (
                       <Link
                         to="/equipos/$id"
                         params={{ id: encryptUrlParam(eqFound.id) }}

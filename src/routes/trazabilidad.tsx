@@ -48,15 +48,15 @@ function TrazabilidadPage() {
   const [ubi, setUbi] = useState("todas");
 
   const rows = useMemo(() => {
-    return [...db.movements]
-      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    return [...(db.movements || [])]
+      .sort((a, b) => new Date(b?.fecha || 0).getTime() - new Date(a?.fecha || 0).getTime())
       .filter((m) => {
         const e = db.equipment.find((x) => x.id === m.equipoId);
         if (!e) return false;
 
         const match =
-          e.codigo.toLowerCase().includes(q.toLowerCase()) ||
-          e.nombre.toLowerCase().includes(q.toLowerCase());
+          (e.codigo || "").toLowerCase().includes(q.toLowerCase()) ||
+          (e.nombre || "").toLowerCase().includes(q.toLowerCase());
 
         const inUbi = ubi === "todas" || m.origenId === ubi || m.destinoId === ubi;
 
@@ -167,14 +167,20 @@ function TrazabilidadPage() {
                       {formatDateTime(m.fecha)}
                     </TableCell>
                     <TableCell>
-                      <Link
-                        to="/equipos/$id"
-                        params={{ id: e ? encryptUrlParam(e.id) : "" }}
-                        className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
-                      >
-                        {e?.codigo}
-                      </Link>{" "}
-                      <span className="text-muted-foreground">{e?.nombre}</span>
+                      {e && e.id ? (
+                        <Link
+                          to="/equipos/$id"
+                          params={{ id: encryptUrlParam(e.id) }}
+                          className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                        >
+                          {e.codigo}
+                        </Link>
+                      ) : (
+                        <span className="font-semibold text-muted-foreground">
+                          {e?.codigo || m.equipoId?.substring(0, 8) || "N/A"}
+                        </span>
+                      )}{" "}
+                      <span className="text-muted-foreground">{e?.nombre || ""}</span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium">

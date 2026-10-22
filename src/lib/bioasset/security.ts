@@ -13,7 +13,7 @@ const URL_SECRET_KEY =
  * Produce un string URL-Safe (libre de +, /, =).
  */
 export function encryptUrlParam(text: string | number): string {
-  if (text === null || text === undefined || text === "") return "";
+  if (text === null || text === undefined || text === "") return "not-found";
   const str = String(text);
   try {
     // Codificación simétrica con clave y firma interna
@@ -23,7 +23,7 @@ export function encryptUrlParam(text: string | number): string {
     return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   } catch (e) {
     console.error("[Security] Error encrypting URL param:", e);
-    return str;
+    return str || "not-found";
   }
 }
 
@@ -31,7 +31,7 @@ export function encryptUrlParam(text: string | number): string {
  * Descifra el parámetro cifrado de una URL y retorna el ID original.
  */
 export function decryptUrlParam(cipherText: string): string {
-  if (!cipherText) return "";
+  if (!cipherText || cipherText === "not-found") return "";
   try {
     let base64 = cipherText.replace(/-/g, "+").replace(/_/g, "/");
     while (base64.length % 4 !== 0) {

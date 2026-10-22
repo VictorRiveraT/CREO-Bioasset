@@ -56,7 +56,7 @@ function PublicQRPage() {
     // If logged in AND has access to this equipment, redirect to complete technical sheet
     if (user) {
       const found = db.equipment.find((e) => e.id === id || e.codigo === id || e.serie === id);
-      if (found) {
+      if (found && found.id) {
         navigate({ to: "/equipos/$id", params: { id: encryptUrlParam(found.id) } });
         return;
       }

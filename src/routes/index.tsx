@@ -313,13 +313,17 @@ function Dashboard() {
               {proximosOrdenados.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>
-                    <Link
-                      to="/equipos/$id"
-                      params={{ id: encryptUrlParam(e.id) }}
-                      className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
-                    >
-                      {e.codigo}
-                    </Link>
+                    {e && e.id ? (
+                      <Link
+                        to="/equipos/$id"
+                        params={{ id: encryptUrlParam(e.id) }}
+                        className="font-semibold text-amber-600 dark:text-amber-400 hover:underline"
+                      >
+                        {e.codigo}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold text-muted-foreground">{e?.codigo || "N/A"}</span>
+                    )}
                   </TableCell>
                   <TableCell>{e.nombre}</TableCell>
                   <TableCell>{locationName(e.ubicacionId)}</TableCell>

@@ -131,13 +131,13 @@ function DetalleEquipo() {
     );
   }
 
-  const movimientos = db.movements
-    .filter((m) => m.equipoId === equipo.id)
-    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const movimientos = (db.movements || [])
+    .filter((m) => m && m.equipoId === equipo.id)
+    .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
 
-  const mantenimientos = db.maintenance
-    .filter((m) => m.equipoId === equipo.id)
-    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const mantenimientos = (db.maintenance || [])
+    .filter((m) => m && m.equipoId === equipo.id)
+    .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
 
   const activeAlert = (db.alertas || []).find(
     (a) => a.activoId === equipo.id && a.estado !== "Atendida" && a.estado !== "Resuelta",
