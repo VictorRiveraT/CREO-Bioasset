@@ -45,6 +45,7 @@ function MantenimientoPage() {
   const { db, userName, canEdit, tiposMantenimiento } = useBio();
   const [q, setQ] = useState("");
   const [tipo, setTipo] = useState("todos");
+  const [previewFoto, setPreviewFoto] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -206,22 +207,25 @@ function MantenimientoPage() {
                                 <div className="flex items-center gap-1.5">
                                   <div className="flex -space-x-1.5 overflow-hidden">
                                     {fotos.slice(0, 3).map((f, i) => (
-                                      <a
+                                      <button
+                                        type="button"
                                         key={i}
-                                        href={f}
-                                        target="_blank"
-                                        rel="noreferrer"
+                                        onClick={() => setPreviewFoto(f)}
                                         title={`Ver foto de evidencia #${i + 1}`}
-                                        className="inline-block size-6 rounded-full ring-2 ring-background overflow-hidden hover:scale-110 transition-transform shadow-xs"
+                                        className="inline-block size-6 rounded-full ring-2 ring-background overflow-hidden hover:scale-110 transition-transform shadow-xs cursor-pointer"
                                       >
                                         <img src={f} alt="Evidencia" className="size-full object-cover" />
-                                      </a>
+                                      </button>
                                     ))}
                                   </div>
-                                  <span className="text-[11px] font-medium text-primary flex items-center gap-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewFoto(fotos[0])}
+                                    className="text-[11px] font-medium text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
+                                  >
                                     <Camera className="size-3" />
                                     {fotos.length} {fotos.length === 1 ? "foto" : "fotos"}
-                                  </span>
+                                  </button>
                                 </div>
                               )}
                               {hasPdf && (
@@ -272,6 +276,45 @@ function MantenimientoPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* VISOR LIGHTBOX DE EVIDENCIA EN TAMAÑO COMPLETO */}
+      {previewFoto && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in"
+          onClick={() => setPreviewFoto(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] flex flex-col items-center bg-card p-3 rounded-2xl shadow-2xl border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewFoto(null)}
+              className="absolute -top-3 -right-3 rounded-full bg-destructive text-destructive-foreground p-1.5 shadow-lg hover:scale-110 transition-transform cursor-pointer"
+              title="Cerrar vista previa"
+            >
+              <X className="size-4" />
+            </button>
+            <img
+              src={previewFoto}
+              alt="Evidencia ampliada"
+              className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-sm"
+            />
+            <div className="flex items-center justify-between w-full px-2 pt-3 text-xs text-muted-foreground border-t mt-3">
+              <span className="font-semibold text-foreground">Evidencia Fotográfica de Mantenimiento</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs cursor-pointer"
+                onClick={() => setPreviewFoto(null)}
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

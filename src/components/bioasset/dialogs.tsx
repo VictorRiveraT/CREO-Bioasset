@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from "react";
 
 import { toast } from "sonner";
 
-import { Pencil, Trash, Download, Camera, ImagePlus, Eye, Trash2, FileText, ExternalLink } from "lucide-react";
+import { Pencil, Trash, Download, Camera, ImagePlus, Eye, Trash2, FileText, ExternalLink, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -819,6 +819,7 @@ export function MaintenanceDialog({
   });
 
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
+  const [previewFoto, setPreviewFoto] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -1243,18 +1244,21 @@ export function MaintenanceDialog({
                         <img
                           src={foto}
                           alt={`Evidencia ${idx + 1}`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover cursor-pointer"
+                          onClick={() => setPreviewFoto(foto)}
                         />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <a
-                            href={foto}
-                            target="_blank"
-                            rel="noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => setPreviewFoto(foto)}
+
+
+
                             className="p-1.5 rounded-full bg-white text-foreground hover:bg-white/90 transition-colors shadow"
                             title="Ver en grande"
                           >
                             <Eye className="size-4" />
-                          </a>
+                          </button>
                           <button
                             type="button"
                             onClick={() => removePhoto(idx)}
@@ -1374,6 +1378,44 @@ export function MaintenanceDialog({
                 Cancelar
               </Button>
 
+              {/* VISOR LIGHTBOX DE EVIDENCIA EN TAMAÑO COMPLETO */}
+              {previewFoto && (
+                <div
+                  className="fixed inset-0 z-[150] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in"
+                  onClick={() => setPreviewFoto(null)}
+                >
+                  <div
+                    className="relative max-w-4xl max-h-[90vh] flex flex-col items-center bg-card p-3 rounded-2xl shadow-2xl border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFoto(null)}
+                      className="absolute -top-3 -right-3 rounded-full bg-destructive text-destructive-foreground p-1.5 shadow-lg hover:scale-110 transition-transform cursor-pointer"
+                      title="Cerrar vista previa"
+                    >
+                      <X className="size-4" />
+                    </button>
+                    <img
+                      src={previewFoto}
+                      alt="Evidencia ampliada"
+                      className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-sm"
+                    />
+                    <div className="flex items-center justify-between w-full px-2 pt-3 text-xs text-muted-foreground border-t mt-3">
+                      <span className="font-semibold text-foreground">Evidencia Fotográfica de Mantenimiento</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs cursor-pointer"
+                        onClick={() => setPreviewFoto(null)}
+                      >
+                        Cerrar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <Button type="submit" form="maintenance-form">
                 {maintenance ? "Actualizar" : "Registrar"}
               </Button>

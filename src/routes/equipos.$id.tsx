@@ -13,6 +13,7 @@ import {
   FileText,
   Camera,
   Eye,
+  X,
 } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { EquipmentDialog, MaintenanceDialog, MovementDialog } from "@/components/bioasset/dialogs";
@@ -74,6 +75,7 @@ function DetalleEquipo() {
   const [loading, setLoading] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(false);
   const [incidentTitle, setIncidentTitle] = useState("");
+  const [previewFoto, setPreviewFoto] = useState<string | null>(null);
 
   const handleReportIncident = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -525,19 +527,18 @@ function DetalleEquipo() {
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {fotos.map((f, idx) => (
-                            <a
+                            <button
+                              type="button"
                               key={idx}
-                              href={f}
-                              target="_blank"
-                              rel="noreferrer"
+                              onClick={() => setPreviewFoto(f)}
                               title={`Ver evidencia #${idx + 1}`}
-                              className="group relative rounded-lg border overflow-hidden size-16 bg-muted/40 hover:scale-105 transition-transform shadow-xs"
+                              className="group relative rounded-lg border overflow-hidden size-16 bg-muted/40 hover:scale-105 transition-transform shadow-xs cursor-pointer"
                             >
                               <img src={f} alt={`Evidencia ${idx + 1}`} className="size-full object-cover" />
                               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <Eye className="size-4 text-white" />
                               </div>
-                            </a>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -555,6 +556,45 @@ function DetalleEquipo() {
           )}
         </CardContent>
       </Card>
+
+      {/* VISOR LIGHTBOX DE EVIDENCIA EN TAMAÑO COMPLETO */}
+      {previewFoto && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in"
+          onClick={() => setPreviewFoto(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] flex flex-col items-center bg-card p-3 rounded-2xl shadow-2xl border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPreviewFoto(null)}
+              className="absolute -top-3 -right-3 rounded-full bg-destructive text-destructive-foreground p-1.5 shadow-lg hover:scale-110 transition-transform cursor-pointer"
+              title="Cerrar vista previa"
+            >
+              <X className="size-4" />
+            </button>
+            <img
+              src={previewFoto}
+              alt="Evidencia ampliada"
+              className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-sm"
+            />
+            <div className="flex items-center justify-between w-full px-2 pt-3 text-xs text-muted-foreground border-t mt-3">
+              <span className="font-semibold text-foreground">Evidencia Fotográfica de Mantenimiento</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs cursor-pointer"
+                onClick={() => setPreviewFoto(null)}
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
