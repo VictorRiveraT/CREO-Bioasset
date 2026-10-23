@@ -46,6 +46,7 @@ import {
 import { useBio } from "@/lib/bioasset/store";
 
 import { generateMaintenancePDF } from "@/lib/bioasset/pdf-generator";
+import { ImagePreviewDialog } from "./image-preview-dialog";
 
 import {
   CATEGORIES,
@@ -1239,38 +1240,46 @@ export function MaintenanceDialog({
                     {form.fotos.map((foto, idx) => (
                       <div
                         key={idx}
-                        className="group relative rounded-lg border overflow-hidden aspect-square bg-muted/40 shadow-sm hover:shadow transition-all"
+                        className="group relative rounded-lg border overflow-hidden aspect-square bg-muted/40 shadow-xs hover:shadow-md transition-all cursor-pointer ring-1 ring-border/50 hover:ring-primary/50"
+                        onClick={() => setPreviewFoto(foto)}
                       >
                         <img
                           src={foto}
                           alt={`Evidencia ${idx + 1}`}
-                          className="w-full h-full object-cover cursor-pointer"
-                          onClick={() => setPreviewFoto(foto)}
+                          className="w-full h-full object-cover select-none"
                         />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setPreviewFoto(foto)}
-
-
-
-                            className="p-1.5 rounded-full bg-white text-foreground hover:bg-white/90 transition-colors shadow"
-                            title="Ver en grande"
-                          >
-                            <Eye className="size-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removePhoto(idx)}
-                            className="p-1.5 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors shadow"
-                            title="Eliminar foto"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        </div>
-                        <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
+                        <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded font-mono pointer-events-none z-10">
                           #{idx + 1}
                         </span>
+                        <div className="absolute top-1 right-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              removePhoto(idx);
+                            }}
+                            className="p-1 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-transform hover:scale-110 shadow cursor-pointer flex items-center justify-center"
+                            title="Eliminar foto"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                        <div className="absolute bottom-1 right-1 z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setPreviewFoto(foto);
+                            }}
+                            className="p-1 rounded-full bg-black/75 text-white hover:bg-black transition-transform hover:scale-110 shadow cursor-pointer flex items-center gap-1 text-[10px] px-1.5"
+                            title="Ver en grande"
+                          >
+                            <Eye className="size-3" />
+                            <span className="text-[10px]">Ver</span>
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1378,44 +1387,7 @@ export function MaintenanceDialog({
                 Cancelar
               </Button>
 
-              {/* VISOR LIGHTBOX DE EVIDENCIA EN TAMAÑO COMPLETO */}
-              {previewFoto && (
-                <div
-                  className="fixed inset-0 z-[150] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in"
-                  onClick={() => setPreviewFoto(null)}
-                >
-                  <div
-                    className="relative max-w-4xl max-h-[90vh] flex flex-col items-center bg-card p-3 rounded-2xl shadow-2xl border"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setPreviewFoto(null)}
-                      className="absolute -top-3 -right-3 rounded-full bg-destructive text-destructive-foreground p-1.5 shadow-lg hover:scale-110 transition-transform cursor-pointer"
-                      title="Cerrar vista previa"
-                    >
-                      <X className="size-4" />
-                    </button>
-                    <img
-                      src={previewFoto}
-                      alt="Evidencia ampliada"
-                      className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-sm"
-                    />
-                    <div className="flex items-center justify-between w-full px-2 pt-3 text-xs text-muted-foreground border-t mt-3">
-                      <span className="font-semibold text-foreground">Evidencia Fotográfica de Mantenimiento</span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs cursor-pointer"
-                        onClick={() => setPreviewFoto(null)}
-                      >
-                        Cerrar
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              
               <Button type="submit" form="maintenance-form">
                 {maintenance ? "Actualizar" : "Registrar"}
               </Button>
@@ -1443,6 +1415,11 @@ export function MaintenanceDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ImagePreviewDialog
+        src={previewFoto}
+        onClose={() => setPreviewFoto(null)}
+      />
     </>
   );
 }

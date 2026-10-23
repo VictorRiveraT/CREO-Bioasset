@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Plus, Search, X, Camera, FileText } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { MaintenanceDialog } from "@/components/bioasset/dialogs";
+import { ImagePreviewDialog } from "@/components/bioasset/image-preview-dialog";
 import { encryptUrlParam } from "@/lib/bioasset/security";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -277,44 +278,7 @@ function MantenimientoPage() {
         </CardContent>
       </Card>
 
-      {/* VISOR LIGHTBOX DE EVIDENCIA EN TAMAÑO COMPLETO */}
-      {previewFoto && (
-        <div
-          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in"
-          onClick={() => setPreviewFoto(null)}
-        >
-          <div
-            className="relative max-w-4xl max-h-[90vh] flex flex-col items-center bg-card p-3 rounded-2xl shadow-2xl border"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setPreviewFoto(null)}
-              className="absolute -top-3 -right-3 rounded-full bg-destructive text-destructive-foreground p-1.5 shadow-lg hover:scale-110 transition-transform cursor-pointer"
-              title="Cerrar vista previa"
-            >
-              <X className="size-4" />
-            </button>
-            <img
-              src={previewFoto}
-              alt="Evidencia ampliada"
-              className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain shadow-sm"
-            />
-            <div className="flex items-center justify-between w-full px-2 pt-3 text-xs text-muted-foreground border-t mt-3">
-              <span className="font-semibold text-foreground">Evidencia Fotográfica de Mantenimiento</span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs cursor-pointer"
-                onClick={() => setPreviewFoto(null)}
-              >
-                Cerrar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ImagePreviewDialog src={previewFoto} onClose={() => setPreviewFoto(null)} />
     </AppShell>
   );
 }
