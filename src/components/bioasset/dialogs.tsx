@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from "react";
 
 import { toast } from "sonner";
 
-import { Pencil, Trash, Download } from "lucide-react";
+import { Pencil, Trash, Download, Camera, ImagePlus, Eye, Trash2, FileText, ExternalLink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -57,6 +57,49 @@ import {
 const today = () => new Date().toISOString().slice(0, 10);
 
 const inDays = (n: number) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+
+async function compressImage(file: File, maxWidth = 1280, maxHeight = 1280, quality = 0.75): Promise<string> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => resolve(e.target?.result as string);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  });
+}
 
 const BRAND_MODELS: Record<string, string[]> = {
   Philips: ["IntelliVue MX400", "IntelliVue MX450", "Efficia CM100", "Epiq 7", "Sparq"],
@@ -729,6 +772,7 @@ export function MaintenanceDialog({
   let pAcciones = "";
 
   let pRecom = "";
+  let initFotos: string[] = [];
 
   try {
     const parsed = JSON.parse(initObs);
@@ -741,9 +785,22 @@ export function MaintenanceDialog({
       pAcciones = parsed.acciones || "";
 
       pRecom = parsed.recomendaciones || "";
+
+      if (Array.isArray(parsed.fotos)) {
+        initFotos = parsed.fotos.filter((f: any) => typeof f === "string" && f.length > 0);
+      }
     }
   } catch {
     // Ignorar si observaciones no es JSON estructurado
+  }
+
+  if (
+    maintenance?.archivoBase64 &&
+    !maintenance.archivoBase64.endsWith(".pdf") &&
+    !maintenance.archivoBase64.includes("application/pdf") &&
+    !initFotos.includes(maintenance.archivoBase64)
+  ) {
+    initFotos.unshift(maintenance.archivoBase64);
   }
 
   const [form, setForm] = useState({
@@ -758,7 +815,10 @@ export function MaintenanceDialog({
     recomendaciones: pRecom,
     proximaFecha: maintenance?.proximaFecha ?? inDays(180),
     archivoBase64: maintenance?.archivoBase64 ?? "",
+    fotos: initFotos,
   });
+
+  const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -766,6 +826,7 @@ export function MaintenanceDialog({
       let pReport = "";
       let pAcc = "";
       let pRec = "";
+      let fts: string[] = [];
       try {
         const parsed = JSON.parse(obs);
         if (parsed && typeof parsed === "object") {
@@ -773,9 +834,21 @@ export function MaintenanceDialog({
           pReport = parsed.perturbacion || "";
           pAcc = parsed.acciones || "";
           pRec = parsed.recomendaciones || "";
+          if (Array.isArray(parsed.fotos)) {
+            fts = parsed.fotos.filter((f: any) => typeof f === "string" && f.length > 0);
+          }
         }
       } catch {
         // Ignorar si observaciones no es JSON estructurado
+      }
+
+      if (
+        maintenance?.archivoBase64 &&
+        !maintenance.archivoBase64.endsWith(".pdf") &&
+        !maintenance.archivoBase64.includes("application/pdf") &&
+        !fts.includes(maintenance.archivoBase64)
+      ) {
+        fts.unshift(maintenance.archivoBase64);
       }
 
       setForm({
@@ -790,6 +863,7 @@ export function MaintenanceDialog({
         recomendaciones: pRec,
         proximaFecha: maintenance?.proximaFecha ?? inDays(180),
         archivoBase64: maintenance?.archivoBase64 ?? "",
+        fotos: fts,
       });
       setFileError("");
     }
@@ -799,31 +873,66 @@ export function MaintenanceDialog({
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handlePhotosChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    if (!file) {
-      set("archivoBase64", "");
-
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setFileError("El archivo es demasiado grande. Máximo 5MB.");
-
-      set("archivoBase64", "");
-
-      return;
-    }
-
+    setIsProcessingPhotos(true);
     setFileError("");
+    try {
+      const newPhotos: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith("image/")) continue;
+        if (file.size > 15 * 1024 * 1024) {
+          toast.error(`La imagen ${file.name} supera los 15MB.`);
+          continue;
+        }
+        const compressed = await compressImage(file);
+        if (compressed) {
+          newPhotos.push(compressed);
+        }
+      }
+      if (newPhotos.length > 0) {
+        setForm((prev) => ({
+          ...prev,
+          fotos: [...prev.fotos, ...newPhotos],
+          archivoBase64: prev.archivoBase64 || newPhotos[0],
+        }));
+        toast.success(`${newPhotos.length} foto(s) agregada(s) como evidencia.`);
+      }
+    } catch {
+      toast.error("Error al procesar las fotos.");
+    } finally {
+      setIsProcessingPhotos(false);
+      e.target.value = "";
+    }
+  };
 
+  const removePhoto = (index: number) => {
+    setForm((prev) => {
+      const updated = prev.fotos.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        fotos: updated,
+        archivoBase64: prev.archivoBase64 === prev.fotos[index] ? (updated[0] || "") : prev.archivoBase64,
+      };
+    });
+  };
+
+  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setFileError("El documento es demasiado grande. Máximo 10MB.");
+      return;
+    }
+    setFileError("");
     const reader = new FileReader();
-
     reader.onload = () => {
       set("archivoBase64", reader.result as string);
+      toast.success("Documento o protocolo adjuntado exitosamente.");
     };
-
     reader.readAsDataURL(file);
   };
 
@@ -852,11 +961,13 @@ export function MaintenanceDialog({
           acciones: form.acciones,
 
           recomendaciones: form.recomendaciones,
+
+          fotos: form.fotos,
         }),
 
         proximaFecha: form.proximaFecha,
 
-        archivoBase64: form.archivoBase64,
+        archivoBase64: form.archivoBase64 || (form.fotos.length > 0 ? form.fotos[0] : ""),
 
         incidenciaId: incidenciaId || maintenance?.incidenciaId || undefined,
       };
@@ -1017,48 +1128,9 @@ export function MaintenanceDialog({
               />
             </div>
 
-            <div className="space-y-2 sm:col-span-2 p-4 border rounded-md bg-muted/30">
-              <Label htmlFor="archivo" className="font-semibold text-base">
-                Adjuntar formato oficial (Opcional)
-              </Label>
-
-              <p className="text-xs text-muted-foreground mb-2">
-                Toma una foto desde tu celular o sube un PDF firmado (Máximo 5MB).
-              </p>
-
-              <Input
-                id="archivo"
-
-                type="file"
-
-                accept="image/*,application/pdf"
-
-                capture="environment"
-
-                onChange={handleFileChange}
-              />
-
-              {maintenance?.archivoBase64 && (
-                <div className="mt-2">
-                  <a
-                    href={maintenance.archivoBase64}
-
-                    target="_blank"
-
-                    rel="noreferrer"
-
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
-                  >
-                    Ver formato adjunto actual
-                  </a>
-                </div>
-              )}
-
-              {fileError && <p className="text-xs text-destructive mt-1">{fileError}</p>}
-            </div>
-
-            <div className="space-y-4 sm:col-span-2 p-4 border rounded-md">
-              <h4 className="font-semibold text-lg border-b pb-2">
+            <div className="space-y-4 sm:col-span-2 p-4 border rounded-xl bg-card shadow-sm">
+              <h4 className="font-semibold text-lg border-b pb-2 flex items-center gap-2">
+                <FileText className="size-5 text-primary" />
                 Informe Técnico Oficial (CREO+)
               </h4>
 
@@ -1114,6 +1186,131 @@ export function MaintenanceDialog({
 
                   onChange={(e) => set("recomendaciones", e.target.value)}
                 />
+              </div>
+
+              {/* SECCIÓN D: FOTOGRAFÍAS Y EVIDENCIAS */}
+              <div className="space-y-3 pt-3 border-t">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                      <Camera className="size-5" />
+                    </div>
+                    <div>
+                      <Label className="font-semibold text-sm sm:text-base">
+                        D. Evidencias Fotográficas
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Sube fotos del equipo, piezas dañadas o proceso de intervención.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label
+                      htmlFor="foto-evidencia-input"
+                      className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+                    >
+                      <ImagePlus className="size-4" />
+                      <span>{form.fotos.length > 0 ? "Agregar más fotos" : "Subir fotos"}</span>
+                    </Label>
+                    <input
+                      id="foto-evidencia-input"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      capture="environment"
+                      className="hidden"
+                      onChange={handlePhotosChange}
+                      disabled={isProcessingPhotos}
+                    />
+                  </div>
+                </div>
+
+                {isProcessingPhotos && (
+                  <p className="text-xs text-primary animate-pulse">
+                    Optimizando y cargando fotografías...
+                  </p>
+                )}
+
+                {/* Galería de miniaturas de evidencia */}
+                {form.fotos.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2.5 pt-1">
+                    {form.fotos.map((foto, idx) => (
+                      <div
+                        key={idx}
+                        className="group relative rounded-lg border overflow-hidden aspect-square bg-muted/40 shadow-sm hover:shadow transition-all"
+                      >
+                        <img
+                          src={foto}
+                          alt={`Evidencia ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <a
+                            href={foto}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 rounded-full bg-white text-foreground hover:bg-white/90 transition-colors shadow"
+                            title="Ver en grande"
+                          >
+                            <Eye className="size-4" />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(idx)}
+                            className="p-1.5 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors shadow"
+                            title="Eliminar foto"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                        <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded font-mono">
+                          #{idx + 1}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground bg-muted/10">
+                    <Camera className="size-7 mx-auto mb-1.5 text-muted-foreground/60" />
+                    <p className="font-medium text-foreground">Sin fotografías adjuntas</p>
+                    <p className="mt-0.5 text-[11px]">
+                      Puedes tomar fotos desde la cámara de tu celular o seleccionarlas desde tu galería/computadora.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Protocolo o documento PDF */}
+              <div className="space-y-2 pt-3 border-t">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="pdf-protocolo" className="text-xs font-semibold text-muted-foreground">
+                    Documento o Protocolo Oficial Firmado (Opcional - PDF)
+                  </Label>
+                  {form.archivoBase64 && form.archivoBase64.includes(".pdf") && (
+                    <span className="text-[11px] text-primary font-medium">✓ Documento cargado</span>
+                  )}
+                </div>
+                <Input
+                  id="pdf-protocolo"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handlePdfChange}
+                  className="text-xs h-9"
+                />
+                {maintenance?.archivoBase64 && (
+                  <div className="mt-1">
+                    <a
+                      href={maintenance.archivoBase64}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      <ExternalLink className="size-3" /> Ver documento o formato adjunto actual
+                    </a>
+                  </div>
+                )}
+                {fileError && <p className="text-xs text-destructive">{fileError}</p>}
               </div>
             </div>
 

@@ -11,6 +11,8 @@ import {
   Download,
   Printer,
   FileText,
+  Camera,
+  Eye,
 } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { EquipmentDialog, MaintenanceDialog, MovementDialog } from "@/components/bioasset/dialogs";
@@ -460,10 +462,89 @@ function DetalleEquipo() {
                 )}
               </div>
 
-              <p className="mt-1 text-sm">{m.descripcion}</p>
-              {m.observaciones && (
-                <p className="text-sm text-muted-foreground">{m.observaciones}</p>
-              )}
+              {(() => {
+                let parsed: any = null;
+                let fotos: string[] = [];
+                try {
+                  parsed = JSON.parse(m.observaciones || "");
+                  if (parsed && Array.isArray(parsed.fotos)) {
+                    fotos = parsed.fotos.filter((f: any) => typeof f === "string" && f.length > 0);
+                  }
+                } catch {
+                  parsed = null;
+                }
+
+                if (
+                  fotos.length === 0 &&
+                  m.archivoBase64 &&
+                  !m.archivoBase64.endsWith(".pdf") &&
+                  !m.archivoBase64.includes("application/pdf")
+                ) {
+                  fotos = [m.archivoBase64];
+                }
+
+                return (
+                  <div className="mt-2 space-y-2">
+                    {parsed && typeof parsed === "object" ? (
+                      <div className="rounded-lg bg-muted/30 p-3 space-y-1.5 text-xs border">
+                        {parsed.perturbacion && (
+                          <div>
+                            <span className="font-semibold text-foreground">Falla / Perturbación: </span>
+                            <span className="text-muted-foreground">{parsed.perturbacion}</span>
+                          </div>
+                        )}
+                        {parsed.causas && (
+                          <div>
+                            <span className="font-semibold text-foreground">Causas: </span>
+                            <span className="text-muted-foreground">{parsed.causas}</span>
+                          </div>
+                        )}
+                        {parsed.acciones && (
+                          <div>
+                            <span className="font-semibold text-foreground">Acciones tomadas: </span>
+                            <span className="text-muted-foreground">{parsed.acciones}</span>
+                          </div>
+                        )}
+                        {parsed.recomendaciones && (
+                          <div>
+                            <span className="font-semibold text-foreground">Recomendaciones: </span>
+                            <span className="text-muted-foreground">{parsed.recomendaciones}</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : m.observaciones ? (
+                      <p className="text-sm text-muted-foreground">{m.observaciones}</p>
+                    ) : null}
+
+                    {/* Galería de fotos como evidencia */}
+                    {fotos.length > 0 && (
+                      <div className="pt-1">
+                        <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1 mb-1.5">
+                          <Camera className="size-3.5 text-primary" />
+                          Evidencias fotográficas ({fotos.length})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {fotos.map((f, idx) => (
+                            <a
+                              key={idx}
+                              href={f}
+                              target="_blank"
+                              rel="noreferrer"
+                              title={`Ver evidencia #${idx + 1}`}
+                              className="group relative rounded-lg border overflow-hidden size-16 bg-muted/40 hover:scale-105 transition-transform shadow-xs"
+                            >
+                              <img src={f} alt={`Evidencia ${idx + 1}`} className="size-full object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Eye className="size-4 text-white" />
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               <p className="mt-1 text-xs text-muted-foreground">
                 Próximo mantenimiento programado: {formatDate(m.proximaFecha)}
               </p>

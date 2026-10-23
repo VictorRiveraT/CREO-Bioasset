@@ -56,7 +56,35 @@ async Task<string?> ProcessUpload(string? base64Str) {
     return base64Str;
 }
 
+async Task<string?> ProcessObservacionesWithUploads(string? obsJson) {
+    if (string.IsNullOrEmpty(obsJson)) return obsJson;
+    try {
+        var node = System.Text.Json.Nodes.JsonNode.Parse(obsJson);
+        if (node is System.Text.Json.Nodes.JsonObject obj && obj.TryGetPropertyValue("fotos", out var fotosNode) && fotosNode is System.Text.Json.Nodes.JsonArray arr) {
+            for (int i = 0; i < arr.Count; i++) {
+                var item = arr[i]?.ToString();
+                if (!string.IsNullOrEmpty(item) && item.StartsWith("data:")) {
+                    var uploadedUrl = await ProcessUpload(item);
+                    arr[i] = uploadedUrl;
+                }
+            }
+            return obj.ToJsonString();
+        }
+    } catch {
+        // Ignorar si no es JSON estructurado
+    }
+    return obsJson;
+}
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+app.MapPost("/upload", [Authorize] async (System.Text.Json.Nodes.JsonObject req) => {
+    if (req.TryGetPropertyValue("base64", out var b64) && b64 != null) {
+        var url = await ProcessUpload(b64.ToString());
+        return Results.Ok(new { url });
+    }
+    return Results.BadRequest(new { error = "No se proporcionó archivo base64." });
+});
 
 app.MapGet("/mantenimientos", [Authorize] async (MantDb db, HttpContext ctx, int page = 1, int limit = 1000) => {
     var sede = ctx.User.FindFirst("sede")?.Value;
@@ -107,7 +135,7 @@ app.MapPost("/mantenimientos", [Authorize(Roles = "admin,biomedico")] async (Cre
         Descripcion = dto.Descripcion ?? "",
         ProximaFecha = dto.ProximaFecha,
         Fecha = dto.Fecha ?? DateTime.UtcNow.ToString("yyyy-MM-dd"),
-        Observaciones = dto.Observaciones,
+        Observaciones = await ProcessObservacionesWithUploads(dto.Observaciones),
         ArchivoBase64 = await ProcessUpload(dto.ArchivoBase64),
         IncidenciaId = dto.IncidenciaId,
         Costo = dto.Costo,
@@ -163,7 +191,7 @@ app.MapPut("/mantenimientos/{id}", [Authorize(Roles = "admin,biomedico")] async 
     if (dto.TryGetPropertyValue("proxima_fecha", out var pf) && pf != null) m.ProximaFecha = pf.ToString();
     else if (dto.TryGetPropertyValue("proximaFecha", out var pf2) && pf2 != null) m.ProximaFecha = pf2.ToString();
     if (dto.TryGetPropertyValue("fecha", out var fecha) && fecha != null) m.Fecha = fecha.ToString();
-    if (dto.TryGetPropertyValue("observaciones", out var obs) && obs != null) m.Observaciones = obs.ToString();
+    if (dto.TryGetPropertyValue("observaciones", out var obs) && obs != null) m.Observaciones = await ProcessObservacionesWithUploads(obs.ToString());
     if (dto.TryGetPropertyValue("proveedor", out var prov) && prov != null) m.Proveedor = prov.ToString();
     if (dto.TryGetPropertyValue("costo", out var costo) && costo != null && decimal.TryParse(costo.ToString(), out var cVal)) m.Costo = cVal;
     

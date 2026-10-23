@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search, X, Camera, FileText } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { MaintenanceDialog } from "@/components/bioasset/dialogs";
 import { encryptUrlParam } from "@/lib/bioasset/security";
@@ -176,18 +176,67 @@ function MantenimientoPage() {
                     </TableCell>
                     <TableCell>{userName(m.biomedicoId)}</TableCell>
                     <TableCell className="max-w-sm text-muted-foreground">
-                      <div className="flex flex-col gap-1">
-                        <span>{m.descripcion}</span>
-                        {m.archivoBase64 && (
-                          <a
-                            href={m.archivoBase64}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-primary hover:underline"
-                          >
-                            📎 Ver Formato
-                          </a>
-                        )}
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-xs font-medium text-foreground">{m.descripcion}</span>
+                        {(() => {
+                          let fotos: string[] = [];
+                          try {
+                            const parsed = JSON.parse(m.observaciones || "");
+                            if (parsed && Array.isArray(parsed.fotos)) {
+                              fotos = parsed.fotos.filter((f: any) => typeof f === "string" && f.length > 0);
+                            }
+                          } catch {}
+
+                          if (
+                            fotos.length === 0 &&
+                            m.archivoBase64 &&
+                            !m.archivoBase64.endsWith(".pdf") &&
+                            !m.archivoBase64.includes("application/pdf")
+                          ) {
+                            fotos = [m.archivoBase64];
+                          }
+
+                          const hasPdf =
+                            m.archivoBase64 &&
+                            (m.archivoBase64.endsWith(".pdf") || m.archivoBase64.includes("application/pdf"));
+
+                          return (
+                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                              {fotos.length > 0 && (
+                                <div className="flex items-center gap-1.5">
+                                  <div className="flex -space-x-1.5 overflow-hidden">
+                                    {fotos.slice(0, 3).map((f, i) => (
+                                      <a
+                                        key={i}
+                                        href={f}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        title={`Ver foto de evidencia #${i + 1}`}
+                                        className="inline-block size-6 rounded-full ring-2 ring-background overflow-hidden hover:scale-110 transition-transform shadow-xs"
+                                      >
+                                        <img src={f} alt="Evidencia" className="size-full object-cover" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                  <span className="text-[11px] font-medium text-primary flex items-center gap-0.5">
+                                    <Camera className="size-3" />
+                                    {fotos.length} {fotos.length === 1 ? "foto" : "fotos"}
+                                  </span>
+                                </div>
+                              )}
+                              {hasPdf && (
+                                <a
+                                  href={m.archivoBase64}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[11px] font-medium text-primary hover:underline inline-flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded"
+                                >
+                                  <FileText className="size-3" /> Ver Formato PDF
+                                </a>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </TableCell>
                     <TableCell>{m.resultado}</TableCell>
