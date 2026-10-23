@@ -89,7 +89,7 @@ export function EquipmentDialog({
 
   trigger: ReactNode;
 }) {
-  const { db, addEquipment, updateEquipment, isAdmin, isBiomedico } = useBio();
+  const { db, addEquipment, updateEquipment, isAdmin, isBiomedico, categorias, estadosEquipo } = useBio();
 
   const [open, setOpen] = useState(false);
 
@@ -101,7 +101,7 @@ export function EquipmentDialog({
   const [form, setForm] = useState({
     codigo: equipment?.codigo ?? `BIO-${String(db.equipment.length + 1).padStart(3, "0")}`,
     nombre: equipment?.nombre ?? "",
-    categoria: equipment?.categoria ?? CATEGORIES[0],
+    categoria: equipment?.categoria ?? (categorias[0] || "Diagnóstico por imagen"),
     marca: equipment?.marca ?? "",
     modelo: equipment?.modelo ?? "",
     serie: equipment?.serie ?? "",
@@ -116,7 +116,7 @@ export function EquipmentDialog({
       setForm({
         codigo: equipment?.codigo ?? `BIO-${String(db.equipment.length + 1).padStart(3, "0")}`,
         nombre: equipment?.nombre ?? "",
-        categoria: equipment?.categoria ?? CATEGORIES[0],
+        categoria: equipment?.categoria ?? (categorias[0] || "Diagnóstico por imagen"),
         marca: equipment?.marca ?? "",
         modelo: equipment?.modelo ?? "",
         serie: equipment?.serie ?? "",
@@ -246,7 +246,7 @@ export function EquipmentDialog({
                 </SelectTrigger>
 
                 <SelectContent>
-                  {CATEGORIES.map((c) => (
+                  {Array.from(new Set([...categorias, ...(form.categoria ? [form.categoria] : [])])).map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
                     </SelectItem>
@@ -264,7 +264,7 @@ export function EquipmentDialog({
                 </SelectTrigger>
 
                 <SelectContent>
-                  {EQUIPMENT_STATUSES.map((s) => (
+                  {Array.from(new Set([...estadosEquipo, ...(form.estado ? [form.estado] : [])])).map((s) => (
                     <SelectItem key={s} value={s}>
                       {s}
                     </SelectItem>
@@ -472,7 +472,7 @@ export function EquipmentDialog({
 }
 
 export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigger: ReactNode }) {
-  const { db, addMovement, equipmentById } = useBio();
+  const { db, addMovement, equipmentById, motivosTraslado } = useBio();
 
   const [open, setOpen] = useState(false);
 
@@ -482,7 +482,7 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
   const [form, setForm] = useState({
     equipoId: equipoId ?? db.equipment[0]?.id ?? "",
     destinoId: "",
-    motivo: "",
+    motivo: motivosTraslado[0] ?? "",
     observaciones: "",
   });
 
@@ -491,7 +491,7 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
       setForm({
         equipoId: equipoId ?? db.equipment[0]?.id ?? "",
         destinoId: "",
-        motivo: "",
+        motivo: motivosTraslado[0] ?? "",
         observaciones: "",
       });
     }
@@ -643,15 +643,18 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
             <div className="space-y-2">
               <Label htmlFor="motivo">Motivo del traslado</Label>
 
-              <Input
-                id="motivo"
-
-                value={form.motivo}
-
-                onChange={(e) => set("motivo", e.target.value)}
-
-                required
-              />
+              <Select value={form.motivo} onValueChange={(v) => set("motivo", v)}>
+                <SelectTrigger id="motivo">
+                  <SelectValue placeholder="Seleccione motivo de traslado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from(new Set([...motivosTraslado, ...(form.motivo ? [form.motivo] : [])])).map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -720,7 +723,7 @@ export function MaintenanceDialog({
 
   trigger: ReactNode;
 }) {
-  const { db, addMaintenance, updateMaintenance, user, updateEquipment, updateIncident } = useBio();
+  const { db, addMaintenance, updateMaintenance, user, updateEquipment, updateIncident, tiposMantenimiento, resultadosMantenimiento } = useBio();
 
   const [open, setOpen] = useState(false);
 
@@ -972,11 +975,17 @@ export function MaintenanceDialog({
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem value="En progreso">En progreso</SelectItem>
-
-                  <SelectItem value="Completado">Completado</SelectItem>
-
-                  <SelectItem value="De baja">Equipo irrecuperable (De baja)</SelectItem>
+                  {Array.from(new Set([
+                    ...resultadosMantenimiento,
+                    "En progreso",
+                    "Completado",
+                    "De baja",
+                    ...(form.resultado ? [form.resultado] : []),
+                  ])).map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -990,9 +999,16 @@ export function MaintenanceDialog({
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem value="Preventivo">Preventivo</SelectItem>
-
-                  <SelectItem value="Correctivo">Correctivo</SelectItem>
+                  {Array.from(new Set([
+                    ...tiposMantenimiento,
+                    "Preventivo",
+                    "Correctivo",
+                    ...(form.tipo ? [form.tipo] : []),
+                  ])).map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

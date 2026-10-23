@@ -43,7 +43,7 @@ export const Route = createFileRoute("/equipos/")({
 });
 
 function EquiposPage() {
-  const { db, canEdit, locationName } = useBio();
+  const { db, canEdit, locationName, categorias, estadosEquipo } = useBio();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("todas");
   const [est, setEst] = useState("todos");
@@ -54,7 +54,7 @@ function EquiposPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const estadoParam = params.get("estado");
-      if (estadoParam && EQUIPMENT_STATUSES.includes(estadoParam as any)) {
+      if (estadoParam && (EQUIPMENT_STATUSES.includes(estadoParam as any) || estadosEquipo.includes(estadoParam))) {
         setEst(estadoParam);
       }
     }
@@ -117,7 +117,7 @@ function EquiposPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas las categorías</SelectItem>
-              {CATEGORIES.map((c) => (
+              {Array.from(new Set([...categorias, ...CATEGORIES])).map((c) => (
                 <SelectItem key={c} value={c}>
                   {c}
                 </SelectItem>
@@ -131,7 +131,7 @@ function EquiposPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los estados</SelectItem>
-              {EQUIPMENT_STATUSES.map((s) => (
+              {Array.from(new Set([...estadosEquipo, ...EQUIPMENT_STATUSES])).map((s) => (
                 <SelectItem key={s} value={s}>
                   {s}
                 </SelectItem>

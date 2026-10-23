@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Clock,
   QrCode,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ type NavItem = {
   icon: any;
 
   module?: keyof UserPermissions;
+  adminOrBiomedico?: boolean;
 };
 
 const NAV: NavItem[] = [
@@ -74,17 +76,22 @@ const NAV: NavItem[] = [
 
   { to: "/usuarios", label: "Usuarios", icon: Users, module: "usuarios" },
 
+  { to: "/controles", label: "Controles", icon: SlidersHorizontal, adminOrBiomedico: true },
+
   { to: "/configuracion", label: "Configuración", icon: Settings, module: "configuracion" },
 ];
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  const { canView } = useBio();
+  const { canView, isAdmin, isBiomedico } = useBio();
 
   return (
     <nav className="flex flex-col gap-1 px-3">
-      {NAV.filter((item) => !item.module || canView(item.module)).map((item) => {
+      {NAV.filter((item) => {
+        if (item.adminOrBiomedico && !isAdmin && !isBiomedico) return false;
+        return !item.module || canView(item.module);
+      }).map((item) => {
         const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
 
         return (

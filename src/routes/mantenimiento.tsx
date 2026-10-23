@@ -42,7 +42,7 @@ export const Route = createFileRoute("/mantenimiento")({
 });
 
 function MantenimientoPage() {
-  const { db, userName, canEdit } = useBio();
+  const { db, userName, canEdit, tiposMantenimiento } = useBio();
   const [q, setQ] = useState("");
   const [tipo, setTipo] = useState("todos");
 
@@ -94,8 +94,11 @@ function MantenimientoPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos los tipos</SelectItem>
-              <SelectItem value="Preventivo">Preventivo</SelectItem>
-              <SelectItem value="Correctivo">Correctivo</SelectItem>
+              {Array.from(new Set([...tiposMantenimiento, "Preventivo", "Correctivo"])).map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </CardContent>

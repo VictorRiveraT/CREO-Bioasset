@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Moon, Sun, MapPin, Palette, Mail, Send } from "lucide-react";
+import { Moon, Sun, MapPin, Palette, Mail, Send, SlidersHorizontal } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -21,7 +21,7 @@ export const Route = createFileRoute("/configuracion")({
 });
 
 function ConfiguracionPage() {
-  const { theme, setTheme, isAdmin } = useBio();
+  const { theme, setTheme, isAdmin, isBiomedico } = useBio();
   const [sendingReport, setSendingReport] = useState(false);
 
   const handleSendDailyReport = async () => {
@@ -103,16 +103,27 @@ function ConfiguracionPage() {
           </CardContent>
         </Card>
 
-        {isAdmin && (
+        {(isAdmin || isBiomedico) && (
           <Card className="shadow-[var(--shadow-card)] transition-all hover:shadow-md">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <MapPin className="size-5 text-primary" />
-                <CardTitle>Catálogos</CardTitle>
+                <SlidersHorizontal className="size-5 text-primary" />
+                <CardTitle>Controles y Catálogos</CardTitle>
               </div>
               <CardDescription>Administra los catálogos y referencias del sistema.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label className="text-base">Módulo de Controles</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Gestiona categorías, estados, marcas, modelos y motivos de traslado.
+                  </p>
+                </div>
+                <Button asChild variant="outline">
+                  <Link to="/controles">Gestionar</Link>
+                </Button>
+              </div>
               <div className="flex items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
                   <Label className="text-base">Ubicaciones y áreas</Label>

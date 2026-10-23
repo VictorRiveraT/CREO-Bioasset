@@ -121,6 +121,7 @@ export interface DB {
   incidents: Incident[];
   alertas: Alerta[];
   marcas?: any[];
+  opcionesCatalogo: OpcionCatalogo[];
 }
 
 export interface Alerta {
@@ -131,5 +132,16 @@ export interface Alerta {
   severidad: string;
   estado: string;
   fecha?: string;
+  fechaCreacion?: string;
+}
+
+export interface OpcionCatalogo {
+  id: string;
+  tipo: "categoria_equipo" | "estado_equipo" | "motivo_traslado" | "tipo_mantenimiento" | "resultado_mantenimiento" | string;
+  valor: string;
+  descripcion?: string;
+  activo: boolean;
+  orden: number;
+  sede?: string;
   fechaCreacion?: string;
 }

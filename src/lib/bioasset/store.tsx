@@ -19,13 +19,58 @@ import type {
   UserPermissions,
   ModulePermissions,
   Role,
+  OpcionCatalogo,
 } from "./types";
+import { CATEGORIES, EQUIPMENT_STATUSES } from "./types";
 
 import { fetchApi } from "./apiClient";
 
 import { toast } from "sonner";
 
 const TOKEN_KEY = "bioasset.token";
+
+const DEFAULT_CATEGORIAS = [
+  "Diagnóstico por imagen",
+  "Monitoreo",
+  "Soporte vital",
+  "Terapia",
+  "Laboratorio",
+  "Odontología",
+  "Rehabilitación",
+];
+
+const DEFAULT_ESTADOS_EQUIPO = [
+  "Operativo",
+  "En mantenimiento",
+  "Fuera de servicio",
+  "De baja",
+];
+
+const DEFAULT_MOTIVOS_TRASLADO = [
+  "Mantenimiento preventivo",
+  "Mantenimiento correctivo",
+  "Calibración",
+  "Préstamo inter-áreas",
+  "Reubicación permanente",
+  "Baja temporal",
+  "Actualización tecnológica",
+  "Evaluación técnica",
+];
+
+const DEFAULT_TIPOS_MANTENIMIENTO = [
+  "Preventivo",
+  "Correctivo",
+  "Calibración",
+  "Predictivo",
+  "Instalación / Puesta en marcha",
+];
+
+const DEFAULT_RESULTADOS_MANTENIMIENTO = [
+  "Completado / Operativo",
+  "Pendiente de repuestos",
+  "Requiere evaluación adicional",
+  "No superó pruebas / Fuera de servicio",
+];
 
 export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
   admin: {
@@ -213,6 +258,22 @@ interface Ctx {
   saveMarca: (marca: { id?: string; nombre: string; modelosJson: string }) => Promise<void>;
 
   deleteMarca: (id: string) => Promise<void>;
+
+  addOpcionCatalogo: (op: Partial<OpcionCatalogo>) => Promise<any>;
+
+  updateOpcionCatalogo: (id: string, op: Partial<OpcionCatalogo>) => Promise<any>;
+
+  deleteOpcionCatalogo: (id: string) => Promise<any>;
+
+  categorias: string[];
+
+  estadosEquipo: string[];
+
+  motivosTraslado: string[];
+
+  tiposMantenimiento: string[];
+
+  resultadosMantenimiento: string[];
 }
 
 const BioContext = createContext<Ctx | null>(null);
@@ -226,6 +287,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     maintenance: [],
     incidents: [],
     alertas: [],
+    opcionesCatalogo: [],
   });
 
   const [user, setUser] = useState<User | null>(null);
@@ -275,6 +337,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         marcasRes,
         incidenciasRes,
         alertasRes,
+        opcionesRes,
       ] = await Promise.all([
         fetchApi("/auth/usuarios").catch((err) => {
           console.error("[fetchDb] Error en /auth/usuarios:", err);
@@ -308,7 +371,13 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           console.error("[fetchDb] Error en /alertas/alertas:", err);
           return { alertas: [] };
         }),
+        fetchApi("/inventario/opciones").catch((err) => {
+          console.error("[fetchDb] Error en /inventario/opciones:", err);
+          return { opciones: [] };
+        }),
       ]);
+
+      const rawOpciones = Array.isArray((opcionesRes as any)?.opciones) ? (opcionesRes as any).opciones : [];
 
       const rawActivos = Array.isArray(equiposRes?.activos)
         ? equiposRes.activos
@@ -404,6 +473,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           ...a,
           activoId: a.activo_id || a.activoId,
         })),
+        opcionesCatalogo: rawOpciones,
       });
     } catch (e) {
       console.error("[fetchDb] Error loading DB:", e);
@@ -475,6 +545,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       incidents: [],
       marcas: [],
       alertas: [],
+      opcionesCatalogo: [],
     });
   }, []);
 
@@ -883,6 +954,77 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
       await fetchDb();
     },
+
+    addOpcionCatalogo: async (op) => {
+      const res = await fetchApi("/inventario/opciones", {
+        method: "POST",
+        body: JSON.stringify(op),
+      });
+      await fetchDb();
+      return res;
+    },
+
+    updateOpcionCatalogo: async (id, op) => {
+      const res = await fetchApi(`/inventario/opciones/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(op),
+      });
+      await fetchDb();
+      return res;
+    },
+
+    deleteOpcionCatalogo: async (id) => {
+      const res = await fetchApi(`/inventario/opciones/${id}`, {
+        method: "DELETE",
+      });
+      await fetchDb();
+      return res;
+    },
+
+    categorias: (() => {
+      const list = (db.opcionesCatalogo || [])
+        .filter((o) => o.tipo?.toLowerCase() === "categoria_equipo" && o.activo)
+        .filter((o) => !o.sede || o.sede === "Todas" || !user?.sede || o.sede.toLowerCase() === user.sede.toLowerCase())
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor))
+        .map((o) => o.valor);
+      return list.length > 0 ? list : DEFAULT_CATEGORIAS;
+    })(),
+
+    estadosEquipo: (() => {
+      const list = (db.opcionesCatalogo || [])
+        .filter((o) => o.tipo?.toLowerCase() === "estado_equipo" && o.activo)
+        .filter((o) => !o.sede || o.sede === "Todas" || !user?.sede || o.sede.toLowerCase() === user.sede.toLowerCase())
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor))
+        .map((o) => o.valor);
+      return list.length > 0 ? list : DEFAULT_ESTADOS_EQUIPO;
+    })(),
+
+    motivosTraslado: (() => {
+      const list = (db.opcionesCatalogo || [])
+        .filter((o) => o.tipo?.toLowerCase() === "motivo_traslado" && o.activo)
+        .filter((o) => !o.sede || o.sede === "Todas" || !user?.sede || o.sede.toLowerCase() === user.sede.toLowerCase())
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor))
+        .map((o) => o.valor);
+      return list.length > 0 ? list : DEFAULT_MOTIVOS_TRASLADO;
+    })(),
+
+    tiposMantenimiento: (() => {
+      const list = (db.opcionesCatalogo || [])
+        .filter((o) => o.tipo?.toLowerCase() === "tipo_mantenimiento" && o.activo)
+        .filter((o) => !o.sede || o.sede === "Todas" || !user?.sede || o.sede.toLowerCase() === user.sede.toLowerCase())
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor))
+        .map((o) => o.valor);
+      return list.length > 0 ? list : DEFAULT_TIPOS_MANTENIMIENTO;
+    })(),
+
+    resultadosMantenimiento: (() => {
+      const list = (db.opcionesCatalogo || [])
+        .filter((o) => o.tipo?.toLowerCase() === "resultado_mantenimiento" && o.activo)
+        .filter((o) => !o.sede || o.sede === "Todas" || !user?.sede || o.sede.toLowerCase() === user.sede.toLowerCase())
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor))
+        .map((o) => o.valor);
+      return list.length > 0 ? list : DEFAULT_RESULTADOS_MANTENIMIENTO;
+    })(),
 
     equipmentById: (id) => {
       const e = db.equipment.find((x) => x.id === id);

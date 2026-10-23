@@ -61,13 +61,13 @@ app.MapDelete("/ubicaciones/{id}", [Authorize(Roles = "admin")] async (Guid id, 
 });
 
 app.MapGet("/marcas", [Authorize] async (InvDb db) => Results.Ok(new { marcas = await db.Marcas.ToListAsync() }));
-app.MapPost("/marcas", [Authorize(Roles = "admin")] async (Marca dto, InvDb db) => { db.Marcas.Add(dto); await db.SaveChangesAsync(); return Results.Created("", dto); });
-app.MapPut("/marcas/{id}", [Authorize(Roles = "admin")] async (Guid id, Marca dto, InvDb db) => {
+app.MapPost("/marcas", [Authorize(Roles = "admin,biomedico")] async (Marca dto, InvDb db) => { db.Marcas.Add(dto); await db.SaveChangesAsync(); return Results.Created("", dto); });
+app.MapPut("/marcas/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, Marca dto, InvDb db) => {
     var m = await db.Marcas.FindAsync(id);
     if(m!=null) { m.Nombre = dto.Nombre; m.ModelosJson = dto.ModelosJson; await db.SaveChangesAsync(); }
     return Results.Ok();
 });
-app.MapDelete("/marcas/{id}", [Authorize(Roles = "admin")] async (Guid id, InvDb db) => {
+app.MapDelete("/marcas/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, InvDb db) => {
     var m = await db.Marcas.FindAsync(id);
     if(m!=null) {
         var hasActivos = await db.Activos.AnyAsync(a => a.Marca == m.Nombre);
@@ -78,6 +78,71 @@ app.MapDelete("/marcas/{id}", [Authorize(Roles = "admin")] async (Guid id, InvDb
         await db.SaveChangesAsync(); 
     }
     return Results.Ok();
+});
+
+// ==================== CATÁLOGOS / OPCIONES DEL SISTEMA ====================
+app.MapGet("/opciones", [Authorize] async (InvDb db, string? tipo, string? sede) => {
+    var q = db.OpcionesCatalogo.AsQueryable();
+    if (!string.IsNullOrEmpty(tipo)) {
+        q = q.Where(o => o.Tipo == tipo.ToLower());
+    }
+    if (!string.IsNullOrEmpty(sede) && sede != "todas") {
+        q = q.Where(o => o.Sede == null || o.Sede == "" || o.Sede == "Todas" || o.Sede == sede);
+    }
+    var list = await q.OrderBy(o => o.Tipo).ThenBy(o => o.Orden).ThenBy(o => o.Valor).ToListAsync();
+    return Results.Ok(new { opciones = list });
+});
+
+app.MapPost("/opciones", [Authorize(Roles = "admin,biomedico")] async (OpcionCatalogo dto, InvDb db) => {
+    if (string.IsNullOrWhiteSpace(dto.Tipo) || string.IsNullOrWhiteSpace(dto.Valor)) {
+        return Results.BadRequest(new { error = "El tipo y el valor son obligatorios." });
+    }
+    dto.Tipo = dto.Tipo.Trim().ToLowerInvariant();
+    dto.Valor = dto.Valor.Trim();
+
+    var exists = await db.OpcionesCatalogo.AnyAsync(o => o.Tipo == dto.Tipo && o.Valor.ToLower() == dto.Valor.ToLower());
+    if (exists) {
+        return Results.BadRequest(new { error = $"Ya existe una opción con el valor '{dto.Valor}' para esta categoría." });
+    }
+
+    if (dto.Id == Guid.Empty) dto.Id = Guid.NewGuid();
+    db.OpcionesCatalogo.Add(dto);
+    await db.SaveChangesAsync();
+    return Results.Created($"/opciones/{dto.Id}", dto);
+});
+
+app.MapPut("/opciones/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, OpcionCatalogo dto, InvDb db) => {
+    var op = await db.OpcionesCatalogo.FindAsync(id);
+    if (op == null) return Results.NotFound(new { error = "Opción no encontrada." });
+
+    if (!string.IsNullOrWhiteSpace(dto.Valor)) op.Valor = dto.Valor.Trim();
+    if (dto.Descripcion != null) op.Descripcion = dto.Descripcion.Trim();
+    op.Activo = dto.Activo;
+    op.Orden = dto.Orden;
+    if (dto.Sede != null) op.Sede = dto.Sede;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(op);
+});
+
+app.MapDelete("/opciones/{id}", [Authorize(Roles = "admin,biomedico")] async (Guid id, InvDb db) => {
+    var op = await db.OpcionesCatalogo.FindAsync(id);
+    if (op == null) return Results.NotFound(new { error = "Opción no encontrada." });
+
+    if (op.Tipo == "categoria_equipo") {
+        var used = await db.Activos.AnyAsync(a => a.Categoria.ToLower() == op.Valor.ToLower());
+        if (used) return Results.BadRequest(new { error = "No se puede eliminar la categoría porque hay equipos asociados a ella. Puede desactivarla en su lugar." });
+    } else if (op.Tipo == "estado_equipo") {
+        var used = await db.Activos.AnyAsync(a => a.Estado.ToLower() == op.Valor.ToLower());
+        if (used) return Results.BadRequest(new { error = "No se puede eliminar el estado porque hay equipos con este estado. Puede desactivarlo en su lugar." });
+    } else if (op.Tipo == "motivo_traslado") {
+        var used = await db.Movimientos.AnyAsync(m => m.Motivo.ToLower() == op.Valor.ToLower());
+        if (used) return Results.BadRequest(new { error = "No se puede eliminar el motivo porque hay registros de movimientos asociados." });
+    }
+
+    db.OpcionesCatalogo.Remove(op);
+    await db.SaveChangesAsync();
+    return Results.Ok(new { message = "Opción eliminada exitosamente." });
 });
 
 app.MapGet("/activos", [Authorize] async (InvDb db, string? ubicacion, string? estado, int page = 1, int limit = 1000) => {
@@ -297,6 +362,21 @@ using (var scope = app.Services.CreateScope()) {
             UPDATE [inventario].[Ubicaciones] SET Sede = 'Sede Principal' WHERE Sede IS NULL;
             UPDATE [inventario].[Ubicaciones] SET Piso = 'Piso 1' WHERE Piso IS NULL;
         ");
+        dbContext.Database.ExecuteSqlRaw(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'inventario' AND t.name = 'OpcionesCatalogo')
+            BEGIN
+                CREATE TABLE [inventario].[OpcionesCatalogo] (
+                    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+                    Tipo NVARCHAR(50) NOT NULL,
+                    Valor NVARCHAR(100) NOT NULL,
+                    Descripcion NVARCHAR(255) NULL,
+                    Activo BIT NOT NULL DEFAULT 1,
+                    Orden INT NOT NULL DEFAULT 0,
+                    Sede NVARCHAR(100) NULL,
+                    FechaCreacion DATETIME2 NOT NULL DEFAULT GETUTCDATE()
+                );
+            END;
+        ");
     } catch (Exception e) {
         Console.WriteLine(e);
     }
@@ -309,10 +389,21 @@ public class InvDb : DbContext {
     public DbSet<Activo> Activos { get; set; }
     public DbSet<Movimiento> Movimientos { get; set; }
     public DbSet<Marca> Marcas { get; set; }
+    public DbSet<OpcionCatalogo> OpcionesCatalogo { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder) { modelBuilder.HasDefaultSchema("inventario"); }
 }
 public class Ubicacion { [Key] public Guid Id { get; set; } = Guid.NewGuid(); public string Nombre { get; set; } = ""; public string? Descripcion { get; set; } public bool Activo { get; set; } = true; public string Sede { get; set; } = "Sede Principal"; public string Piso { get; set; } = "Piso 1"; }
 public class Marca { [Key] public Guid Id { get; set; } = Guid.NewGuid(); public string Nombre { get; set; } = ""; public string ModelosJson { get; set; } = "[]"; }
+public class OpcionCatalogo {
+    [Key] public Guid Id { get; set; } = Guid.NewGuid();
+    public string Tipo { get; set; } = "";
+    public string Valor { get; set; } = "";
+    public string? Descripcion { get; set; }
+    public bool Activo { get; set; } = true;
+    public int Orden { get; set; } = 0;
+    public string? Sede { get; set; }
+    public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+}
 public class Activo { 
     [Key] public Guid Id { get; set; } = Guid.NewGuid(); 
     public string Codigo { get; set; } = ""; public string Nombre { get; set; } = ""; public string Categoria { get; set; } = ""; 

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AlertasRouteImport } from './routes/alertas'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
+import { Route as ControlesRouteImport } from './routes/controles'
 import { Route as IncidenciasRouteImport } from './routes/incidencias'
 import { Route as MantenimientoRouteImport } from './routes/mantenimiento'
 import { Route as ReportesRouteImport } from './routes/reportes'
@@ -36,6 +37,11 @@ const AlertasRoute = AlertasRouteImport.update({
 const ConfiguracionRoute = ConfiguracionRouteImport.update({
   id: '/configuracion',
   path: '/configuracion',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ControlesRoute = ControlesRouteImport.update({
+  id: '/controles',
+  path: '/controles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IncidenciasRoute = IncidenciasRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/alertas': typeof AlertasRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/controles': typeof ControlesRoute
   '/incidencias': typeof IncidenciasRoute
   '/mantenimiento': typeof MantenimientoRoute
   '/reportes': typeof ReportesRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alertas': typeof AlertasRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/controles': typeof ControlesRoute
   '/incidencias': typeof IncidenciasRoute
   '/mantenimiento': typeof MantenimientoRoute
   '/reportes': typeof ReportesRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/alertas': typeof AlertasRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/controles': typeof ControlesRoute
   '/incidencias': typeof IncidenciasRoute
   '/mantenimiento': typeof MantenimientoRoute
   '/reportes': typeof ReportesRoute
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alertas'
     | '/configuracion'
+    | '/controles'
     | '/incidencias'
     | '/mantenimiento'
     | '/reportes'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alertas'
     | '/configuracion'
+    | '/controles'
     | '/incidencias'
     | '/mantenimiento'
     | '/reportes'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alertas'
     | '/configuracion'
+    | '/controles'
     | '/incidencias'
     | '/mantenimiento'
     | '/reportes'
@@ -187,6 +199,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlertasRoute: typeof AlertasRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
+  ControlesRoute: typeof ControlesRoute
   IncidenciasRoute: typeof IncidenciasRoute
   MantenimientoRoute: typeof MantenimientoRoute
   ReportesRoute: typeof ReportesRoute
@@ -220,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracion'
       fullPath: '/configuracion'
       preLoaderRoute: typeof ConfiguracionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/controles': {
+      id: '/controles'
+      path: '/controles'
+      fullPath: '/controles'
+      preLoaderRoute: typeof ControlesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/incidencias': {
@@ -299,6 +319,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlertasRoute: AlertasRoute,
   ConfiguracionRoute: ConfiguracionRoute,
+  ControlesRoute: ControlesRoute,
   IncidenciasRoute: IncidenciasRoute,
   MantenimientoRoute: MantenimientoRoute,
   ReportesRoute: ReportesRoute,
