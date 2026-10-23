@@ -274,19 +274,7 @@ export function EquipmentDialog({
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label>Marca</Label>
-
-                {(isAdmin || isBiomedico) && (
-                  <MarcaDialog
-                    trigger={
-                      <span className="text-xs text-primary cursor-pointer hover:underline">
-                        Gestionar
-                      </span>
-                    }
-                  />
-                )}
-              </div>
+              <Label>Marca</Label>
 
               <Select
                 value={form.marca}
