@@ -178,18 +178,13 @@ function EquiposPage() {
 
       <Card className="shadow-[var(--shadow-card)] mt-4">
         <CardContent className="p-0">
-          <Table className="min-w-[950px]">
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Código</TableHead>
-                <TableHead>Equipo</TableHead>
-                <TableHead>Categoría</TableHead>
-                <TableHead>Marca</TableHead>
-                <TableHead>Modelo</TableHead>
-                <TableHead>N.° de serie</TableHead>
+                <TableHead>Nombre</TableHead>
                 <TableHead>Ubicación</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Adquisición</TableHead>
                 <TableHead>Próx. mantenimiento</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
@@ -197,20 +192,20 @@ function EquiposPage() {
             <TableBody>
               {rows.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell className="font-semibold text-amber-600 dark:text-amber-400">
+                  <TableCell className="font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
                     {e.codigo}
                   </TableCell>
-                  <TableCell>{e.nombre}</TableCell>
-                  <TableCell className="text-muted-foreground">{e.categoria}</TableCell>
-                  <TableCell>{e.marca}</TableCell>
-                  <TableCell className="text-muted-foreground">{e.modelo}</TableCell>
-                  <TableCell className="text-muted-foreground">{e.serie}</TableCell>
+                  <TableCell>
+                    <div className="font-medium text-foreground">{e.nombre}</div>
+                    {(e.marca || e.modelo) && (
+                      <div className="text-xs text-muted-foreground">
+                        {[e.marca, e.modelo].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
+                  </TableCell>
                   <TableCell>{locationName(e.ubicacionId)}</TableCell>
                   <TableCell>
                     <StatusBadge status={e.estado} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(e.fechaAdquisicion)}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
                     {formatDate(e.proximoMantenimiento)}{" "}
@@ -244,7 +239,7 @@ function EquiposPage() {
               ))}
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11} className="py-10 text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                     No se encontraron equipos con los filtros aplicados.
                   </TableCell>
                 </TableRow>
