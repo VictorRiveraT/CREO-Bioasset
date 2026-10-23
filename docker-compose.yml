@@ -20,6 +20,7 @@ services:
     environment:
       - PORT=3000
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - RESEND_API_KEY=${RESEND_API_KEY}
       - FRONTEND_URL=https://creo-bioasset-one.vercel.app
 
   inventario-service:
@@ -45,6 +46,7 @@ services:
     environment:
       - PORT=3000
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - RESEND_API_KEY=${RESEND_API_KEY}
       - FRONTEND_URL=https://creo-bioasset-one.vercel.app
 
   analitica-service:
