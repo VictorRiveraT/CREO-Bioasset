@@ -486,36 +486,52 @@ function DetalleEquipo() {
                   fotos = [m.archivoBase64];
                 }
 
+                const hasObservations =
+                  parsed &&
+                  typeof parsed === "object" &&
+                  Boolean(
+                    (parsed.perturbacion && parsed.perturbacion.trim()) ||
+                    (parsed.causas && parsed.causas.trim()) ||
+                    (parsed.acciones && parsed.acciones.trim()) ||
+                    (parsed.recomendaciones && parsed.recomendaciones.trim())
+                  );
+
+                const hasPlainObservaciones = !parsed && Boolean(m.observaciones && m.observaciones.trim());
+
+                if (!hasObservations && !hasPlainObservaciones && fotos.length === 0) {
+                  return null;
+                }
+
                 return (
                   <div className="mt-2 space-y-2">
-                    {parsed && typeof parsed === "object" ? (
+                    {hasObservations ? (
                       <div className="rounded-lg bg-muted/30 p-3 space-y-1.5 text-xs border">
-                        {parsed.perturbacion && (
+                        {parsed.perturbacion && parsed.perturbacion.trim() && (
                           <div>
                             <span className="font-semibold text-foreground">Falla / Perturbación: </span>
                             <span className="text-muted-foreground">{parsed.perturbacion}</span>
                           </div>
                         )}
-                        {parsed.causas && (
+                        {parsed.causas && parsed.causas.trim() && (
                           <div>
                             <span className="font-semibold text-foreground">Causas: </span>
                             <span className="text-muted-foreground">{parsed.causas}</span>
                           </div>
                         )}
-                        {parsed.acciones && (
+                        {parsed.acciones && parsed.acciones.trim() && (
                           <div>
                             <span className="font-semibold text-foreground">Acciones tomadas: </span>
                             <span className="text-muted-foreground">{parsed.acciones}</span>
                           </div>
                         )}
-                        {parsed.recomendaciones && (
+                        {parsed.recomendaciones && parsed.recomendaciones.trim() && (
                           <div>
                             <span className="font-semibold text-foreground">Recomendaciones: </span>
                             <span className="text-muted-foreground">{parsed.recomendaciones}</span>
                           </div>
                         )}
                       </div>
-                    ) : m.observaciones ? (
+                    ) : hasPlainObservaciones ? (
                       <p className="text-sm text-muted-foreground">{m.observaciones}</p>
                     ) : null}
 
