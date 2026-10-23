@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Plus, Search, X, Camera, FileText } from "lucide-react";
+import { Plus, Search, X, Camera, FileText, User, CheckCircle2, Clock, Calendar, AlertTriangle } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { MaintenanceDialog } from "@/components/bioasset/dialogs";
 import { ImagePreviewDialog } from "@/components/bioasset/image-preview-dialog";
@@ -176,7 +176,12 @@ function MantenimientoPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{userName(m.biomedicoId)}</TableCell>
+                    <TableCell>
+                      <div className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
+                        <User className="size-3 text-primary shrink-0" />
+                        <span>{userName(m.biomedicoId)}</span>
+                      </div>
+                    </TableCell>
                     <TableCell className="max-w-sm text-muted-foreground">
                       <div className="flex flex-col gap-1.5">
                         <span className="text-xs font-medium text-foreground">{m.descripcion}</span>
@@ -244,9 +249,33 @@ function MantenimientoPage() {
                         })()}
                       </div>
                     </TableCell>
-                    <TableCell>{m.resultado}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {formatDate(m.proximaFecha)}
+                    <TableCell>
+                      {m.resultado === "Completado" ? (
+                        <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 font-semibold gap-1 text-xs whitespace-nowrap">
+                          <CheckCircle2 className="size-3 shrink-0" />
+                          Completado
+                        </Badge>
+                      ) : m.resultado === "En progreso" ? (
+                        <Badge variant="outline" className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-semibold gap-1 text-xs whitespace-nowrap">
+                          <Clock className="size-3 shrink-0" />
+                          En progreso
+                        </Badge>
+                      ) : m.resultado === "De baja" ? (
+                        <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 font-semibold gap-1 text-xs whitespace-nowrap">
+                          <AlertTriangle className="size-3 shrink-0" />
+                          De baja
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="font-semibold text-xs whitespace-nowrap">
+                          {m.resultado}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap font-medium text-foreground">
+                      <div className="inline-flex items-center gap-1 text-xs bg-primary/5 border border-primary/20 px-2 py-0.5 rounded">
+                        <Calendar className="size-3 text-primary shrink-0" />
+                        <span>{formatDate(m.proximaFecha)}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       {canEdit("mantenimiento") && (

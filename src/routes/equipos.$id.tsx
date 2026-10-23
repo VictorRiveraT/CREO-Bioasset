@@ -14,6 +14,10 @@ import {
   Camera,
   Eye,
   X,
+  User,
+  CheckCircle2,
+  Clock,
+  Calendar,
 } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { EquipmentDialog, MaintenanceDialog, MovementDialog } from "@/components/bioasset/dialogs";
@@ -442,13 +446,44 @@ function DetalleEquipo() {
               {i > 0 && <Separator className="mb-4" />}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={m.tipo === "Correctivo" ? "destructive" : "secondary"}>
+                  <Badge
+                    variant={m.tipo === "Correctivo" ? "destructive" : "secondary"}
+                    className="font-semibold text-xs px-2.5 py-0.5"
+                  >
                     {m.tipo}
                   </Badge>
-                  <span className="text-sm font-medium">{formatDateTime(m.fecha)}</span>
-                  <span className="text-xs text-muted-foreground">
-                    Biomédico: {userName(m.biomedicoId)} · Resultado: {m.resultado}
+                  <span className="text-sm font-semibold text-foreground">
+                    {formatDateTime(m.fecha)}
                   </span>
+
+                  {/* Biomédico resaltado */}
+                  <div className="inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-secondary/80 border border-border/70 text-secondary-foreground shadow-2xs">
+                    <User className="size-3 text-primary shrink-0" />
+                    <span className="text-muted-foreground text-[11px]">Biomédico:</span>
+                    <strong className="font-semibold text-foreground">{userName(m.biomedicoId)}</strong>
+                  </div>
+
+                  {/* Resultado resaltado con Badge visual */}
+                  {m.resultado === "Completado" ? (
+                    <Badge variant="outline" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 font-semibold gap-1 text-xs">
+                      <CheckCircle2 className="size-3 shrink-0" />
+                      Completado
+                    </Badge>
+                  ) : m.resultado === "En progreso" ? (
+                    <Badge variant="outline" className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-semibold gap-1 text-xs">
+                      <Clock className="size-3 shrink-0" />
+                      En progreso
+                    </Badge>
+                  ) : m.resultado === "De baja" ? (
+                    <Badge variant="outline" className="bg-destructive/15 text-destructive border-destructive/30 font-semibold gap-1 text-xs">
+                      <AlertTriangle className="size-3 shrink-0" />
+                      De baja
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="font-semibold text-xs">
+                      {m.resultado}
+                    </Badge>
+                  )}
                 </div>
 
                 {m.archivoBase64 && (
@@ -563,9 +598,13 @@ function DetalleEquipo() {
                   </div>
                 );
               })()}
-              <p className="mt-1 text-xs text-muted-foreground">
-                Próximo mantenimiento programado: {formatDate(m.proximaFecha)}
-              </p>
+              <div className="mt-2.5 flex items-center gap-1.5 text-xs">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/5 border border-primary/20 text-foreground font-medium shadow-2xs">
+                  <Calendar className="size-3.5 text-primary shrink-0" />
+                  <span className="text-muted-foreground">Próximo mantenimiento programado:</span>
+                  <strong className="font-bold text-foreground text-xs">{formatDate(m.proximaFecha)}</strong>
+                </span>
+              </div>
             </div>
           ))}
           {mantenimientos.length === 0 && (
