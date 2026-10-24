@@ -16,6 +16,7 @@ import {
   AlertCircle,
   ShieldAlert,
   Sparkles,
+  ArrowUpDown,
 } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { Badge } from "@/components/ui/badge";
@@ -335,13 +336,31 @@ function CatalogoSection({
     activo: true,
   });
 
+  const handleRenumber = async () => {
+    setIsSubmitting(true);
+    try {
+      const sorted = [...opciones].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor));
+      for (let i = 0; i < sorted.length; i++) {
+        if (sorted[i].orden !== i + 1) {
+          await onUpdate(sorted[i].id, { ...sorted[i], orden: i + 1 });
+        }
+      }
+      toast.success("Orden resecuenciado correlativamente (1, 2, 3...)");
+    } catch {
+      toast.error("Error al resecuenciar el orden");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const openCreateModal = () => {
     setEditingItem(null);
+    const maxOrden = opciones.reduce((max, op) => Math.max(max, op.orden ?? 0), 0);
     setFormData({
       valor: "",
       descripcion: "",
       sede: currentSede || "Todas",
-      orden: (opciones.length + 1) * 10,
+      orden: maxOrden + 1,
       activo: true,
     });
     setModalOpen(true);
@@ -463,6 +482,19 @@ function CatalogoSection({
               className="pl-8 h-9 text-xs"
             />
           </div>
+          {opciones.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRenumber}
+              disabled={isSubmitting}
+              className="h-9 gap-1 text-xs shrink-0"
+              title="Reasignar números correlativos continuos (1, 2, 3...)"
+            >
+              <ArrowUpDown className="size-3.5" />
+              <span className="hidden sm:inline">Normalizar orden</span>
+            </Button>
+          )}
           <Button onClick={openCreateModal} size="sm" className="h-9 gap-1 shrink-0">
             <Plus className="size-4" />
             <span>Nueva Opción</span>
@@ -1078,8 +1110,26 @@ function FallasCatalogSection({
     }
   }, [formData.marca, marcas]);
 
+  const handleRenumber = async () => {
+    setIsSubmitting(true);
+    try {
+      const sorted = [...opciones].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor));
+      for (let i = 0; i < sorted.length; i++) {
+        if (sorted[i].orden !== i + 1) {
+          await onUpdate(sorted[i].id, { ...sorted[i], orden: i + 1 });
+        }
+      }
+      toast.success("Orden resecuenciado correlativamente (1, 2, 3...)");
+    } catch {
+      toast.error("Error al resecuenciar el orden");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const openCreateModal = () => {
     setEditingItem(null);
+    const maxOrden = opciones.reduce((max, op) => Math.max(max, op.orden ?? 0), 0);
     setFormData({
       valor: "",
       categoria: "Todas",
@@ -1087,7 +1137,7 @@ function FallasCatalogSection({
       modelo: "Todos",
       detalle: "",
       sede: currentSede || "Todas",
-      orden: (opciones.length + 1) * 10,
+      orden: maxOrden + 1,
       activo: true,
     });
     setModalOpen(true);
@@ -1176,7 +1226,7 @@ function FallasCatalogSection({
           valor: d.valor,
           descripcion: JSON.stringify({ categoria: d.categoria, marca: d.marca, modelo: d.modelo, detalle: d.detalle }),
           sede: "Todas",
-          orden: (i + 1) * 10,
+          orden: i + 1,
           activo: true,
         });
       }
@@ -1243,6 +1293,19 @@ function FallasCatalogSection({
             >
               <Sparkles className="size-3.5" />
               Cargar fallas sugeridas
+            </Button>
+          )}
+          {opciones.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRenumber}
+              disabled={isSubmitting}
+              className="gap-1 text-xs"
+              title="Reasignar números correlativos continuos (1, 2, 3...)"
+            >
+              <ArrowUpDown className="size-3.5" />
+              <span className="hidden sm:inline">Normalizar orden</span>
             </Button>
           )}
           <Button size="sm" onClick={openCreateModal} className="gap-1 text-xs">
