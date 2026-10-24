@@ -71,6 +71,7 @@ export interface Equipment {
   fechaAdquisicion: string;
   proximoMantenimiento: string;
   activo: boolean;
+  claseActivo?: "Biomedico" | "Tecnologico";
 }
 
 export interface Movement {
@@ -101,6 +102,14 @@ export interface MaintenanceRecord {
   costo?: number;
   proveedor?: string;
   incidenciaId?: string;
+  cotizacion?: {
+    repuestos?: { descripcion: string; cantidad: number; precioUnitario: number; total: number; proveedor?: string }[];
+    manoDeObra?: number;
+    contratista?: string;
+    totalGeneral?: number;
+    estadoCotizacion?: "Pendiente" | "Aprobada" | "Rechazada";
+    archivoCotizacionUrl?: string;
+  };
 }
 
 export interface Incident {
@@ -137,7 +146,7 @@ export interface Alerta {
 
 export interface OpcionCatalogo {
   id: string;
-  tipo: "categoria_equipo" | "estado_equipo" | "motivo_traslado" | "tipo_mantenimiento" | "resultado_mantenimiento" | string;
+  tipo: "categoria_equipo" | "estado_equipo" | "motivo_traslado" | "tipo_mantenimiento" | "resultado_mantenimiento" | "falla_frecuente" | string;
   valor: string;
   descripcion?: string;
   activo: boolean;

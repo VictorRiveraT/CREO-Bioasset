@@ -48,6 +48,7 @@ function EquiposPage() {
   const [cat, setCat] = useState("todas");
   const [est, setEst] = useState("todos");
   const [ubi, setUbi] = useState("todas");
+  const [clase, setClase] = useState("todas");
 
   // Read URL query params on mount (e.g. from Dashboard drill-down ?estado=Operativo)
   useEffect(() => {
@@ -60,7 +61,7 @@ function EquiposPage() {
     }
   }, []);
 
-  const hasFilters = Boolean(q || cat !== "todas" || est !== "todos" || ubi !== "todas");
+  const hasFilters = Boolean(q || cat !== "todas" || est !== "todos" || ubi !== "todas" || clase !== "todas");
 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -71,10 +72,12 @@ function EquiposPage() {
       const matchCat = cat === "todas" || e.categoria === cat;
       const matchEst = est === "todos" || e.estado.toLowerCase() === est.toLowerCase();
       const matchUbi = ubi === "todas" || e.ubicacionId === ubi;
+      const isTec = e.codigo.startsWith("TI-") || e.claseActivo === "Tecnologico";
+      const matchClase = clase === "todas" || (clase === "tecnologico" ? isTec : !isTec);
 
-      return matchTerm && matchCat && matchEst && matchUbi;
+      return matchTerm && matchCat && matchEst && matchUbi && matchClase;
     });
-  }, [db.equipment, q, cat, est, ubi]);
+  }, [db.equipment, q, cat, est, ubi, clase]);
 
   return (
     <AppShell
@@ -100,7 +103,17 @@ function EquiposPage() {
       }
     >
       <Card className="shadow-[var(--shadow-card)]">
-        <CardContent className="grid gap-3 py-4 md:grid-cols-4">
+        <CardContent className="grid gap-3 py-4 md:grid-cols-5">
+          <Select value={clase} onValueChange={setClase}>
+            <SelectTrigger>
+              <SelectValue placeholder="Clase de activo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas las clases</SelectItem>
+              <SelectItem value="biomedico">Solo Biomédicos (BM)</SelectItem>
+              <SelectItem value="tecnologico">Solo Tecnológicos (TI)</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -167,6 +180,7 @@ function EquiposPage() {
                 setCat("todas");
                 setEst("todos");
                 setUbi("todas");
+                setClase("todas");
               }}
               className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
             >
@@ -193,7 +207,18 @@ function EquiposPage() {
               {rows.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
-                    {e.codigo}
+                    <div className="flex items-center gap-1.5">
+                      <span>{e.codigo}</span>
+                      {e.codigo.startsWith("TI-") || e.claseActivo === "Tecnologico" ? (
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 text-blue-600 dark:text-blue-400 border-blue-400/30 bg-blue-500/10 font-mono">
+                          TI
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 text-emerald-600 dark:text-emerald-400 border-emerald-400/30 bg-emerald-500/10 font-mono">
+                          BM
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-foreground">{e.nombre}</div>

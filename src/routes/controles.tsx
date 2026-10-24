@@ -272,6 +272,19 @@ export function ControlesPage() {
               onUpdate={updateOpcionCatalogo}
               onDelete={deleteOpcionCatalogo}
             />
+
+            <CatalogoSection
+              titulo="Catálogo de Fallas Frecuentes y Síntomas"
+              descripcion="Fallas típicas recomendadas para selección rápida con un clic al reportar incidencias o mantenimientos correctivos."
+              tipo="falla_frecuente"
+              icon={AlertCircle}
+              opciones={opcionesFiltradas("falla_frecuente")}
+              sedesDisponibles={sedesDisponibles}
+              currentSede={user?.sede || "Todas"}
+              onAdd={addOpcionCatalogo}
+              onUpdate={updateOpcionCatalogo}
+              onDelete={deleteOpcionCatalogo}
+            />
           </TabsContent>
         </Tabs>
       </div>

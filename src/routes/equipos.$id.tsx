@@ -18,6 +18,9 @@ import {
   CheckCircle2,
   Clock,
   Calendar,
+  Receipt,
+  Laptop,
+  HeartPulse,
 } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { EquipmentDialog, MaintenanceDialog, MovementDialog } from "@/components/bioasset/dialogs";
@@ -462,6 +465,26 @@ function DetalleEquipo() {
                     <span className="text-muted-foreground text-[11px]">Biomédico:</span>
                     <strong className="font-semibold text-foreground">{userName(m.biomedicoId)}</strong>
                   </div>
+
+                  {/* Costo / Cotización si aplica */}
+                  {(() => {
+                    let cot: any = null;
+                    try {
+                      const p = JSON.parse(m.observaciones || "");
+                      if (p && p.cotizacion) cot = p.cotizacion;
+                    } catch {}
+                    const costVal = cot?.totalGeneral || m.costo;
+                    if (!costVal && !cot) return null;
+                    return (
+                      <div className="inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 font-semibold shadow-2xs">
+                        <Receipt className="size-3 text-amber-600 shrink-0" />
+                        <span>S/. {Number(costVal || 0).toFixed(2)}</span>
+                        {cot?.estadoCotizacion && (
+                          <span className="text-[10px] text-muted-foreground">({cot.estadoCotizacion})</span>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Resultado resaltado con Badge visual */}
                   {m.resultado === "Completado" ? (

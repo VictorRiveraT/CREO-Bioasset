@@ -1026,6 +1026,15 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       return list.length > 0 ? list : DEFAULT_RESULTADOS_MANTENIMIENTO;
     })(),
 
+    fallasFrecuentes: (() => {
+      const list = (db.opcionesCatalogo || [])
+        .filter((o) => o.tipo?.toLowerCase() === "falla_frecuente" && o.activo)
+        .filter((o) => !o.sede || o.sede === "Todas" || !user?.sede || o.sede.toLowerCase() === user.sede.toLowerCase())
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor))
+        .map((o) => ({ valor: o.valor, descripcion: o.descripcion }));
+      return list.length > 0 ? list : DEFAULT_FALLAS_FRECUENTES;
+    })(),
+
     equipmentById: (id) => {
       const e = db.equipment.find((x) => x.id === id);
       if (!e) return undefined;

@@ -26,6 +26,35 @@ import {
 import { useBio, formatDate } from "@/lib/bioasset/store";
 import { toast } from "sonner";
 
+function formatObservacionesForReport(raw: string | undefined): string {
+  if (!raw || !raw.trim()) return "Sin observaciones";
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") {
+      const parts: string[] = [];
+      if (parsed.perturbacion && parsed.perturbacion.trim()) {
+        parts.push(`Falla: ${parsed.perturbacion.trim()}`);
+      }
+      if (parsed.causas && parsed.causas.trim()) {
+        parts.push(`Causas: ${parsed.causas.trim()}`);
+      }
+      if (parsed.acciones && parsed.acciones.trim()) {
+        parts.push(`Acciones: ${parsed.acciones.trim()}`);
+      }
+      if (parsed.recomendaciones && parsed.recomendaciones.trim()) {
+        parts.push(`Recom.: ${parsed.recomendaciones.trim()}`);
+      }
+      if (parts.length > 0) {
+        return parts.join(" | ");
+      }
+      return "Sin observaciones";
+    }
+  } catch {
+    // Texto plano
+  }
+  return raw.trim() || "Sin observaciones";
+}
+
 export const Route = createFileRoute("/reportes")({
   head: () => ({
     meta: [
@@ -274,7 +303,7 @@ function ReportesPage() {
         Tipo: m.tipo,
         "Biomédico Responsable": userName(m.biomedicoId),
         Resultado: m.resultado,
-        Observaciones: m.observaciones || "Sin observaciones",
+        Observaciones: formatObservacionesForReport(m.observaciones),
       };
     });
     downloadCSV(data, `reporte_mantenimientos_${new Date().toISOString().slice(0, 10)}.csv`);
@@ -303,7 +332,7 @@ function ReportesPage() {
         m.tipo,
         userName(m.biomedicoId),
         m.resultado,
-        m.observaciones || "Sin observaciones",
+        formatObservacionesForReport(m.observaciones),
       ];
     });
     printReport("Reporte de Historial de Mantenimientos", headers, rows, filterSummary);

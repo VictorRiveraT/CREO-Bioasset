@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from "react";
 
 import { toast } from "sonner";
 
-import { Pencil, Trash, Download, Camera, ImagePlus, Eye, Trash2, FileText, ExternalLink, X } from "lucide-react";
+import { Pencil, Trash, Download, Camera, ImagePlus, Eye, Trash2, FileText, ExternalLink, X, Receipt, HeartPulse, Laptop, Sparkles, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -142,8 +142,14 @@ export function EquipmentDialog({
 
   const activeLocations = db.locations.filter((l) => l.activo);
 
+  const defaultClase = (equipment?.claseActivo ?? (equipment?.codigo?.startsWith("TI-") ? "Tecnologico" : "Biomedico")) as "Biomedico" | "Tecnologico";
+  const defaultCodigo = equipment?.codigo ?? (defaultClase === "Tecnologico" 
+    ? `TI-${String(db.equipment.filter(e => e.codigo.startsWith("TI-")).length + 1).padStart(3, "0")}`
+    : `BM-${String(db.equipment.filter(e => !e.codigo.startsWith("TI-")).length + 1).padStart(3, "0")}`);
+
   const [form, setForm] = useState({
-    codigo: equipment?.codigo ?? `BIO-${String(db.equipment.length + 1).padStart(3, "0")}`,
+    claseActivo: defaultClase,
+    codigo: defaultCodigo,
     nombre: equipment?.nombre ?? "",
     categoria: equipment?.categoria ?? (categorias[0] || "Diagnóstico por imagen"),
     marca: equipment?.marca ?? "",
@@ -157,8 +163,14 @@ export function EquipmentDialog({
 
   useEffect(() => {
     if (open) {
+      const openClase = (equipment?.claseActivo ?? (equipment?.codigo?.startsWith("TI-") ? "Tecnologico" : "Biomedico")) as "Biomedico" | "Tecnologico";
+      const openCodigo = equipment?.codigo ?? (openClase === "Tecnologico"
+        ? `TI-${String(db.equipment.filter(e => e.codigo.startsWith("TI-")).length + 1).padStart(3, "0")}`
+        : `BM-${String(db.equipment.filter(e => !e.codigo.startsWith("TI-")).length + 1).padStart(3, "0")}`);
+
       setForm({
-        codigo: equipment?.codigo ?? `BIO-${String(db.equipment.length + 1).padStart(3, "0")}`,
+        claseActivo: openClase,
+        codigo: openCodigo,
         nombre: equipment?.nombre ?? "",
         categoria: equipment?.categoria ?? (categorias[0] || "Diagnóstico por imagen"),
         marca: equipment?.marca ?? "",
@@ -246,6 +258,49 @@ export function EquipmentDialog({
               setConfirm(true);
             }}
           >
+            {/* SUGERENCIA 6: Códigos patrimoniales distintos para Tecnológicos y Biomédicos */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-xs font-semibold">Clase de Activo Patrimonial</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    set("claseActivo", "Biomedico");
+                    if (!equipment) {
+                      const count = db.equipment.filter((e) => !e.codigo.startsWith("TI-")).length + 1;
+                      set("codigo", `BM-${String(count).padStart(3, "0")}`);
+                    }
+                  }}
+                  className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
+                    form.claseActivo === "Biomedico"
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                      : "bg-card hover:bg-muted/60 text-muted-foreground border-border"
+                  }`}
+                >
+                  <HeartPulse className="size-4" />
+                  <span>Equipo Biomédico (BM-)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    set("claseActivo", "Tecnologico");
+                    if (!equipment) {
+                      const count = db.equipment.filter((e) => e.codigo.startsWith("TI-")).length + 1;
+                      set("codigo", `TI-${String(count).padStart(3, "0")}`);
+                    }
+                  }}
+                  className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
+                    form.claseActivo === "Tecnologico"
+                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                      : "bg-card hover:bg-muted/60 text-muted-foreground border-border"
+                  }`}
+                >
+                  <Laptop className="size-4" />
+                  <span>Equipo Tecnológico / TI (TI-)</span>
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="codigo">Código patrimonial</Label>
 
@@ -822,6 +877,21 @@ export function MaintenanceDialog({
   const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
   const [previewFoto, setPreviewFoto] = useState<string | null>(null);
 
+  // Sugerencia 4: Cotizaciones de repuestos y mano de obra
+  const [cotizacion, setCotizacion] = useState<{
+    repuestos: { descripcion: string; cantidad: number; precioUnitario: number; total: number; proveedor: string }[];
+    manoDeObra: number;
+    contratista: string;
+    totalGeneral: number;
+    estadoCotizacion: "Pendiente" | "Aprobada" | "Rechazada";
+  }>({
+    repuestos: [],
+    manoDeObra: 0,
+    contratista: "",
+    totalGeneral: 0,
+    estadoCotizacion: "Pendiente",
+  });
+
   useEffect(() => {
     if (open) {
       let obs = maintenance?.observaciones ?? "";
@@ -838,6 +908,17 @@ export function MaintenanceDialog({
           pRec = parsed.recomendaciones || "";
           if (Array.isArray(parsed.fotos)) {
             fts = parsed.fotos.filter((f: any) => typeof f === "string" && f.length > 0);
+          }
+          if (parsed.cotizacion && typeof parsed.cotizacion === "object") {
+            setCotizacion({
+              repuestos: Array.isArray(parsed.cotizacion.repuestos) ? parsed.cotizacion.repuestos : [],
+              manoDeObra: Number(parsed.cotizacion.manoDeObra) || 0,
+              contratista: parsed.cotizacion.contratista || "",
+              totalGeneral: Number(parsed.cotizacion.totalGeneral) || 0,
+              estadoCotizacion: parsed.cotizacion.estadoCotizacion || "Pendiente",
+            });
+          } else {
+            setCotizacion({ repuestos: [], manoDeObra: 0, contratista: "", totalGeneral: 0, estadoCotizacion: "Pendiente" });
           }
         }
       } catch {
@@ -955,16 +1036,15 @@ export function MaintenanceDialog({
 
         resultado: form.resultado,
 
+        costo: cotizacion.totalGeneral > 0 ? cotizacion.totalGeneral : undefined,
+        proveedor: cotizacion.contratista || undefined,
         observaciones: JSON.stringify({
           causas: form.observaciones,
-
           perturbacion: form.perturbacion,
-
           acciones: form.acciones,
-
           recomendaciones: form.recomendaciones,
-
           fotos: form.fotos,
+          cotizacion: cotizacion.totalGeneral > 0 || cotizacion.repuestos.length > 0 ? cotizacion : undefined,
         }),
 
         proximaFecha: form.proximaFecha,
@@ -1137,13 +1217,31 @@ export function MaintenanceDialog({
               </h4>
 
               <div className="space-y-2">
-                <Label>Perturbación Reportada</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Perturbación / Falla Reportada</Label>
+                  <span className="text-[11px] text-muted-foreground">Catálogo de fallas frecuentes</span>
+                </div>
+
+                {fallasFrecuentes && fallasFrecuentes.length > 0 && (
+                  <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto p-1.5 bg-muted/20 rounded-md border border-border/50">
+                    {fallasFrecuentes.map((f, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          set("perturbacion", form.perturbacion ? `${form.perturbacion}. ${f.valor}` : f.valor);
+                        }}
+                        className="text-[10px] px-2 py-0.5 rounded-full bg-secondary hover:bg-primary/10 hover:text-primary text-secondary-foreground border border-border/70 transition-colors cursor-pointer text-left"
+                      >
+                        + {f.valor}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 <Input
-                  placeholder="Detalle breve de la falla reportada"
-
+                  placeholder="Detalle breve de la falla o seleccione del catálogo superior"
                   value={form.perturbacion}
-
                   onChange={(e) => set("perturbacion", e.target.value)}
                 />
               </div>
@@ -1294,36 +1392,222 @@ export function MaintenanceDialog({
                 )}
               </div>
 
-              {/* Protocolo o documento PDF */}
+              {/* SUGERENCIA 3: Documento o protocolo (PDF, Word, Excel para contratistas y reportes) */}
               <div className="space-y-2 pt-3 border-t">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="pdf-protocolo" className="text-xs font-semibold text-muted-foreground">
-                    Documento o Protocolo Oficial Firmado (Opcional - PDF)
+                    Documentos o Informes de Contratistas (PDF, Word, Excel)
                   </Label>
-                  {form.archivoBase64 && form.archivoBase64.includes(".pdf") && (
-                    <span className="text-[11px] text-primary font-medium">✓ Documento cargado</span>
+                  {form.archivoBase64 && (
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      ✓ Documento adjunto cargado
+                    </span>
                   )}
                 </div>
                 <Input
                   id="pdf-protocolo"
                   type="file"
-                  accept="application/pdf"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   onChange={handlePdfChange}
-                  className="text-xs h-9"
+                  className="text-xs h-9 cursor-pointer"
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  Formatos admitidos: Protocolos en PDF, cotizaciones/métricas en Excel (.xlsx) o reportes técnicos de contratistas en Word (.docx) hasta 15MB.
+                </p>
                 {maintenance?.archivoBase64 && (
                   <div className="mt-1">
                     <a
                       href={maintenance.archivoBase64}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                      className="text-xs text-primary hover:underline inline-flex items-center gap-1 bg-primary/10 px-2 py-1 rounded"
                     >
-                      <ExternalLink className="size-3" /> Ver documento o formato adjunto actual
+                      <FileText className="size-3" /> Ver / Descargar documento o formato adjunto actual
                     </a>
                   </div>
                 )}
                 {fileError && <p className="text-xs text-destructive">{fileError}</p>}
+              </div>
+            </div>
+
+            {/* SUGERENCIA 4: COTIZACIÓN DE REPUESTOS Y MANO DE OBRA */}
+            <div className="space-y-3 sm:col-span-2 p-4 border rounded-xl bg-card shadow-2xs">
+              <div className="flex items-center justify-between border-b pb-2">
+                <div className="flex items-center gap-2">
+                  <Receipt className="size-5 text-amber-500" />
+                  <div>
+                    <h4 className="font-semibold text-sm">Cotización de Repuestos y Mano de Obra</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Costos de intervención, cotizaciones internas o de contratistas
+                    </p>
+                  </div>
+                </div>
+                <Badge variant={cotizacion.estadoCotizacion === "Aprobada" ? "default" : "outline"} className="text-xs">
+                  {cotizacion.estadoCotizacion}
+                </Badge>
+              </div>
+
+              {/* Selector de estado de cotización y contratista */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="space-y-1">
+                  <Label className="text-xs">Estado de Cotización</Label>
+                  <Select
+                    value={cotizacion.estadoCotizacion}
+                    onValueChange={(val: any) => setCotizacion((c) => ({ ...c, estadoCotizacion: val }))}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Pendiente">Pendiente de Aprobación</SelectItem>
+                      <SelectItem value="Aprobada">Aprobada</SelectItem>
+                      <SelectItem value="Rechazada">Rechazada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Proveedor / Contratista</Label>
+                  <Input
+                    placeholder="Ej. MedTech Perú / Técnico especializado"
+                    className="h-8 text-xs"
+                    value={cotizacion.contratista}
+                    onChange={(e) => setCotizacion((c) => ({ ...c, contratista: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* Tabla de repuestos */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">Repuestos y Piezas Requeridas</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setCotizacion((c) => ({
+                        ...c,
+                        repuestos: [
+                          ...c.repuestos,
+                          { descripcion: "", cantidad: 1, precioUnitario: 0, total: 0, proveedor: "" },
+                        ],
+                      }));
+                    }}
+                  >
+                    <Plus className="size-3 mr-1" /> Agregar repuesto
+                  </Button>
+                </div>
+
+                {cotizacion.repuestos.length > 0 ? (
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {cotizacion.repuestos.map((rep, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-muted/30 p-2 rounded-md border text-xs">
+                        <Input
+                          placeholder="Descripción del repuesto"
+                          className="h-7 text-xs flex-1"
+                          value={rep.descripcion}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCotizacion((c) => {
+                              const updated = [...c.repuestos];
+                              updated[idx].descripcion = val;
+                              return { ...c, repuestos: updated };
+                            });
+                          }}
+                        />
+                        <div className="flex items-center gap-1 w-20">
+                          <span className="text-[10px] text-muted-foreground">Cant:</span>
+                          <Input
+                            type="number"
+                            min="1"
+                            className="h-7 text-xs w-12 text-center px-1"
+                            value={rep.cantidad}
+                            onChange={(e) => {
+                              const qty = Number(e.target.value) || 1;
+                              setCotizacion((c) => {
+                                const updated = [...c.repuestos];
+                                updated[idx].cantidad = qty;
+                                updated[idx].total = qty * updated[idx].precioUnitario;
+                                const repTotal = updated.reduce((s, r) => s + r.total, 0);
+                                return { ...c, repuestos: updated, totalGeneral: repTotal + c.manoDeObra };
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center gap-1 w-24">
+                          <span className="text-[10px] text-muted-foreground">S/.:</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="h-7 text-xs w-16 text-right px-1"
+                            value={rep.precioUnitario}
+                            onChange={(e) => {
+                              const pr = Number(e.target.value) || 0;
+                              setCotizacion((c) => {
+                                const updated = [...c.repuestos];
+                                updated[idx].precioUnitario = pr;
+                                updated[idx].total = updated[idx].cantidad * pr;
+                                const repTotal = updated.reduce((s, r) => s + r.total, 0);
+                                return { ...c, repuestos: updated, totalGeneral: repTotal + c.manoDeObra };
+                              });
+                            }}
+                          />
+                        </div>
+                        <span className="w-16 text-right font-semibold text-foreground">
+                          S/. {rep.total.toFixed(2)}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 cursor-pointer"
+                          onClick={() => {
+                            setCotizacion((c) => {
+                              const updated = c.repuestos.filter((_, i) => i !== idx);
+                              const repTotal = updated.reduce((s, r) => s + r.total, 0);
+                              return { ...c, repuestos: updated, totalGeneral: repTotal + c.manoDeObra };
+                            });
+                          }}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No se han registrado repuestos para esta intervención.</p>
+                )}
+              </div>
+
+              {/* Mano de obra y total general */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground font-medium">Costo Mano de Obra:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-semibold">S/.</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="h-7 w-20 text-right text-xs"
+                      value={cotizacion.manoDeObra}
+                      onChange={(e) => {
+                        const mo = Number(e.target.value) || 0;
+                        setCotizacion((c) => {
+                          const repTotal = c.repuestos.reduce((s, r) => s + r.total, 0);
+                          return { ...c, manoDeObra: mo, totalGeneral: repTotal + mo };
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg">
+                  <span className="font-semibold text-foreground">Costo Total Intervención:</span>
+                  <span className="font-bold text-sm text-primary">S/. {cotizacion.totalGeneral.toFixed(2)}</span>
+                </div>
               </div>
             </div>
 
@@ -1603,7 +1887,7 @@ export function MarcaDialog({ trigger }: { trigger: ReactNode }) {
 }
 
 export function IncidentDialog({ equipoId, trigger }: { equipoId?: string; trigger: ReactNode }) {
-  const { db, addIncident, updateEquipment } = useBio();
+  const { db, addIncident, updateEquipment, fallasFrecuentes } = useBio();
   const [open, setOpen] = useState(false);
   const [selectedEquipoId, setSelectedEquipoId] = useState(equipoId || "");
   const [incidentTitle, setIncidentTitle] = useState("");
@@ -1677,7 +1961,34 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId?: string; trigg
             )}
 
             <div className="grid gap-2">
-              <Label>Descripción de la falla</Label>
+              <div className="flex items-center justify-between">
+                <Label>Descripción de la falla</Label>
+                <span className="text-[11px] text-muted-foreground">Escribe o autocompleta abajo</span>
+              </div>
+
+              {fallasFrecuentes && fallasFrecuentes.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+                    <Sparkles className="size-3 text-amber-500" />
+                    Fallas frecuentes recomendadas (clic para seleccionar):
+                  </span>
+                  <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto p-1.5 bg-muted/30 rounded-md border border-border/60">
+                    {fallasFrecuentes.map((f, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setIncidentTitle((prev) => (prev ? `${prev}. ${f.valor}` : f.valor));
+                        }}
+                        className="text-[10px] px-2 py-0.5 rounded-full bg-secondary hover:bg-primary/10 hover:text-primary text-secondary-foreground border border-border/70 transition-colors cursor-pointer text-left"
+                      >
+                        + {f.valor}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <Textarea
                 placeholder="Describa la avería o síntoma presentado por el equipo..."
                 value={incidentTitle}
