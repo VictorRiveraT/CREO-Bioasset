@@ -72,7 +72,7 @@ function EquiposPage() {
       const matchCat = cat === "todas" || e.categoria === cat;
       const matchEst = est === "todos" || e.estado.toLowerCase() === est.toLowerCase();
       const matchUbi = ubi === "todas" || e.ubicacionId === ubi;
-      const isTec = e.codigo.startsWith("TI-") || e.claseActivo === "Tecnologico";
+      const isTec = (e.codigo?.startsWith("TI-") ?? false) || e.claseActivo === "Tecnologico";
       const matchClase = clase === "todas" || (clase === "tecnologico" ? isTec : !isTec);
 
       return matchTerm && matchCat && matchEst && matchUbi && matchClase;
@@ -209,7 +209,7 @@ function EquiposPage() {
                   <TableCell className="font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
                       <span>{e.codigo}</span>
-                      {e.codigo.startsWith("TI-") || e.claseActivo === "Tecnologico" ? (
+                      {(e.codigo?.startsWith("TI-") ?? false) || e.claseActivo === "Tecnologico" ? (
                         <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 text-blue-600 dark:text-blue-400 border-blue-400/30 bg-blue-500/10 font-mono">
                           TI
                         </Badge>

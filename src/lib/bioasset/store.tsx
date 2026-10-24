@@ -72,6 +72,19 @@ const DEFAULT_RESULTADOS_MANTENIMIENTO = [
   "No superó pruebas / Fuera de servicio",
 ];
 
+export const DEFAULT_FALLAS_FRECUENTES = [
+  { valor: "Falla de encendido / No inicia", descripcion: "Alimentación eléctrica / Batería" },
+  { valor: "Falla en sensor SpO2 / Cables ECG", descripcion: "Monitoreo" },
+  { valor: "Fuga de aire / presión en manguera NIBP", descripcion: "Monitoreo / Neumática" },
+  { valor: "Descalibración o lectura errónea", descripcion: "Sensores / Calibración" },
+  { valor: "Batería degradada / no retiene carga", descripcion: "Batería / Fuente" },
+  { valor: "Pantalla táctil o perilla no responde", descripcion: "Interfaz / Pantalla" },
+  { valor: "Alarma persistente sin causa aparente", descripcion: "Sistema / Software" },
+  { valor: "Falla en mecanismo de infusión / motor", descripcion: "Soporte vital" },
+  { valor: "Fallo de palas / descarga de desfibrilador", descripcion: "Reanimación" },
+  { valor: "Problema de conexión / red / impresión", descripcion: "Tecnológico / TI" },
+];
+
 export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
   admin: {
     inventario: { view: true, edit: true },
@@ -1030,9 +1043,9 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       const list = (db.opcionesCatalogo || [])
         .filter((o) => o.tipo?.toLowerCase() === "falla_frecuente" && o.activo)
         .filter((o) => !o.sede || o.sede === "Todas" || !user?.sede || o.sede.toLowerCase() === user.sede.toLowerCase())
-        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor))
-        .map((o) => ({ valor: o.valor, descripcion: o.descripcion }));
-      return list.length > 0 ? list : DEFAULT_FALLAS_FRECUENTES;
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || (a.valor || "").localeCompare(b.valor || ""))
+        .map((o) => ({ valor: o.valor || "", descripcion: o.descripcion || "" }));
+      return list.length > 0 ? list : (DEFAULT_FALLAS_FRECUENTES || []);
     })(),
 
     equipmentById: (id) => {

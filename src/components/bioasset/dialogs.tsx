@@ -144,8 +144,8 @@ export function EquipmentDialog({
 
   const defaultClase = (equipment?.claseActivo ?? (equipment?.codigo?.startsWith("TI-") ? "Tecnologico" : "Biomedico")) as "Biomedico" | "Tecnologico";
   const defaultCodigo = equipment?.codigo ?? (defaultClase === "Tecnologico" 
-    ? `TI-${String(db.equipment.filter(e => e.codigo.startsWith("TI-")).length + 1).padStart(3, "0")}`
-    : `BM-${String(db.equipment.filter(e => !e.codigo.startsWith("TI-")).length + 1).padStart(3, "0")}`);
+    ? `TI-${String(db.equipment.filter(e => e.codigo?.startsWith("TI-")).length + 1).padStart(3, "0")}`
+    : `BM-${String(db.equipment.filter(e => !e.codigo?.startsWith("TI-")).length + 1).padStart(3, "0")}`);
 
   const [form, setForm] = useState({
     claseActivo: defaultClase,
@@ -165,8 +165,8 @@ export function EquipmentDialog({
     if (open) {
       const openClase = (equipment?.claseActivo ?? (equipment?.codigo?.startsWith("TI-") ? "Tecnologico" : "Biomedico")) as "Biomedico" | "Tecnologico";
       const openCodigo = equipment?.codigo ?? (openClase === "Tecnologico"
-        ? `TI-${String(db.equipment.filter(e => e.codigo.startsWith("TI-")).length + 1).padStart(3, "0")}`
-        : `BM-${String(db.equipment.filter(e => !e.codigo.startsWith("TI-")).length + 1).padStart(3, "0")}`);
+        ? `TI-${String(db.equipment.filter(e => e.codigo?.startsWith("TI-")).length + 1).padStart(3, "0")}`
+        : `BM-${String(db.equipment.filter(e => !e.codigo?.startsWith("TI-")).length + 1).padStart(3, "0")}`);
 
       setForm({
         claseActivo: openClase,
@@ -267,7 +267,7 @@ export function EquipmentDialog({
                   onClick={() => {
                     set("claseActivo", "Biomedico");
                     if (!equipment) {
-                      const count = db.equipment.filter((e) => !e.codigo.startsWith("TI-")).length + 1;
+                      const count = db.equipment.filter((e) => !e.codigo?.startsWith("TI-")).length + 1;
                       set("codigo", `BM-${String(count).padStart(3, "0")}`);
                     }
                   }}
@@ -285,7 +285,7 @@ export function EquipmentDialog({
                   onClick={() => {
                     set("claseActivo", "Tecnologico");
                     if (!equipment) {
-                      const count = db.equipment.filter((e) => e.codigo.startsWith("TI-")).length + 1;
+                      const count = db.equipment.filter((e) => e.codigo?.startsWith("TI-")).length + 1;
                       set("codigo", `TI-${String(count).padStart(3, "0")}`);
                     }
                   }}
