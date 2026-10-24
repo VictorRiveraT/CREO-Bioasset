@@ -89,7 +89,7 @@ function DetalleEquipo() {
     e.preventDefault();
     if (!incidentTitle || !equipo) return;
     try {
-      await addIncident({ activo_id: equipo.id, titulo: incidentTitle, estado: "Abierta" });
+      await addIncident({ activoId: equipo.id, activo_id: equipo.id, titulo: incidentTitle, estado: "Abierta" });
       await fetchApi(`/inventario/activos/${equipo.id}`, {
         method: "PATCH",
         body: JSON.stringify({ estado: "Fuera de servicio" }),

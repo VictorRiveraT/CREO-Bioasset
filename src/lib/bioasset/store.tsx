@@ -795,11 +795,11 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       if (m.equipoId) {
         const patchPayload: Record<string, any> = {};
         if (m.resultado === "En progreso" || m.resultado === "En proceso") {
-          patchPayload.estado = "En mantenimiento";
+          patchPayload['estado'] = 'En mantenimiento';
         } else if (m.resultado === "Completado") {
-          patchPayload.estado = "Operativo";
+          patchPayload['estado'] = 'Operativo';
           if (m.proximaFecha) {
-            patchPayload.proximoMantenimiento = m.proximaFecha;
+            patchPayload['proximoMantenimiento'] = m.proximaFecha;
           }
         }
         if (Object.keys(patchPayload).length > 0) {
@@ -836,11 +836,11 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       if (targetEquipoId) {
         const patchPayload: Record<string, any> = {};
         if (m.resultado === "En progreso" || m.resultado === "En proceso") {
-          patchPayload.estado = "En mantenimiento";
+          patchPayload['estado'] = 'En mantenimiento';
         } else if (m.resultado === "Completado") {
-          patchPayload.estado = "Operativo";
+          patchPayload['estado'] = 'Operativo';
           if (m.proximaFecha) {
-            patchPayload.proximoMantenimiento = m.proximaFecha;
+            patchPayload['proximoMantenimiento'] = m.proximaFecha;
           }
         }
         if (Object.keys(patchPayload).length > 0) {

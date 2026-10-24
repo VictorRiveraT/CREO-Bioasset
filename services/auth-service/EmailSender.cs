@@ -12,7 +12,7 @@ public static class EmailSender {
         // 1. Intentar envío ultrarrápido con Resend
         if (!string.IsNullOrWhiteSpace(ResendApiKey)) {
             try {
-                using var client = new HttpClient();
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {ResendApiKey}");
 
                 var resendPayload = new {
@@ -42,7 +42,7 @@ public static class EmailSender {
         // 2. Fallback con SendGrid si Resend no está configurado con dominio público para ese destinatario
         if (!string.IsNullOrWhiteSpace(SendGridApiKey)) {
             try {
-                using var client = new HttpClient();
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {SendGridApiKey}");
 
                 var payload = new {

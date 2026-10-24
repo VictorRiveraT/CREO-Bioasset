@@ -47,6 +47,7 @@ export interface User {
   sedeTemporal?: string;
   accesoHasta?: string;
   sedeTemporalHasta?: string;
+  password?: string;
 }
 
 export interface Location {
@@ -115,6 +116,7 @@ export interface MaintenanceRecord {
 export interface Incident {
   id: string;
   activoId: string;
+  activo_id?: string;
   titulo: string;
   estado: string;
   fecha?: string;

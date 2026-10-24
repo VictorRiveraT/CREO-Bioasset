@@ -745,5 +745,5 @@ export function buildSeed(): DB {
     });
   });
 
-  return { users: seedUsers, locations: seedLocations, equipment, movements, maintenance };
+  return { users: seedUsers as any, locations: seedLocations, equipment, movements, maintenance, incidents: [], alertas: [], opcionesCatalogo: [] };
 }

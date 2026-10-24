@@ -999,6 +999,7 @@ export function MaintenanceDialog({
       const newPhotos: string[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        if (!file) continue;
         if (!file.type.startsWith("image/")) continue;
         if (file.size > 15 * 1024 * 1024) {
           toast.error(`La imagen ${file.name} supera los 15MB.`);
@@ -1013,7 +1014,7 @@ export function MaintenanceDialog({
         setForm((prev) => ({
           ...prev,
           fotos: [...prev.fotos, ...newPhotos],
-          archivoBase64: prev.archivoBase64 || newPhotos[0],
+          archivoBase64: prev.archivoBase64 || newPhotos[0] || "",
         }));
         toast.success(`${newPhotos.length} foto(s) agregada(s) como evidencia.`);
       }
@@ -1272,7 +1273,7 @@ export function MaintenanceDialog({
                         <Sparkles className="size-3 text-amber-500 shrink-0" />
                         <span>Fallas sugeridas para:</span>
                         <span className="font-semibold text-foreground">
-                          {targetEquipo.categoria || targetEquipo.tipo || "Equipo"}
+                          {targetEquipo.categoria || "Equipo"}
                           {targetEquipo.marca ? ` · ${targetEquipo.marca}` : ""}
                           {targetEquipo.modelo ? ` (${targetEquipo.modelo})` : ""}
                         </span>
@@ -1998,7 +1999,7 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId?: string; trigg
       return;
     }
     try {
-      await addIncident({ activo_id: targetId, titulo: incidentTitle.trim(), estado: "Abierta" });
+      await addIncident({ activoId: targetId, activo_id: targetId, titulo: incidentTitle.trim(), estado: "Abierta" });
       await updateEquipment(targetId, { estado: "Fuera de servicio" });
       setOpen(false);
       setIncidentTitle("");
@@ -2070,7 +2071,7 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId?: string; trigg
                     <span>Fallas frecuentes recomendadas</span>
                     {targetEquipo && !showAllFallas && (
                       <span className="font-semibold text-foreground">
-                        para {targetEquipo.categoria || targetEquipo.tipo || "este equipo"}
+                        para {targetEquipo.categoria || "este equipo"}
                         {targetEquipo.marca ? ` · ${targetEquipo.marca}` : ""}
                         {targetEquipo.modelo ? ` (${targetEquipo.modelo})` : ""}:
                       </span>

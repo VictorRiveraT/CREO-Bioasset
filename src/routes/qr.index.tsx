@@ -93,7 +93,8 @@ function QRScannerIndexPage() {
               <Scanner
                 onScan={(result) => {
                   if (result && result.length > 0) {
-                    const value = result[0].rawValue;
+                    const value = result[0]?.rawValue;
+                    if (!value) return;
                     const scannedId = value.includes("/") ? value.split("/").pop() : value;
                     if (scannedId) {
                       navigate({ to: `/qr/${scannedId}` });

@@ -1,6 +1,6 @@
 import { sanitizeInput } from "./security";
 
-const rawApiUrl = import.meta.env.VITE_API_URL || "/api";
+const rawApiUrl = import.meta.env['VITE_API_URL'] || "/api";
 export const API_URL = typeof window !== "undefined" ? "/api" : rawApiUrl;
 
 /**

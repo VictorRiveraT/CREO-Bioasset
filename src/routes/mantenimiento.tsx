@@ -226,7 +226,7 @@ function MantenimientoPage() {
                                   </div>
                                   <button
                                     type="button"
-                                    onClick={() => setPreviewFoto(fotos[0])}
+                                    onClick={() => setPreviewFoto(fotos[0] || null)}
                                     className="text-[11px] font-medium text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
                                   >
                                     <Camera className="size-3" />

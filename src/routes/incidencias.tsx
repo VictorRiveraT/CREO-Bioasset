@@ -43,11 +43,12 @@ function IncidenciasPage() {
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
     return [...(db.incidents || [])].filter((i) => {
-      const e = db.equipment.find((x) => x.id === i.activoId);
-      if (!e) return false;
-      const matchTerm = !term || `${e.codigo} ${e.nombre} ${i.titulo}`.toLowerCase().includes(term);
+      const e = db.equipment.find((x) => x.id === (i.activoId || (i as any).activo_id));
+      const code = e?.codigo || "Sin código";
+      const name = e?.nombre || "Equipo no encontrado";
+      const matchTerm = !term || `${code} ${name} ${i.titulo || ""}`.toLowerCase().includes(term);
       const matchEstado =
-        estadoFilter === "todos" || i.estado.toLowerCase() === estadoFilter.toLowerCase();
+        estadoFilter === "todos" || i.estado?.toLowerCase() === estadoFilter.toLowerCase();
       return matchTerm && matchEstado;
     });
   }, [db.incidents, db.equipment, q, estadoFilter]);

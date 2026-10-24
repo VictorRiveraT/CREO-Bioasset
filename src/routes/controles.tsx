@@ -341,8 +341,9 @@ function CatalogoSection({
     try {
       const sorted = [...opciones].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor));
       for (let i = 0; i < sorted.length; i++) {
-        if (sorted[i].orden !== i + 1) {
-          await onUpdate(sorted[i].id, { ...sorted[i], orden: i + 1 });
+        const item = sorted[i];
+        if (item && item.orden !== i + 1) {
+          await onUpdate(item.id, { ...item, orden: i + 1 });
         }
       }
       toast.success("Orden resecuenciado correlativamente (1, 2, 3...)");
@@ -1115,8 +1116,9 @@ function FallasCatalogSection({
     try {
       const sorted = [...opciones].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.valor.localeCompare(b.valor));
       for (let i = 0; i < sorted.length; i++) {
-        if (sorted[i].orden !== i + 1) {
-          await onUpdate(sorted[i].id, { ...sorted[i], orden: i + 1 });
+        const item = sorted[i];
+        if (item && item.orden !== i + 1) {
+          await onUpdate(item.id, { ...item, orden: i + 1 });
         }
       }
       toast.success("Orden resecuenciado correlativamente (1, 2, 3...)");
@@ -1221,6 +1223,7 @@ function FallasCatalogSection({
     try {
       for (let i = 0; i < defaults.length; i++) {
         const d = defaults[i];
+        if (!d) continue;
         await onAdd({
           tipo: "falla_frecuente",
           valor: d.valor,

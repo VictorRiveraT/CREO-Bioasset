@@ -359,7 +359,13 @@ app.MapPost("/recover", async (RecoverDto req, HttpContext ctx, AuthDb db) => {
         ";
 
         var html = BuildEmailHtml("Restablecimiento de Contraseña", "Solicitud de acceso institucional seguro", "SEGURIDAD", bodyHtml);
-        await EmailSender.SendEmail(user.Email, "Recuperación de Contraseña (15 min) - BioAsset", html);
+        _ = Task.Run(async () => {
+            try {
+                await EmailSender.SendEmail(user.Email, "Recuperación de Contraseña (15 min) - BioAsset", html);
+            } catch (Exception ex) {
+                Console.WriteLine($"[Recover Background Error] {ex.Message}");
+            }
+        });
         return Results.Ok(new { message = "Correo de recuperación enviado exitosamente con enlace de 15 minutos de vigencia." });
     } catch (Exception ex) {
         Console.WriteLine($"[Recover] Error: {ex}");
