@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 
 import { toast } from "sonner";
 
@@ -954,6 +954,38 @@ export function MaintenanceDialog({
   }, [open, maintenance, equipoId, incidenciaId, user?.id, db.equipment[0]?.id]);
 
   const [fileError, setFileError] = useState("");
+  const [showAllFallas, setShowAllFallas] = useState(false);
+
+  const targetEquipo = useMemo(() => {
+    return db.equipment.find((e) => e.id === form.equipoId);
+  }, [db.equipment, form.equipoId]);
+
+  const matchingFallas = useMemo(() => {
+    if (!fallasFrecuentes || fallasFrecuentes.length === 0) return [];
+    if (!targetEquipo || showAllFallas) return fallasFrecuentes;
+
+    const eqCat = (targetEquipo.categoria || "").trim().toLowerCase();
+    const eqMarca = (targetEquipo.marca || "").trim().toLowerCase();
+    const eqMod = (targetEquipo.modelo || "").trim().toLowerCase();
+
+    return fallasFrecuentes
+      .filter((f) => {
+        const fCat = (f.categoria || "Todas").trim().toLowerCase();
+        const fMarca = (f.marca || "Todas").trim().toLowerCase();
+        const fMod = (f.modelo || "Todos").trim().toLowerCase();
+
+        const catMatches = fCat === "todas" || !fCat || (eqCat && fCat === eqCat);
+        const marcaMatches = fMarca === "todas" || !fMarca || (eqMarca && fMarca === eqMarca);
+        const modMatches = fMod === "todos" || !fMod || (eqMod && fMod === eqMod);
+
+        return catMatches && marcaMatches && modMatches;
+      })
+      .sort((a, b) => {
+        const aScore = (a.modelo && a.modelo !== "Todos" ? 4 : 0) + (a.marca && a.marca !== "Todas" ? 2 : 0) + (a.categoria && a.categoria !== "Todas" ? 1 : 0);
+        const bScore = (b.modelo && b.modelo !== "Todos" ? 4 : 0) + (b.marca && b.marca !== "Todas" ? 2 : 0) + (b.categoria && b.categoria !== "Todas" ? 1 : 0);
+        return bScore - aScore;
+      });
+  }, [fallasFrecuentes, targetEquipo, showAllFallas]);
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -1220,23 +1252,52 @@ export function MaintenanceDialog({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Perturbación / Falla Reportada</Label>
-                  <span className="text-[11px] text-muted-foreground">Catálogo de fallas frecuentes</span>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    {targetEquipo && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllFallas(!showAllFallas)}
+                        className="text-primary hover:underline font-medium cursor-pointer"
+                      >
+                        {showAllFallas ? "Filtrar por este equipo" : "Ver todo el catálogo"}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {fallasFrecuentes && fallasFrecuentes.length > 0 && (
-                  <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto p-1.5 bg-muted/20 rounded-md border border-border/50">
-                    {fallasFrecuentes.map((f, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => {
-                          set("perturbacion", form.perturbacion ? `${form.perturbacion}. ${f.valor}` : f.valor);
-                        }}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-secondary hover:bg-primary/10 hover:text-primary text-secondary-foreground border border-border/70 transition-colors cursor-pointer text-left"
-                      >
-                        + {f.valor}
-                      </button>
-                    ))}
+                {matchingFallas && matchingFallas.length > 0 && (
+                  <div className="space-y-1">
+                    {targetEquipo && !showAllFallas && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Sparkles className="size-3 text-amber-500 shrink-0" />
+                        <span>Fallas sugeridas para:</span>
+                        <span className="font-semibold text-foreground">
+                          {targetEquipo.categoria || targetEquipo.tipo || "Equipo"}
+                          {targetEquipo.marca ? ` · ${targetEquipo.marca}` : ""}
+                          {targetEquipo.modelo ? ` (${targetEquipo.modelo})` : ""}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto p-1.5 bg-muted/20 rounded-md border border-border/50">
+                      {matchingFallas.map((f, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          title={f.detalle || f.descripcion || f.valor}
+                          onClick={() => {
+                            set("perturbacion", form.perturbacion ? `${form.perturbacion}. ${f.valor}` : f.valor);
+                          }}
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-secondary hover:bg-primary/10 hover:text-primary text-secondary-foreground border border-border/70 transition-colors cursor-pointer text-left flex items-center gap-1"
+                        >
+                          <span>+ {f.valor}</span>
+                          {(f.marca && f.marca !== "Todas" || f.modelo && f.modelo !== "Todos") && (
+                            <span className="text-[9px] text-muted-foreground font-mono bg-background/80 px-1 rounded">
+                              {f.marca && f.marca !== "Todas" ? f.marca : ""} {f.modelo && f.modelo !== "Todos" ? f.modelo : ""}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -1890,16 +1951,45 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId?: string; trigg
   const [open, setOpen] = useState(false);
   const [selectedEquipoId, setSelectedEquipoId] = useState(equipoId || "");
   const [incidentTitle, setIncidentTitle] = useState("");
+  const [showAllFallas, setShowAllFallas] = useState(false);
 
   useEffect(() => {
     if (open) {
       setSelectedEquipoId(equipoId || "");
       setIncidentTitle("");
+      setShowAllFallas(false);
     }
   }, [open, equipoId]);
 
   const targetId = equipoId || selectedEquipoId;
   const targetEquipo = db.equipment.find((e) => e.id === targetId);
+
+  const matchingFallas = useMemo(() => {
+    if (!fallasFrecuentes || fallasFrecuentes.length === 0) return [];
+    if (!targetEquipo || showAllFallas) return fallasFrecuentes;
+
+    const eqCat = (targetEquipo.categoria || "").trim().toLowerCase();
+    const eqMarca = (targetEquipo.marca || "").trim().toLowerCase();
+    const eqMod = (targetEquipo.modelo || "").trim().toLowerCase();
+
+    return fallasFrecuentes
+      .filter((f) => {
+        const fCat = (f.categoria || "Todas").trim().toLowerCase();
+        const fMarca = (f.marca || "Todas").trim().toLowerCase();
+        const fMod = (f.modelo || "Todos").trim().toLowerCase();
+
+        const catMatches = fCat === "todas" || !fCat || (eqCat && fCat === eqCat);
+        const marcaMatches = fMarca === "todas" || !fMarca || (eqMarca && fMarca === eqMarca);
+        const modMatches = fMod === "todos" || !fMod || (eqMod && fMod === eqMod);
+
+        return catMatches && marcaMatches && modMatches;
+      })
+      .sort((a, b) => {
+        const aScore = (a.modelo && a.modelo !== "Todos" ? 4 : 0) + (a.marca && a.marca !== "Todas" ? 2 : 0) + (a.categoria && a.categoria !== "Todas" ? 1 : 0);
+        const bScore = (b.modelo && b.modelo !== "Todos" ? 4 : 0) + (b.marca && b.marca !== "Todas" ? 2 : 0) + (b.categoria && b.categoria !== "Todas" ? 1 : 0);
+        return bScore - aScore;
+      });
+  }, [fallasFrecuentes, targetEquipo, showAllFallas]);
 
   const handleReportIncident = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1962,26 +2052,47 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId?: string; trigg
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
                 <Label>Descripción de la falla</Label>
-                <span className="text-[11px] text-muted-foreground">Escribe o autocompleta abajo</span>
+                {targetEquipo && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllFallas(!showAllFallas)}
+                    className="text-[11px] text-primary hover:underline font-medium cursor-pointer"
+                  >
+                    {showAllFallas ? "Filtrar por este equipo" : "Ver todo el catálogo"}
+                  </button>
+                )}
               </div>
 
-              {fallasFrecuentes && fallasFrecuentes.length > 0 && (
+              {matchingFallas && matchingFallas.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                    <Sparkles className="size-3 text-amber-500" />
-                    Fallas frecuentes recomendadas (clic para seleccionar):
-                  </span>
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Sparkles className="size-3 text-amber-500 shrink-0" />
+                    <span>Fallas frecuentes recomendadas</span>
+                    {targetEquipo && !showAllFallas && (
+                      <span className="font-semibold text-foreground">
+                        para {targetEquipo.categoria || targetEquipo.tipo || "este equipo"}
+                        {targetEquipo.marca ? ` · ${targetEquipo.marca}` : ""}
+                        {targetEquipo.modelo ? ` (${targetEquipo.modelo})` : ""}:
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto p-1.5 bg-muted/30 rounded-md border border-border/60">
-                    {fallasFrecuentes.map((f, i) => (
+                    {matchingFallas.map((f, i) => (
                       <button
                         key={i}
                         type="button"
+                        title={f.detalle || f.descripcion || f.valor}
                         onClick={() => {
                           setIncidentTitle((prev) => (prev ? `${prev}. ${f.valor}` : f.valor));
                         }}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-secondary hover:bg-primary/10 hover:text-primary text-secondary-foreground border border-border/70 transition-colors cursor-pointer text-left"
+                        className="text-[10px] px-2 py-0.5 rounded-full bg-secondary hover:bg-primary/10 hover:text-primary text-secondary-foreground border border-border/70 transition-colors cursor-pointer text-left flex items-center gap-1"
                       >
-                        + {f.valor}
+                        <span>+ {f.valor}</span>
+                        {(f.marca && f.marca !== "Todas" || f.modelo && f.modelo !== "Todos") && (
+                          <span className="text-[9px] text-muted-foreground font-mono bg-background/80 px-1 rounded">
+                            {f.marca && f.marca !== "Todas" ? f.marca : ""} {f.modelo && f.modelo !== "Todos" ? f.modelo : ""}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>

@@ -73,16 +73,16 @@ const DEFAULT_RESULTADOS_MANTENIMIENTO = [
 ];
 
 export const DEFAULT_FALLAS_FRECUENTES = [
-  { valor: "Falla de encendido / No inicia", descripcion: "Alimentación eléctrica / Batería" },
-  { valor: "Falla en sensor SpO2 / Cables ECG", descripcion: "Monitoreo" },
-  { valor: "Fuga de aire / presión en manguera NIBP", descripcion: "Monitoreo / Neumática" },
-  { valor: "Descalibración o lectura errónea", descripcion: "Sensores / Calibración" },
-  { valor: "Batería degradada / no retiene carga", descripcion: "Batería / Fuente" },
-  { valor: "Pantalla táctil o perilla no responde", descripcion: "Interfaz / Pantalla" },
-  { valor: "Alarma persistente sin causa aparente", descripcion: "Sistema / Software" },
-  { valor: "Falla en mecanismo de infusión / motor", descripcion: "Soporte vital" },
-  { valor: "Fallo de palas / descarga de desfibrilador", descripcion: "Reanimación" },
-  { valor: "Problema de conexión / red / impresión", descripcion: "Tecnológico / TI" },
+  { valor: "Falla de encendido / No inicia", categoria: "Todas", marca: "Todas", modelo: "Todos", descripcion: "Alimentación eléctrica / Batería" },
+  { valor: "Falla en sensor SpO2 / Cables ECG", categoria: "Monitoreo", marca: "Todas", modelo: "Todos", descripcion: "Monitoreo" },
+  { valor: "Fuga de aire / presión en manguera NIBP", categoria: "Monitoreo", marca: "Todas", modelo: "Todos", descripcion: "Monitoreo / Neumática" },
+  { valor: "Descalibración o lectura errónea", categoria: "Laboratorio", marca: "Todas", modelo: "Todos", descripcion: "Sensores / Calibración" },
+  { valor: "Batería degradada / no retiene carga", categoria: "Soporte vital", marca: "Todas", modelo: "Todos", descripcion: "Batería / Fuente" },
+  { valor: "Pantalla táctil o perilla no responde", categoria: "Monitoreo", marca: "Philips", modelo: "IntelliVue MX400", descripcion: "Interfaz / Pantalla" },
+  { valor: "Alarma persistente sin causa aparente", categoria: "Todas", marca: "Todas", modelo: "Todos", descripcion: "Sistema / Software" },
+  { valor: "Falla en mecanismo de infusión / motor", categoria: "Soporte vital", marca: "B. Braun", modelo: "Infusomat Space", descripcion: "Soporte vital" },
+  { valor: "Fallo de palas / descarga de desfibrilador", categoria: "Reanimación", marca: "Mindray", modelo: "BeneHeart D3", descripcion: "Reanimación" },
+  { valor: "Problema de conexión / red / impresión", categoria: "Tecnológico / TI", marca: "Todas", modelo: "Todos", descripcion: "Tecnológico / TI" },
 ];
 
 export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
@@ -288,7 +288,7 @@ interface Ctx {
 
   resultadosMantenimiento: string[];
 
-  fallasFrecuentes: { valor: string; descripcion?: string }[];
+  fallasFrecuentes: { id?: string; valor: string; categoria?: string; marca?: string; modelo?: string; descripcion?: string; detalle?: string }[];
 }
 
 const BioContext = createContext<Ctx | null>(null);
@@ -1046,7 +1046,22 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         .filter((o) => o.tipo?.toLowerCase() === "falla_frecuente" && o.activo)
         .filter((o) => !o.sede || o.sede === "Todas" || !user?.sede || o.sede.toLowerCase() === user.sede.toLowerCase())
         .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || (a.valor || "").localeCompare(b.valor || ""))
-        .map((o) => ({ valor: o.valor || "", descripcion: o.descripcion || "" }));
+        .map((o) => {
+          let cat = "Todas";
+          let mar = "Todas";
+          let mod = "Todos";
+          let det = o.descripcion || "";
+          try {
+            const p = JSON.parse(o.descripcion || "");
+            if (p && typeof p === "object") {
+              cat = p.categoria || "Todas";
+              mar = p.marca || "Todas";
+              mod = p.modelo || "Todos";
+              det = p.detalle || "";
+            }
+          } catch {}
+          return { id: o.id, valor: o.valor || "", categoria: cat, marca: mar, modelo: mod, descripcion: det, detalle: det };
+        });
       return list.length > 0 ? list : (DEFAULT_FALLAS_FRECUENTES || []);
     })(),
 
