@@ -287,6 +287,8 @@ interface Ctx {
   tiposMantenimiento: string[];
 
   resultadosMantenimiento: string[];
+
+  fallasFrecuentes: { valor: string; descripcion?: string }[];
 }
 
 const BioContext = createContext<Ctx | null>(null);

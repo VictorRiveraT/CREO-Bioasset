@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { Pencil, Trash, Download, Camera, ImagePlus, Eye, Trash2, FileText, ExternalLink, X, Receipt, HeartPulse, Laptop, Sparkles, Plus } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -810,7 +811,7 @@ export function MaintenanceDialog({
 
   trigger: ReactNode;
 }) {
-  const { db, addMaintenance, updateMaintenance, user, updateEquipment, updateIncident, tiposMantenimiento, resultadosMantenimiento } = useBio();
+  const { db, addMaintenance, updateMaintenance, user, updateEquipment, updateIncident, tiposMantenimiento, resultadosMantenimiento, fallasFrecuentes } = useBio();
 
   const [open, setOpen] = useState(false);
 
@@ -1511,7 +1512,7 @@ export function MaintenanceDialog({
                             const val = e.target.value;
                             setCotizacion((c) => {
                               const updated = [...c.repuestos];
-                              updated[idx].descripcion = val;
+                              if (updated[idx]) { updated[idx].descripcion = val; }
                               return { ...c, repuestos: updated };
                             });
                           }}
@@ -1527,8 +1528,7 @@ export function MaintenanceDialog({
                               const qty = Number(e.target.value) || 1;
                               setCotizacion((c) => {
                                 const updated = [...c.repuestos];
-                                updated[idx].cantidad = qty;
-                                updated[idx].total = qty * updated[idx].precioUnitario;
+                                if (updated[idx]) { updated[idx].cantidad = qty; updated[idx].total = qty * updated[idx].precioUnitario; }
                                 const repTotal = updated.reduce((s, r) => s + r.total, 0);
                                 return { ...c, repuestos: updated, totalGeneral: repTotal + c.manoDeObra };
                               });
@@ -1547,8 +1547,7 @@ export function MaintenanceDialog({
                               const pr = Number(e.target.value) || 0;
                               setCotizacion((c) => {
                                 const updated = [...c.repuestos];
-                                updated[idx].precioUnitario = pr;
-                                updated[idx].total = updated[idx].cantidad * pr;
+                                if (updated[idx]) { updated[idx].precioUnitario = pr; updated[idx].total = updated[idx].cantidad * pr; }
                                 const repTotal = updated.reduce((s, r) => s + r.total, 0);
                                 return { ...c, repuestos: updated, totalGeneral: repTotal + c.manoDeObra };
                               });

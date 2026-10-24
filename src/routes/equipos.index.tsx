@@ -4,6 +4,7 @@ import { Plus, Search, AlertTriangle, QrCode, X } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { EquipmentDialog, IncidentDialog } from "@/components/bioasset/dialogs";
 import { DueBadge, StatusBadge } from "@/components/bioasset/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
