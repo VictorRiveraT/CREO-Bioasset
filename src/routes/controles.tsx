@@ -82,6 +82,7 @@ export function ControlesPage() {
     user,
     isAdmin,
     isBiomedico,
+    categorias,
     addOpcionCatalogo,
     updateOpcionCatalogo,
     deleteOpcionCatalogo,
@@ -277,7 +278,7 @@ export function ControlesPage() {
             <FallasCatalogSection
               opciones={opcionesFiltradas("falla_frecuente")}
               marcas={db.marcas || []}
-              categorias={Array.from(new Set([...categorias, ...CATEGORIES]))}
+              categorias={Array.from(new Set([...(categorias || []), ...CATEGORIES]))}
               sedesDisponibles={sedesDisponibles}
               currentSede={user?.sede || "Todas"}
               onAdd={addOpcionCatalogo}
