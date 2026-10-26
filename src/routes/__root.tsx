@@ -43,17 +43,35 @@ function ErrorComponent({ error, reset }: { error: any; reset: () => void }) {
   }, [error]);
 
   const errObj = error instanceof Error ? error : new Error(String(error || "Unknown error"));
+  const isChunkError =
+    errObj.message?.includes("Failed to fetch dynamically imported module") ||
+    errObj.message?.includes("dynamically imported module") ||
+    errObj.message?.includes("Importing a module script failed");
+
+  // Si falló la carga dinámica por nuevo despliegue, recargar automáticamente una vez
+  useEffect(() => {
+    if (isChunkError && typeof window !== "undefined") {
+      const lastReload = sessionStorage.getItem("bioasset_chunk_reload");
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 10000) {
+        sessionStorage.setItem("bioasset_chunk_reload", String(now));
+        window.location.reload();
+      }
+    }
+  }, [isChunkError]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          {isChunkError ? "Nueva versión detectada" : "La página no pudo cargar"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          {isChunkError
+            ? "Se ha publicado una actualización en el sistema. Recarga la página para continuar con la última versión."
+            : "Ocurrió un problema inesperado. Puedes recargar o volver al inicio."}
         </p>
-        {errObj && (
+        {errObj && !isChunkError && (
           <div className="mt-4 p-3 bg-destructive/10 text-destructive text-xs font-mono rounded text-left overflow-auto max-h-48 border border-destructive/20">
             <p className="font-bold">{errObj.name}: {errObj.message}</p>
             {errObj.stack && <pre className="mt-1 text-[10px] whitespace-pre-wrap">{errObj.stack}</pre>}
@@ -62,18 +80,22 @@ function ErrorComponent({ error, reset }: { error: any; reset: () => void }) {
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
-              router.invalidate();
-              reset?.();
+              if (isChunkError || typeof window !== "undefined") {
+                window.location.reload();
+              } else {
+                router.invalidate();
+                reset?.();
+              }
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            Recargar página
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            Ir al inicio
           </a>
         </div>
       </div>
@@ -137,6 +159,21 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handlePreloadError = () => {
+      const lastReload = sessionStorage.getItem("bioasset_chunk_reload");
+      const now = Date.now();
+      if (!lastReload || now - Number(lastReload) > 10000) {
+        sessionStorage.setItem("bioasset_chunk_reload", String(now));
+        window.location.reload();
+      }
+    };
+    window.addEventListener("vite:preloadError", handlePreloadError);
+    return () => window.removeEventListener("vite:preloadError", handlePreloadError);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BioAssetProvider>
