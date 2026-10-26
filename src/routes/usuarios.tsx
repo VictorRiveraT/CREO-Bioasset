@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-import { useBio, DEFAULT_PERMISSIONS } from "@/lib/bioasset/store";
+import { useBio, DEFAULT_PERMISSIONS, formatDate } from "@/lib/bioasset/store";
 
 import { fetchApi } from "@/lib/bioasset/apiClient";
 
@@ -371,86 +371,84 @@ function UsuariosPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-2 p-3 bg-muted rounded-md">
-                    <Label className="font-semibold">Accesos Temporales Adicionales</Label>
+                  {isGlobalUser && (
+                    <div className="grid gap-2 p-3 bg-muted rounded-md">
+                      <Label className="font-semibold">Accesos Temporales Adicionales</Label>
 
-                    {accesosExtra.map((acceso, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 mb-2 p-2 bg-background rounded border"
-                      >
-                        <span className="flex-1 text-sm">{acceso.sede}</span>
-
-                        <span className="text-xs text-muted-foreground">Hasta: {acceso.hasta}</span>
-
-                        <button
-                          type="button"
-                          onClick={() => setAccesosExtra(accesosExtra.filter((_, i) => i !== idx))}
-                          className="text-red-500 hover:text-red-700 font-bold px-2"
+                      {accesosExtra.map((acceso, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-2 mb-2 p-2 bg-background rounded border"
                         >
-                          X
-                        </button>
-                      </div>
-                    ))}
+                          <span className="flex-1 text-sm">{acceso.sede}</span>
 
-                    <div className="grid grid-cols-12 gap-2 mt-2">
-                      <div className="col-span-5">
-                        <Select value={sedeTemporal} onValueChange={setSedeTemporal}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="Sede" />
-                          </SelectTrigger>
+                          <span className="text-xs text-muted-foreground">Hasta: {formatDate(acceso.hasta)}</span>
 
-                          <SelectContent>
-                            <SelectItem value="Ninguna">Ninguna</SelectItem>
+                          <button
+                            type="button"
+                            onClick={() => setAccesosExtra(accesosExtra.filter((_, i) => i !== idx))}
+                            className="text-red-500 hover:text-red-700 font-bold px-2 cursor-pointer"
+                          >
+                            X
+                          </button>
+                        </div>
+                      ))}
 
-                            {user?.sede === "Todas" && (
-                              <SelectItem value="Todas">Todas las sedes</SelectItem>
-                            )}
+                      <div className="grid grid-cols-12 gap-2 mt-2">
+                        <div className="col-span-5">
+                          <Select value={sedeTemporal} onValueChange={setSedeTemporal}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Sede" />
+                            </SelectTrigger>
 
-                            {sedesList.map((s) => (
-                              <SelectItem key={s} value={s as string}>
-                                {s}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                            <SelectContent>
+                              <SelectItem value="Ninguna">Ninguna</SelectItem>
 
-                      <div className="col-span-5">
-                        <Input
-                          type="date"
+                              {user?.sede === "Todas" && (
+                                <SelectItem value="Todas">Todas las sedes</SelectItem>
+                              )}
 
-                          value={sedeTemporalHasta}
+                              {sedesList.map((s) => (
+                                <SelectItem key={s} value={s as string}>
+                                  {s}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                          onChange={(e) => setSedeTemporalHasta(e.target.value)}
+                        <div className="col-span-5">
+                          <Input
+                            type="date"
+                            value={sedeTemporalHasta}
+                            onChange={(e) => setSedeTemporalHasta(e.target.value)}
+                            className="h-8 text-xs"
+                            disabled={sedeTemporal === "Ninguna"}
+                          />
+                        </div>
 
-                          className="h-8 text-xs"
+                        <div className="col-span-2">
+                          <button
+                            type="button"
+                            disabled={sedeTemporal === "Ninguna" || !sedeTemporalHasta}
+                            className="w-full h-8 bg-blue-600 text-white rounded text-xs disabled:opacity-50 cursor-pointer"
+                            onClick={() => {
+                              setAccesosExtra([
+                                ...accesosExtra,
+                                { sede: sedeTemporal, hasta: sedeTemporalHasta },
+                              ]);
 
-                          disabled={sedeTemporal === "Ninguna"}
-                        />
-                      </div>
+                              setSedeTemporal("Ninguna");
 
-                      <div className="col-span-2">
-                        <button
-                          type="button"
-                          disabled={sedeTemporal === "Ninguna" || !sedeTemporalHasta}
-                          className="w-full h-8 bg-blue-600 text-white rounded text-xs disabled:opacity-50"
-                          onClick={() => {
-                            setAccesosExtra([
-                              ...accesosExtra,
-                              { sede: sedeTemporal, hasta: sedeTemporalHasta },
-                            ]);
-
-                            setSedeTemporal("Ninguna");
-
-                            setSedeTemporalHasta("");
-                          }}
-                        >
-                          Agregar
-                        </button>
+                              setSedeTemporalHasta("");
+                            }}
+                          >
+                            Agregar
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="grid gap-2">
                     <Label htmlFor="accesoHasta">Expiración de Cuenta (Opcional)</Label>
@@ -740,6 +738,10 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
 
   const isSuperAdmin = userItem.email === "admin@bioasset.pe";
 
+  const isGlobalAdmin =
+    currentUser?.email === "admin@bioasset.pe" ||
+    (currentUser?.sede || "").toLowerCase().includes("todas");
+
   const defaultP = DEFAULT_PERMISSIONS[userItem.rol as keyof typeof DEFAULT_PERMISSIONS] || {};
   const actualP = userItem.permisos || defaultP;
   const extraP: string[] = [];
@@ -856,15 +858,31 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
     e.preventDefault();
     if (!nombre || !email || !rol) return;
     try {
+      // Prevención estricta de escalada de privilegios:
+      // Si el usuario se edita a sí mismo, se congelan su rol, sede, accesos temporales,
+      // expiración de cuenta y permisos asignados por administración.
+      // Si no es administrador global, tampoco puede alterar accesos temporales ni sedes.
+      const finalRol = isSelf ? userItem.rol : rol;
+      const finalSede = isSelf || !isGlobalAdmin ? userItem.sede : sede;
+      const finalSedeTemporal =
+        isSelf || !isGlobalAdmin ? userItem.sedeTemporal : JSON.stringify(accesosExtra);
+      const finalAccesoHasta =
+        isSelf || !isGlobalAdmin
+          ? userItem.accesoHasta
+          : accesoHasta
+            ? new Date(accesoHasta).toISOString()
+            : undefined;
+      const finalPermisos = isSelf ? userItem.permisos : permisos;
+
       await updateUser(userItem.id, {
         nombre,
         email,
         password,
-        rol,
-        permisos,
-        sede,
-        accesoHasta: accesoHasta ? new Date(accesoHasta).toISOString() : undefined,
-        sedeTemporal: JSON.stringify(accesosExtra),
+        rol: finalRol,
+        permisos: finalPermisos,
+        sede: finalSede,
+        accesoHasta: finalAccesoHasta,
+        sedeTemporal: finalSedeTemporal,
         sedeTemporalHasta: undefined,
       });
       toast.success("Usuario actualizado exitosamente");
@@ -911,13 +929,13 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
 
                 return arr.map((x: any, i: number) => (
                   <div key={i} className="text-xs text-blue-600 dark:text-blue-400">
-                    +{x.sede} (hasta {x.hasta})
+                    +{x.sede} (hasta {x.hasta ? formatDate(x.hasta) : "indefinido"})
                   </div>
                 ));
-              } else if (userItem.sedeTemporal && userItem.sedeTemporal !== "Ninguna") {
+              } else if (userItem.sedeTemporal && userItem.sedeTemporal !== "Ninguna" && userItem.sedeTemporal !== "[]") {
                 return (
                   <div className="text-xs text-blue-600 dark:text-blue-400">
-                    +{userItem.sedeTemporal} (hasta {userItem.sedeTemporalHasta?.substring(0, 10)})
+                    +{userItem.sedeTemporal} (hasta {userItem.sedeTemporalHasta ? formatDate(userItem.sedeTemporalHasta) : "indefinido"})
                   </div>
                 );
               }
@@ -1088,16 +1106,20 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor={"rol-"}>Rol</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={"rol-"}>Rol</Label>
+                    {isSelf && (
+                      <span className="text-xs text-muted-foreground italic">
+                        (Bloqueado para tu cuenta)
+                      </span>
+                    )}
+                  </div>
 
                   <Select
                     value={rol}
-
                     onValueChange={handleEditRoleChange}
-
                     required
-
-                    disabled={isSuperAdmin}
+                    disabled={isSuperAdmin || isSelf}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -1105,22 +1127,29 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
 
                     <SelectContent>
                       <SelectItem value="admin">Administrador</SelectItem>
-
                       <SelectItem value="biomedico">Biomédico</SelectItem>
-
                       <SelectItem value="asistencial">Asistencial</SelectItem>
-
                       <SelectItem value="auditor">Auditor</SelectItem>
-
                       <SelectItem value="estudiante">Estudiante</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor={"sede-"}>Sede Principal</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={"sede-"}>Sede Principal</Label>
+                    {(isSelf || !isGlobalAdmin) && (
+                      <span className="text-xs text-muted-foreground italic">
+                        {isSelf ? "(Bloqueado para tu cuenta)" : "(Solo SuperAdmin)"}
+                      </span>
+                    )}
+                  </div>
 
-                  <Select value={sede} onValueChange={setSede} disabled={isSuperAdmin}>
+                  <Select
+                    value={sede}
+                    onValueChange={setSede}
+                    disabled={isSuperAdmin || isSelf || !isGlobalAdmin}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -1141,30 +1170,44 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
               </div>
 
               <div className="grid gap-2 p-3 bg-muted rounded-md">
-                <Label className="font-semibold">Accesos Temporales Adicionales</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="font-semibold">Accesos Temporales Adicionales</Label>
+                  {(isSelf || !isGlobalAdmin) && (
+                    <span className="text-xs text-muted-foreground italic">
+                      {isSelf
+                        ? "(Bloqueado para tu cuenta)"
+                        : "(Solo SuperAdmin)"}
+                    </span>
+                  )}
+                </div>
 
-                {accesosExtra.map((acceso, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 mb-2 p-2 bg-background rounded border"
-                  >
-                    <span className="flex-1 text-sm">{acceso.sede}</span>
+                {accesosExtra.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-1">Sin accesos temporales asignados.</p>
+                ) : (
+                  accesosExtra.map((acceso, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 mb-2 p-2 bg-background rounded border"
+                    >
+                      <span className="flex-1 text-sm">{acceso.sede}</span>
 
-                    <span className="text-xs text-muted-foreground">Hasta: {acceso.hasta}</span>
+                      <span className="text-xs text-muted-foreground">Hasta: {formatDate(acceso.hasta)}</span>
 
-                    {!isSuperAdmin && (
-                      <button
-                        type="button"
-                        onClick={() => setAccesosExtra(accesosExtra.filter((_, i) => i !== idx))}
-                        className="text-red-500 hover:text-red-700 font-bold px-2"
-                      >
-                        X
-                      </button>
-                    )}
-                  </div>
-                ))}
+                      {!isSuperAdmin && !isSelf && isGlobalAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => setAccesosExtra(accesosExtra.filter((_, i) => i !== idx))}
+                          className="text-red-500 hover:text-red-700 font-bold px-2 cursor-pointer"
+                          title="Remover acceso"
+                        >
+                          X
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
 
-                {!isSuperAdmin && (
+                {!isSuperAdmin && !isSelf && isGlobalAdmin && (
                   <div className="grid grid-cols-12 gap-2 mt-2">
                     <div className="col-span-5">
                       <Select value={sedeTemporal} onValueChange={setSedeTemporal}>
@@ -1191,13 +1234,9 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
                     <div className="col-span-5">
                       <Input
                         type="date"
-
                         value={sedeTemporalHasta}
-
                         onChange={(e) => setSedeTemporalHasta(e.target.value)}
-
                         className="h-8 text-xs"
-
                         disabled={sedeTemporal === "Ninguna"}
                       />
                     </div>
@@ -1206,7 +1245,7 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
                       <button
                         type="button"
                         disabled={sedeTemporal === "Ninguna" || !sedeTemporalHasta}
-                        className="w-full h-8 bg-blue-600 text-white rounded text-xs disabled:opacity-50"
+                        className="w-full h-8 bg-blue-600 text-white rounded text-xs disabled:opacity-50 cursor-pointer"
                         onClick={() => {
                           setAccesosExtra([
                             ...accesosExtra,
@@ -1226,23 +1265,33 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor={"accesoHasta-"}>Expiración de Cuenta (Opcional)</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor={"accesoHasta-"}>Expiración de Cuenta (Opcional)</Label>
+                  {(isSelf || !isGlobalAdmin) && (
+                    <span className="text-xs text-muted-foreground italic">
+                      {isSelf ? "(Bloqueado para tu cuenta)" : "(Solo SuperAdmin)"}
+                    </span>
+                  )}
+                </div>
 
                 <Input
                   id={"accesoHasta-"}
-
                   type="date"
-
                   value={accesoHasta}
-
                   onChange={(e) => setAccesoHasta(e.target.value)}
-
-                  disabled={isSuperAdmin}
+                  disabled={isSuperAdmin || isSelf || !isGlobalAdmin}
                 />
               </div>
 
               <div className="col-span-full pt-4">
-                <Label>Permisos Granulares (Sobrescribir por defecto)</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Permisos Granulares (Sobrescribir por defecto)</Label>
+                  {isSelf && (
+                    <span className="text-xs text-muted-foreground italic">
+                      (Bloqueado para tu cuenta)
+                    </span>
+                  )}
+                </div>
 
                 <div className="mt-2 border rounded-md overflow-hidden text-sm">
                   <table className="w-full text-left">
@@ -1264,15 +1313,11 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
                           <td className="px-3 py-2 text-center">
                             <input
                               type="checkbox"
-
                               checked={permisos[k]?.view ?? false}
-
-                              disabled={isSuperAdmin}
-
+                              disabled={isSuperAdmin || isSelf}
                               onChange={(e) =>
                                 setPermisos({
                                   ...permisos,
-
                                   [k]: { ...(permisos[k] || { view: false, edit: false }), view: e.target.checked },
                                 })
                               }
@@ -1282,11 +1327,8 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
                           <td className="px-3 py-2 text-center">
                             <input
                               type="checkbox"
-
                               checked={permisos[k]?.edit ?? false}
-
-                              disabled={isSuperAdmin}
-
+                              disabled={isSuperAdmin || isSelf}
                               onChange={(e) =>
                                 setPermisos({
                                   ...permisos,
