@@ -24,6 +24,7 @@ import { MaintenanceDialog } from "@/components/bioasset/dialogs";
 import { ImagePreviewDialog } from "@/components/bioasset/image-preview-dialog";
 import { DueBadge } from "@/components/bioasset/StatusBadge";
 import { encryptUrlParam } from "@/lib/bioasset/security";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -425,14 +426,23 @@ function MantenimientoPage() {
                 if (completado) {
                   rowBgClass = "bg-muted/10 opacity-80 hover:opacity-100 hover:bg-muted/30 transition-all";
                 } else if (enProgreso) {
-                  rowBgClass = "bg-amber-500/[0.04] hover:bg-amber-500/[0.08] transition-colors border-l-4 border-l-amber-500";
+                  rowBgClass = "bg-primary/[0.04] hover:bg-primary/[0.08] transition-colors";
                 } else if (isOverdue) {
-                  rowBgClass = "bg-rose-500/[0.04] hover:bg-rose-500/[0.08] transition-colors border-l-4 border-l-rose-500";
+                  rowBgClass = "bg-rose-500/[0.04] hover:bg-rose-500/[0.08] transition-colors";
                 }
 
                 return (
                   <TableRow key={m.id} className={rowBgClass}>
-                    <TableCell className="whitespace-nowrap text-muted-foreground text-xs font-medium">
+                    <TableCell
+                      className={cn(
+                        "whitespace-nowrap text-muted-foreground text-xs font-medium pl-3 transition-colors",
+                        isOverdue
+                          ? "border-l-4 border-l-rose-500"
+                          : enProgreso
+                          ? "border-l-4 border-l-primary"
+                          : "border-l-4 border-l-transparent"
+                      )}
+                    >
                       {formatDateTime(m.fecha)}
                     </TableCell>
 
@@ -602,11 +612,7 @@ function MantenimientoPage() {
                             <Button
                               size="sm"
                               variant={enProgreso ? "default" : "outline"}
-                              className={
-                                enProgreso
-                                  ? "bg-amber-600 hover:bg-amber-700 text-white shadow-xs text-xs font-semibold"
-                                  : "text-xs"
-                              }
+                              className="text-xs font-semibold shadow-xs"
                             >
                               {enProgreso ? "Completar" : "Editar"}
                             </Button>
