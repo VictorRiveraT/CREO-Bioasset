@@ -70,6 +70,10 @@ import {
   Eye,
   EyeOff,
   X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
 import {
@@ -113,6 +117,10 @@ function UsuariosPage() {
   const [accesosExtra, setAccesosExtra] = useState<{ sede: string; hasta: string }[]>([]);
 
   const [permisos, setPermisos] = useState<UserPermissions>(DEFAULT_PERMISSIONS.asistencial);
+
+  // Paginación
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Filters
 
@@ -199,6 +207,31 @@ function UsuariosPage() {
       return matchSearch && matchRol && matchSede;
     });
   }, [db.users, search, filterRol, filterSede]);
+
+  // Resetear a página 1 al cambiar filtros o búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterRol, filterSede]);
+
+  // Paginación: Cálculos
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const currentPageClamped = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (currentPageClamped - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, filteredUsers.length);
+  const pagedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPageClamped <= 3) {
+      return [1, 2, 3, 4, "...", totalPages];
+    }
+    if (currentPageClamped >= totalPages - 2) {
+      return [1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, "...", currentPageClamped - 1, currentPageClamped, currentPageClamped + 1, "...", totalPages];
+  }, [totalPages, currentPageClamped]);
 
   if (user && !isAdmin && !isAuditor) {
     return <Navigate to="/" replace />;
@@ -565,6 +598,7 @@ function UsuariosPage() {
                     setSearch("");
                     setFilterRol("todos");
                     setFilterSede("todas");
+                    setCurrentPage(1);
                   }}
                   className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
                 >
@@ -594,11 +628,104 @@ function UsuariosPage() {
             </TableHeader>
 
             <TableBody>
-              {filteredUsers.map((u) => (
+              {pagedUsers.map((u) => (
                 <UserRow key={u.id} userItem={u} sedesList={sedesList} />
               ))}
+              {filteredUsers.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={isAdmin ? 6 : 5} className="py-10 text-center text-muted-foreground">
+                    No se encontraron usuarios con los filtros aplicados.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
+
+          {/* Barra de Paginación (Máximo 10 registros por página) */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3.5 border-t bg-card/60">
+            <div className="text-xs text-muted-foreground">
+              {filteredUsers.length === 0 ? (
+                "0 usuarios"
+              ) : (
+                <>
+                  Mostrando <strong className="text-foreground font-semibold">{startIndex + 1}</strong> -{" "}
+                  <strong className="text-foreground font-semibold">{endIndex}</strong> de{" "}
+                  <strong className="text-foreground font-semibold">{filteredUsers.length}</strong> usuarios
+                  {filteredUsers.length !== (db.users?.length || 0) && (
+                    <span className="ml-1 text-muted-foreground">({db.users?.length || 0} totales)</span>
+                  )}
+                </>
+              )}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPageClamped <= 1}
+                  className="h-8 w-8 p-0"
+                  title="Primera página"
+                >
+                  <ChevronsLeft className="size-4" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPageClamped <= 1}
+                  className="h-8 px-2 text-xs font-medium"
+                >
+                  <ChevronLeft className="size-3.5 mr-1" /> Anterior
+                </Button>
+
+                <div className="flex items-center gap-1">
+                  {pageNumbers.map((p, idx) =>
+                    typeof p === "number" ? (
+                      <Button
+                        key={p}
+                        variant={p === currentPageClamped ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(p)}
+                        className={`h-8 w-8 p-0 text-xs font-semibold ${
+                          p === currentPageClamped ? "shadow-xs" : ""
+                        }`}
+                      >
+                        {p}
+                      </Button>
+                    ) : (
+                      <span key={`ellipsis-${idx}`} className="px-1 text-xs text-muted-foreground select-none">
+                        ...
+                      </span>
+                    )
+                  )}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPageClamped >= totalPages}
+                  className="h-8 px-2 text-xs font-medium"
+                >
+                  Siguiente <ChevronRight className="size-3.5 ml-1" />
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPageClamped >= totalPages}
+                  className="h-8 w-8 p-0"
+                  title="Última página"
+                >
+                  <ChevronsRight className="size-4" />
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </AppShell>
