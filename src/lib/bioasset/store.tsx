@@ -15,6 +15,7 @@ import type {
   MaintenanceRecord,
   Movement,
   Incident,
+  Alerta,
   User,
   UserPermissions,
   ModulePermissions,

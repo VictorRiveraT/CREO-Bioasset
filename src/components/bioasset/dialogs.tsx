@@ -44,7 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { useBio } from "@/lib/bioasset/store";
+import { useBio, formatDate } from "@/lib/bioasset/store";
 
 import { generateMaintenancePDF } from "@/lib/bioasset/pdf-generator";
 import { ImagePreviewDialog } from "./image-preview-dialog";
