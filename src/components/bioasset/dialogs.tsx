@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
 
 import { toast } from "sonner";
 
-import { Pencil, Trash, Download, Camera, ImagePlus, Eye, Trash2, FileText, ExternalLink, X, Receipt, HeartPulse, Laptop, Sparkles, Plus } from "lucide-react";
+import { Pencil, Trash, Download, Camera, ImagePlus, Eye, Trash2, FileText, ExternalLink, X, Receipt, HeartPulse, Laptop, Sparkles, Plus, AlertTriangle, Wrench } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
