@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useBio } from "@/lib/bioasset/store";
+import { cn } from "@/lib/utils";
 import { MaintenanceDialog, IncidentDialog } from "@/components/bioasset/dialogs";
 import { encryptUrlParam } from "@/lib/bioasset/security";
 
@@ -45,17 +46,41 @@ function IncidenciasPage() {
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Helper para orden prioritario: Abiertas (0) primero, En revisión (1) segundo, Cerradas (2) al final
+  const getPriority = (estado?: string): number => {
+    if (!estado) return 0;
+    const s = estado.toLowerCase().trim();
+    if (s === "abierta") return 0;
+    if (s.includes("revision") || s.includes("proceso")) return 1;
+    return 2; // Cerrada o resuelta
+  };
+
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return [...(db.incidents || [])].filter((i) => {
-      const e = db.equipment.find((x) => x.id === (i.activoId || (i as any).activo_id));
-      const code = e?.codigo || "Sin código";
-      const name = e?.nombre || "Equipo no encontrado";
-      const matchTerm = !term || `${code} ${name} ${i.titulo || ""}`.toLowerCase().includes(term);
-      const matchEstado =
-        estadoFilter === "todos" || i.estado?.toLowerCase() === estadoFilter.toLowerCase();
-      return matchTerm && matchEstado;
-    });
+    return [...(db.incidents || [])]
+      .filter((i) => {
+        const e = db.equipment.find((x) => x.id === (i.activoId || (i as any).activo_id));
+        const code = e?.codigo || "Sin código";
+        const name = e?.nombre || "Equipo no encontrado";
+        const matchTerm = !term || `${code} ${name} ${i.titulo || ""}`.toLowerCase().includes(term);
+        const matchEstado =
+          estadoFilter === "todos" || i.estado?.toLowerCase() === estadoFilter.toLowerCase();
+        return matchTerm && matchEstado;
+      })
+      .sort((a, b) => {
+        const pA = getPriority(a.estado);
+        const pB = getPriority(b.estado);
+
+        // Prioridad: Abiertas primero, Cerradas abajo al final
+        if (pA !== pB) {
+          return pA - pB;
+        }
+
+        // Dentro del mismo grupo, más reciente primero
+        const dateA = a.fecha || a.fechaCreacion || "";
+        const dateB = b.fecha || b.fechaCreacion || "";
+        return dateB.localeCompare(dateA);
+      });
   }, [db.incidents, db.equipment, q, estadoFilter]);
 
   // Resetear a página 1 al cambiar filtros o búsqueda
@@ -176,9 +201,31 @@ function IncidenciasPage() {
               ) : (
                 pagedRows.map((i) => {
                   const e = db.equipment.find((x) => x.id === i.activoId);
+                  const isCerrada = i.estado?.toLowerCase().startsWith("cerrad") || i.estado === "Resuelta";
+                  const isAbierta = i.estado?.toLowerCase() === "abierta";
+                  const isRevision = i.estado?.toLowerCase().includes("revision");
+
+                  let rowBgClass = "hover:bg-muted/50 transition-colors";
+                  if (isCerrada) {
+                    rowBgClass = "bg-muted/10 opacity-75 hover:opacity-100 hover:bg-muted/30 transition-all";
+                  } else if (isAbierta) {
+                    rowBgClass = "bg-rose-500/[0.03] hover:bg-rose-500/[0.06] transition-colors";
+                  } else if (isRevision) {
+                    rowBgClass = "bg-primary/[0.03] hover:bg-primary/[0.06] transition-colors";
+                  }
+
                   return (
-                    <TableRow key={i.id}>
-                      <TableCell>
+                    <TableRow key={i.id} className={rowBgClass}>
+                      <TableCell
+                        className={cn(
+                          "pl-3 transition-colors",
+                          isAbierta
+                            ? "border-l-4 border-l-rose-500"
+                            : isRevision
+                            ? "border-l-4 border-l-primary"
+                            : "border-l-4 border-l-transparent"
+                        )}
+                      >
                         <div className="flex flex-col">
                           {e && e.id ? (
                             <Link
