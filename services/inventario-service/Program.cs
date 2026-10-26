@@ -37,17 +37,30 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapGet("/ubicaciones", [Authorize] async (InvDb db) => Results.Ok(new { ubicaciones = await db.Ubicaciones.ToListAsync() }));
 app.MapPost("/ubicaciones", [Authorize(Roles = "admin")] async (Ubicacion dto, InvDb db) => {
-    var existing = await db.Ubicaciones.AnyAsync(u => u.Nombre.ToLower() == dto.Nombre.ToLower() && u.Sede.ToLower() == dto.Sede.ToLower() && u.Piso.ToLower() == dto.Piso.ToLower());
+    var cleanNom = (dto.Nombre ?? "").Trim();
+    var cleanSede = (dto.Sede ?? "").Trim();
+    var cleanPiso = (dto.Piso ?? "").Trim();
+    var existing = await db.Ubicaciones.AnyAsync(u => u.Nombre.Trim().ToLower() == cleanNom.ToLower() && u.Sede.Trim().ToLower() == cleanSede.ToLower() && u.Piso.Trim().ToLower() == cleanPiso.ToLower() && u.Nombre != "___EMPTY___");
     if (existing) {
-        return Results.BadRequest(new { error = $"Ya existe el área '{dto.Nombre}' en {dto.Sede}, {dto.Piso}." });
+        return Results.BadRequest(new { error = $"Ya existe el área '{cleanNom}' en {cleanSede}, {cleanPiso}." });
     }
+    dto.Nombre = cleanNom;
+    dto.Sede = cleanSede;
+    dto.Piso = cleanPiso;
     db.Ubicaciones.Add(dto);
     await db.SaveChangesAsync();
     return Results.Created("", dto);
 });
 app.MapPut("/ubicaciones/{id}", [Authorize(Roles = "admin")] async (Guid id, Ubicacion dto, InvDb db) => {
+    var cleanNom = (dto.Nombre ?? "").Trim();
+    var cleanSede = (dto.Sede ?? "").Trim();
+    var cleanPiso = (dto.Piso ?? "").Trim();
+    var conflict = await db.Ubicaciones.AnyAsync(u => u.Id != id && u.Nombre.Trim().ToLower() == cleanNom.ToLower() && u.Sede.Trim().ToLower() == cleanSede.ToLower() && u.Piso.Trim().ToLower() == cleanPiso.ToLower() && u.Nombre != "___EMPTY___");
+    if (conflict) {
+        return Results.BadRequest(new { error = $"Ya existe el área '{cleanNom}' en {cleanSede}, {cleanPiso}." });
+    }
     var u = await db.Ubicaciones.FindAsync(id);
-    if(u!=null) { u.Nombre = dto.Nombre; u.Descripcion = dto.Descripcion; u.Activo = dto.Activo; u.Sede = dto.Sede; u.Piso = dto.Piso; await db.SaveChangesAsync(); }
+    if(u!=null) { u.Nombre = cleanNom; u.Descripcion = dto.Descripcion; u.Activo = dto.Activo; u.Sede = cleanSede; u.Piso = cleanPiso; await db.SaveChangesAsync(); }
     return Results.Ok();
 });
 app.MapDelete("/ubicaciones/{id}", [Authorize(Roles = "admin")] async (Guid id, InvDb db) => {
@@ -199,25 +212,33 @@ app.MapPut("/activos/{id}", [Authorize(Roles = "admin,inventario,biomedico")] as
     var sede = ctx.User.FindFirst("sede")?.Value;
     var rol = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
     var a = await db.Activos.FindAsync(id);
-    if(a != null && rol != "admin" && sede != "Todas") {
+    if (a == null) return Results.NotFound(new { error = "Activo no encontrado." });
+    if (rol != "admin" && sede != "Todas") {
         var oldU = await db.Ubicaciones.FindAsync(a.UbicacionId);
         var newU = await db.Ubicaciones.FindAsync(dto.UbicacionId);
         if((oldU != null && oldU.Sede != sede) || (newU != null && newU.Sede != sede)) return Results.Forbid();
     }
-    if(a != null) { 
-        a.Codigo = dto.Codigo;
-        a.Nombre = dto.Nombre; 
-        a.Categoria = dto.Categoria; 
-        a.Marca = dto.Marca;
-        a.Modelo = dto.Modelo;
-        a.Serie = dto.Serie;
-        a.Estado = dto.Estado;
-        a.UbicacionId = dto.UbicacionId;
-        a.FechaAdquisicion = dto.FechaAdquisicion;
-        a.ProximoMantenimiento = dto.ProximoMantenimiento;
-        await db.SaveChangesAsync(); 
+    var cleanCodigo = (dto.Codigo ?? "").Trim();
+    var cleanSerie = (dto.Serie ?? "").Trim();
+    if (!string.IsNullOrEmpty(cleanCodigo) && await db.Activos.AnyAsync(x => x.Id != id && x.Codigo.Trim().ToLower() == cleanCodigo.ToLower())) {
+        return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el código patrimonial '{cleanCodigo}'." });
     }
-    return Results.Ok();
+    if (!string.IsNullOrEmpty(cleanSerie) && await db.Activos.AnyAsync(x => x.Id != id && x.Serie.Trim().ToLower() == cleanSerie.ToLower())) {
+        return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el número de serie '{cleanSerie}'." });
+    }
+    a.Codigo = cleanCodigo;
+    a.Nombre = (dto.Nombre ?? "").Trim(); 
+    a.Categoria = dto.Categoria; 
+    a.Marca = dto.Marca;
+    a.Modelo = dto.Modelo;
+    a.Serie = cleanSerie;
+    a.Estado = dto.Estado;
+    a.UbicacionId = dto.UbicacionId;
+    a.FechaAdquisicion = dto.FechaAdquisicion;
+    a.ProximoMantenimiento = dto.ProximoMantenimiento;
+    await db.SaveChangesAsync(); 
+    EventBus.Publish("activos_q", new { Action = "Updated", Data = a });
+    return Results.Ok(new { activo = a });
 });
 
 app.MapPost("/activos", [Authorize(Roles = "admin,inventario,biomedico")] async (Activo dto, InvDb db, HttpContext ctx) => {
@@ -227,12 +248,16 @@ app.MapPost("/activos", [Authorize(Roles = "admin,inventario,biomedico")] async 
         var u = await db.Ubicaciones.FindAsync(dto.UbicacionId);
         if (u == null || u.Sede != sede) return Results.Forbid();
     }
-    if (await db.Activos.AnyAsync(a => a.Codigo.ToLower() == dto.Codigo.ToLower())) {
-        return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el código patrimonial '{dto.Codigo}'." });
+    var cleanCodigo = (dto.Codigo ?? "").Trim();
+    var cleanSerie = (dto.Serie ?? "").Trim();
+    if (await db.Activos.AnyAsync(a => a.Codigo.Trim().ToLower() == cleanCodigo.ToLower())) {
+        return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el código patrimonial '{cleanCodigo}'." });
     }
-    if (!string.IsNullOrEmpty(dto.Serie) && await db.Activos.AnyAsync(a => a.Serie.ToLower() == dto.Serie.ToLower())) {
-        return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el número de serie '{dto.Serie}'." });
+    if (!string.IsNullOrEmpty(cleanSerie) && await db.Activos.AnyAsync(a => a.Serie.Trim().ToLower() == cleanSerie.ToLower())) {
+        return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el número de serie '{cleanSerie}'." });
     }
+    dto.Codigo = cleanCodigo;
+    dto.Serie = cleanSerie;
     dto.Id = Guid.NewGuid();
     db.Activos.Add(dto);
     await db.SaveChangesAsync();
@@ -264,12 +289,24 @@ app.MapMethods("/activos/{id}", new[]{"PATCH"}, [Authorize(Roles = "admin,invent
     var a = await db.Activos.FindAsync(id);
     if(a==null) return Results.NotFound();
     
-    if (patch.TryGetPropertyValue("codigo", out var codigo) && codigo != null) a.Codigo = codigo.ToString();
-    if (patch.TryGetPropertyValue("nombre", out var nombre) && nombre != null) a.Nombre = nombre.ToString();
-    if (patch.TryGetPropertyValue("categoria", out var cat) && cat != null) a.Categoria = cat.ToString();
-    if (patch.TryGetPropertyValue("marca", out var marca) && marca != null) a.Marca = marca.ToString();
-    if (patch.TryGetPropertyValue("modelo", out var modelo) && modelo != null) a.Modelo = modelo.ToString();
-    if (patch.TryGetPropertyValue("serie", out var serie) && serie != null) a.Serie = serie.ToString();
+    if (patch.TryGetPropertyValue("codigo", out var codigo) && codigo != null) {
+        var cleanCod = codigo.ToString().Trim();
+        if (await db.Activos.AnyAsync(x => x.Id != id && x.Codigo.Trim().ToLower() == cleanCod.ToLower())) {
+            return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el código patrimonial '{cleanCod}'." });
+        }
+        a.Codigo = cleanCod;
+    }
+    if (patch.TryGetPropertyValue("nombre", out var nombre) && nombre != null) a.Nombre = nombre.ToString().Trim();
+    if (patch.TryGetPropertyValue("categoria", out var cat) && cat != null) a.Categoria = cat.ToString().Trim();
+    if (patch.TryGetPropertyValue("marca", out var marca) && marca != null) a.Marca = marca.ToString().Trim();
+    if (patch.TryGetPropertyValue("modelo", out var modelo) && modelo != null) a.Modelo = modelo.ToString().Trim();
+    if (patch.TryGetPropertyValue("serie", out var serie) && serie != null) {
+        var cleanSer = serie.ToString().Trim();
+        if (!string.IsNullOrEmpty(cleanSer) && await db.Activos.AnyAsync(x => x.Id != id && x.Serie.Trim().ToLower() == cleanSer.ToLower())) {
+            return Results.BadRequest(new { error = $"Ya existe un equipo registrado con el número de serie '{cleanSer}'." });
+        }
+        a.Serie = cleanSer;
+    }
     if (patch.TryGetPropertyValue("estado", out var est) && est != null) a.Estado = est.ToString();
     if (patch.TryGetPropertyValue("ubicacionId", out var ubi) && ubi != null) {
         if (Guid.TryParse(ubi.ToString(), out var guid)) a.UbicacionId = guid;

@@ -596,7 +596,7 @@ function MantenimientoPage() {
                           </div>
                           <DueBadge
                             days={daysUntil(m.proximaFecha)}
-                            status={m.resultado === "De baja" ? "De baja" : undefined}
+                            status={m.resultado === "De baja" ? "De baja" : (m.resultado === "En progreso" ? "En mantenimiento" : undefined)}
                           />
                         </div>
                       ) : (

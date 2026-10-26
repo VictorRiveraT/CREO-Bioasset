@@ -77,7 +77,7 @@ app.MapPut("/alertas/{id}", [Authorize] async (Guid id, Alerta dto, AlertasDb db
     return Results.Ok(alerta);
 });
 
-app.MapPost("/trigger-daily", async (AlertasDb db, HttpContext ctx) => {
+app.MapPost("/trigger-daily", [Authorize(Roles = "admin,biomedico")] async (AlertasDb db, HttpContext ctx) => {
     string? userIdStr = ctx.Request.Query["userId"].FirstOrDefault();
     
     if (string.IsNullOrEmpty(userIdStr) && ctx.User?.Identity?.IsAuthenticated == true) {

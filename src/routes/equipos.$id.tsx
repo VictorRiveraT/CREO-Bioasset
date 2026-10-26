@@ -77,26 +77,51 @@ function DetalleEquipo() {
   const { id: rawId } = Route.useParams();
   const id = decryptUrlParam(rawId);
 
-  const { db, locationName, userName, addIncident, canEdit } = useBio();
+  const { db, locationName, userName, addIncident, addMovement, updateAlerta, user, canEdit } = useBio();
 
   const [equipo, setEquipo] = useState<Equipment | null>(null);
   const [loading, setLoading] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(false);
   const [incidentTitle, setIncidentTitle] = useState("");
+  const getInitialDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+  const [fechaOcurrencia, setFechaOcurrencia] = useState(getInitialDateTime);
   const [previewFoto, setPreviewFoto] = useState<string | null>(null);
 
   const handleReportIncident = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!incidentTitle || !equipo) return;
     try {
-      await addIncident({ activoId: equipo.id, activo_id: equipo.id, titulo: incidentTitle, estado: "Abierta" });
+      await addIncident({
+        activoId: equipo.id,
+        activo_id: equipo.id,
+        titulo: incidentTitle,
+        estado: "Abierta",
+        fechaOcurrencia,
+        fecha: fechaOcurrencia,
+      });
       await fetchApi(`/inventario/activos/${equipo.id}`, {
         method: "PATCH",
         body: JSON.stringify({ estado: "Fuera de servicio" }),
       });
+
+      // QA-048 y QA-059: Registrar movimiento de trazabilidad con responsable, fecha y motivo
+      await addMovement({
+        equipoId: equipo.id,
+        origenId: equipo.ubicacionId,
+        destinoId: equipo.ubicacionId,
+        motivo: `Cambio a 'Fuera de servicio' por reporte de avería (${fechaOcurrencia}): ${incidentTitle}`,
+        usuarioId: user?.id || "",
+        fecha: new Date().toISOString(),
+      }).catch((e) => console.warn("Traceability movement error:", e));
+
       setEquipo((prev) => (prev ? { ...prev, estado: "Fuera de servicio" } : null));
       setIncidentOpen(false);
       setIncidentTitle("");
+      setFechaOcurrencia(getInitialDateTime());
       toast.success("Falla reportada correctamente.");
     } catch (err: any) {
       console.error(err);
@@ -151,8 +176,22 @@ function DetalleEquipo() {
     .filter((m) => m && m.equipoId === equipo.id)
     .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
 
-  const activeAlert = (db.alertas || []).find(
-    (a) => a.activoId === equipo.id && a.estado !== "Atendida" && a.estado !== "Resuelta",
+  const completedMaint = mantenimientos
+    .filter((m) => m.resultado === "Completado" && m.proximaFecha)
+    .sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""))[0];
+
+  const canonicalNextDate = completedMaint?.proximaFecha || equipo.proximoMantenimiento;
+
+  const orderInProgress = mantenimientos.find((m) => m.resultado === "En progreso");
+
+  const equipmentAlerts = useMemo(() => {
+    return (db.alertas || []).filter(
+      (a) => a && (a.activoId === equipo.id || (a as any).activo_id === equipo.id)
+    );
+  }, [db.alertas, equipo.id]);
+
+  const activeAlert = equipmentAlerts.find(
+    (a) => a.estado !== "Atendida" && a.estado !== "Resuelta",
   );
 
   const qrUrl = typeof window !== "undefined" ? `${window.location.origin}/qr/${equipo.id}` : "";
@@ -266,6 +305,16 @@ function DetalleEquipo() {
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
+                      <Label htmlFor="eq-falla-fecha">Fecha y hora de ocurrencia (QA-059)</Label>
+                      <Input
+                        id="eq-falla-fecha"
+                        type="datetime-local"
+                        value={fechaOcurrencia}
+                        onChange={(e) => setFechaOcurrencia(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="grid gap-2">
                       <Label>Descripción de la avería</Label>
                       <Textarea
                         value={incidentTitle}
@@ -307,24 +356,67 @@ function DetalleEquipo() {
         </Link>
       </Button>
 
-      {activeAlert && (
-        <div className="mb-4 rounded-lg border border-purple-500/40 bg-purple-500/10 p-4 text-purple-900 dark:text-purple-200 flex items-start gap-3 shadow-xs">
-          <AlertTriangle className="size-5 shrink-0 text-purple-600 dark:text-purple-400 mt-0.5" />
-          <div className="flex-1 text-sm">
+      {equipmentAlerts.length > 0 && (
+        <Card className="mb-4 border-purple-500/40 bg-purple-500/5 shadow-xs">
+          <CardHeader className="py-2.5 px-4 border-b border-purple-500/20 bg-purple-500/10 flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-xs uppercase tracking-wide">
-                Alerta Crítica Activa (Bus RabbitMQ #{activeAlert.id?.substring(0, 8)})
-              </span>
-              <Badge variant="outline" className="border-purple-500/40 text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300">
-                {activeAlert.severidad || "Alta"}
-              </Badge>
+              <AlertTriangle className="size-4 text-purple-600 dark:text-purple-400" />
+              <CardTitle className="text-sm font-bold text-purple-900 dark:text-purple-200">
+                Eventos Críticos de Telemetría (Bus RabbitMQ - QA-068)
+              </CardTitle>
             </div>
-            <p className="mt-1 font-medium">{activeAlert.mensaje || activeAlert.tipo}</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Registrado: {formatDateTime(activeAlert.fechaCreacion || activeAlert.fecha || new Date().toISOString())}
-            </p>
-          </div>
-        </div>
+            <Badge variant="outline" className="border-purple-500/40 text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300">
+              {equipmentAlerts.length} evento(s)
+            </Badge>
+          </CardHeader>
+          <CardContent className="p-4 space-y-3">
+            {equipmentAlerts.map((alt) => (
+              <div
+                key={alt.id}
+                className="rounded-lg border bg-card p-3 shadow-2xs space-y-2 hover:border-purple-500/40 transition-colors"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20">
+                      ID #{alt.id?.substring(0, 8)}
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {alt.codigoError ? `${alt.codigoError} · ` : ""}{alt.tipo || "Alerta de Telemetría"}
+                    </span>
+                  </div>
+                  <Badge
+                    variant={alt.estado === "Atendida" || alt.estado === "Resuelta" ? "secondary" : "destructive"}
+                    className="text-[10px] uppercase font-semibold"
+                  >
+                    {alt.estado || "Activa"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{alt.mensaje}</p>
+                <div className="flex flex-wrap items-center justify-between pt-2 border-t text-[11px] text-muted-foreground gap-2">
+                  <span>
+                    Cola: <strong className="font-mono text-foreground">{alt.cola || "cola.alertas.criticas"}</strong> · Servicio: <strong className="text-foreground">{alt.servicio || "telemetria-biomedica"}</strong>
+                  </span>
+                  <span>
+                    Fecha: {formatDateTime(alt.fechaCreacion || alt.fecha || new Date().toISOString())}
+                  </span>
+                  {alt.estado !== "Atendida" && alt.estado !== "Resuelta" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-xs border-purple-500/30 text-purple-700 dark:text-purple-300 hover:bg-purple-500/10"
+                      onClick={async () => {
+                        await updateAlerta(alt.id, { estado: "Atendida" });
+                        toast.success("Evento de telemetría marcado como atendido.");
+                      }}
+                    >
+                      Marcar atendida
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -353,10 +445,26 @@ function DetalleEquipo() {
             <Field
               label="Próximo mantenimiento"
               value={
-                <span className="flex items-center gap-2">
-                  {formatDate(equipo.proximoMantenimiento)}
-                  <DueBadge days={daysUntil(equipo.proximoMantenimiento)} status={equipo.estado} />
-                </span>
+                <div className="flex flex-col gap-1 items-start">
+                  <span className="flex items-center gap-2">
+                    {formatDate(canonicalNextDate)}
+                    <DueBadge days={daysUntil(canonicalNextDate)} status={equipo.estado} />
+                  </span>
+                  {completedMaint ? (
+                    <span className="text-[11px] text-muted-foreground">
+                      Fecha oficial según orden #{completedMaint.id?.substring(0, 8)} concluida el {formatDate(completedMaint.fecha)}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground">
+                      Fecha inicial configurada en inventario
+                    </span>
+                  )}
+                  {orderInProgress && (
+                    <span className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                      <Clock className="size-3 shrink-0" /> Orden en progreso (la fecha oficial se consolidará al completar la orden)
+                    </span>
+                  )}
+                </div>
               }
             />
           </CardContent>
@@ -412,25 +520,54 @@ function DetalleEquipo() {
         </CardHeader>
         <CardContent>
           <ol className="relative space-y-6 border-l pl-6">
-            {movimientos.map((m) => (
-              <li key={m.id} className="relative">
-                <span className="absolute -left-[31px] top-1 size-3 rounded-full bg-primary ring-4 ring-background" />
-                <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                  <span className="text-xs text-muted-foreground font-normal">Origen:</span>
-                  <span className="font-semibold">{m.origenId ? locationName(m.origenId) : "Alta inicial"}</span>
-                  <ArrowRight className="size-3.5 text-primary shrink-0" />
-                  <span className="text-xs text-muted-foreground font-normal">Destino:</span>
-                  <span className="font-semibold text-primary">{locationName(m.destinoId)}</span>
-                  <Badge variant="secondary">{m.motivo}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatDateTime(m.fecha)} · Responsable: {userName(m.usuarioId)}
-                </p>
-                {m.observaciones && (
-                  <p className="mt-1 text-sm text-muted-foreground">{m.observaciones}</p>
-                )}
-              </li>
-            ))}
+            {movimientos.map((m) => {
+              const isAuditOrEdit =
+                (m.motivo || "").toLowerCase().includes("edición") ||
+                (m.motivo || "").toLowerCase().includes("actualización");
+
+              return (
+                <li key={m.id} className="relative">
+                  <span
+                    className={`absolute -left-[31px] top-1 size-3 rounded-full ring-4 ring-background ${
+                      isAuditOrEdit ? "bg-amber-500" : "bg-primary"
+                    }`}
+                  />
+                  {isAuditOrEdit ? (
+                    <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                      <Badge
+                        variant="outline"
+                        className="border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10"
+                      >
+                        <FileText className="size-3 mr-1" /> {m.motivo}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground font-normal">Ubicación:</span>
+                      <span className="font-semibold">{locationName(m.destinoId)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                      <span className="text-xs text-muted-foreground font-normal">Origen:</span>
+                      <span className="font-semibold">{m.origenId ? locationName(m.origenId) : "Alta inicial"}</span>
+                      <ArrowRight className="size-3.5 text-primary shrink-0" />
+                      <span className="text-xs text-muted-foreground font-normal">Destino:</span>
+                      <span className="font-semibold text-primary">{locationName(m.destinoId)}</span>
+                      <Badge variant="secondary">{m.motivo}</Badge>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {formatDateTime(m.fecha)} · Responsable: {userName(m.usuarioId)}
+                  </p>
+                  {m.observaciones && (
+                    isAuditOrEdit ? (
+                      <div className="mt-1.5 rounded-md bg-muted/60 p-2.5 text-xs text-foreground/90 border font-mono whitespace-pre-wrap">
+                        {m.observaciones}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted-foreground">{m.observaciones}</p>
+                    )
+                  )}
+                </li>
+              );
+            })}
             {movimientos.length === 0 && (
               <p className="text-sm text-muted-foreground">Sin movimientos registrados.</p>
             )}
@@ -474,11 +611,13 @@ function DetalleEquipo() {
                       if (p && p.cotizacion) cot = p.cotizacion;
                     } catch {}
                     const costVal = cot?.totalGeneral || m.costo;
-                    if (!costVal && !cot) return null;
+                    if (costVal === undefined || costVal === null || isNaN(Number(costVal))) return null;
+                    const num = Number(costVal);
+                    if (num <= 0) return null;
                     return (
                       <div className="inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 font-semibold shadow-2xs">
                         <Receipt className="size-3 text-amber-600 shrink-0" />
-                        <span>S/. {Number(costVal || 0).toFixed(2)}</span>
+                        <span>S/. {num.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         {cot?.estadoCotizacion && (
                           <span className="text-[10px] text-muted-foreground">({cot.estadoCotizacion})</span>
                         )}
@@ -507,19 +646,44 @@ function DetalleEquipo() {
                       {m.resultado}
                     </Badge>
                   )}
+
+                  {m.id === completedMaint?.id && (
+                    <Badge variant="outline" className="border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold">
+                      Vigente en inventario
+                    </Badge>
+                  )}
+
+                  {m.incidenciaId && (
+                    <Badge variant="secondary" className="text-[10px] font-medium">
+                      Atiende incidencia #{m.incidenciaId.slice(0, 8)}
+                    </Badge>
+                  )}
                 </div>
 
                 {m.archivoBase64 && (
-                  <a
-                    href={m.archivoBase64}
-                    download={`Protocolo_${equipo.codigo}_${(m.fecha || "").substring(0, 10)}.pdf`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline bg-primary/10 px-2.5 py-1 rounded-md"
-                  >
-                    <FileText className="size-3.5" />
-                    📎 Ver Formato Adjunto
-                  </a>
+                  (() => {
+                    let ext = "pdf";
+                    const lower = (m.archivoBase64 || "").toLowerCase();
+                    if (lower.startsWith("data:image/png") || lower.includes(".png")) ext = "png";
+                    else if (lower.startsWith("data:image/jpeg") || lower.startsWith("data:image/jpg") || lower.includes(".jpg") || lower.includes(".jpeg")) ext = "jpg";
+                    else if (lower.startsWith("data:application/vnd.openxmlformats") || lower.includes(".docx")) ext = "docx";
+                    else if (lower.startsWith("data:application/zip") || lower.includes(".zip")) ext = "zip";
+                    else if (lower.startsWith("data:application/pdf") || lower.includes(".pdf")) ext = "pdf";
+                    else if (lower.startsWith("data:application/octet-stream") || lower.includes(".bin")) ext = "bin";
+
+                    return (
+                      <a
+                        href={m.archivoBase64}
+                        download={`Protocolo_${equipo.codigo}_${(m.fecha || "").substring(0, 10)}.${ext}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline bg-primary/10 px-2.5 py-1 rounded-md"
+                      >
+                        <FileText className="size-3.5" />
+                        📎 Ver Formato Adjunto ({ext.toUpperCase()})
+                      </a>
+                    );
+                  })()
                 )}
               </div>
 
@@ -535,14 +699,16 @@ function DetalleEquipo() {
                   parsed = null;
                 }
 
-                if (
-                  fotos.length === 0 &&
-                  m.archivoBase64 &&
-                  !m.archivoBase64.endsWith(".pdf") &&
-                  !m.archivoBase64.includes("application/pdf")
-                ) {
+                const isImageEvidence = (str?: string): boolean => {
+                  if (!str) return false;
+                  return str.startsWith("data:image/") || /\.(png|jpe?g|webp|gif|svg|bmp)(\?.*)?$/i.test(str);
+                };
+
+                if (fotos.length === 0 && isImageEvidence(m.archivoBase64)) {
                   fotos = [m.archivoBase64];
                 }
+
+                fotos = fotos.filter(isImageEvidence);
 
                 const hasObservations =
                   parsed &&

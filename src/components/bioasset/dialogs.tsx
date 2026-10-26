@@ -134,12 +134,13 @@ export function EquipmentDialog({
 
   trigger: ReactNode;
 }) {
-  const { db, addEquipment, updateEquipment, isAdmin, isBiomedico, categorias, estadosEquipo } = useBio();
+  const { db, addEquipment, updateEquipment, addMovement, locationName, isAdmin, isBiomedico, categorias, estadosEquipo } = useBio();
 
   const [open, setOpen] = useState(false);
 
   const [confirm, setConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const activeLocations = db.locations.filter((l) => l.activo);
 
@@ -188,11 +189,52 @@ export function EquipmentDialog({
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       if (equipment) {
+        // Generar registro de auditoría de cambios en los datos del equipo (QA-060)
+        const diffs: string[] = [];
+        if (form.nombre?.trim() !== (equipment.nombre || "").trim()) {
+          diffs.push(`Nombre: "${equipment.nombre || ""}" → "${form.nombre}"`);
+        }
+        if (form.marca?.trim() !== (equipment.marca || "").trim()) {
+          diffs.push(`Marca: "${equipment.marca || ""}" → "${form.marca}"`);
+        }
+        if (form.modelo?.trim() !== (equipment.modelo || "").trim()) {
+          diffs.push(`Modelo: "${equipment.modelo || ""}" → "${form.modelo}"`);
+        }
+        if (form.serie?.trim() !== (equipment.serie || "").trim()) {
+          diffs.push(`Serie: "${equipment.serie || ""}" → "${form.serie}"`);
+        }
+        if (form.categoria !== equipment.categoria) {
+          diffs.push(`Categoría: "${equipment.categoria || ""}" → "${form.categoria}"`);
+        }
+        if (form.estado !== equipment.estado) {
+          diffs.push(`Estado: "${equipment.estado || ""}" → "${form.estado}"`);
+        }
+        if (form.ubicacionId !== equipment.ubicacionId) {
+          diffs.push(`Ubicación: "${locationName(equipment.ubicacionId)}" → "${locationName(form.ubicacionId)}"`);
+        }
+
         await updateEquipment(equipment.id, form as Partial<Equipment>);
+
+        if (diffs.length > 0) {
+          try {
+            await addMovement({
+              equipoId: equipment.id,
+              origenId: equipment.ubicacionId,
+              destinoId: form.ubicacionId || equipment.ubicacionId,
+              fecha: new Date().toISOString(),
+              motivo: "Edición de ficha de equipo",
+              observaciones: `Campos modificados: ${diffs.join("; ")}`,
+            });
+          } catch (auditErr) {
+            console.warn("[EquipmentDialog] Error al registrar auditoría de cambios:", auditErr);
+          }
+        }
+
         toast.success(`Equipo ${form.codigo} actualizado`);
       } else {
         const res = await addEquipment(form as Omit<Equipment, "id" | "activo">);
@@ -214,6 +256,7 @@ export function EquipmentDialog({
       toast.error(err.message || "Error al procesar el equipo");
     } finally {
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
@@ -270,6 +313,7 @@ export function EquipmentDialog({
                     if (!equipment) {
                       const count = db.equipment.filter((e) => !e.codigo?.startsWith("TI-")).length + 1;
                       set("codigo", `BM-${String(count).padStart(3, "0")}`);
+                      set("categoria", categorias[0] || "Diagnóstico por imagen");
                     }
                   }}
                   className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
@@ -288,6 +332,7 @@ export function EquipmentDialog({
                     if (!equipment) {
                       const count = db.equipment.filter((e) => e.codigo?.startsWith("TI-")).length + 1;
                       set("codigo", `TI-${String(count).padStart(3, "0")}`);
+                      set("categoria", "Tecnológico / TI");
                     }
                   }}
                   className={`flex items-center justify-center gap-2 p-2.5 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
@@ -566,6 +611,7 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
 
   const [confirm, setConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const [form, setForm] = useState({
     equipoId: equipoId ?? db.equipment[0]?.id ?? "",
@@ -794,6 +840,11 @@ export function MovementDialog({ equipoId, trigger }: { equipoId?: string; trigg
   );
 }
 
+const isImageFile = (base64OrUrl?: string) => {
+  if (!base64OrUrl) return false;
+  return base64OrUrl.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(base64OrUrl);
+};
+
 export function MaintenanceDialog({
   equipoId,
 
@@ -811,12 +862,13 @@ export function MaintenanceDialog({
 
   trigger: ReactNode;
 }) {
-  const { db, addMaintenance, updateMaintenance, user, updateEquipment, updateIncident, tiposMantenimiento, resultadosMantenimiento, fallasFrecuentes } = useBio();
+  const { db, addMaintenance, updateMaintenance, user, updateEquipment, updateIncident, addMovement, tiposMantenimiento, resultadosMantenimiento, fallasFrecuentes } = useBio();
 
   const [open, setOpen] = useState(false);
 
   const [confirm, setConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   // Set initial state. If we have a maintenance record, use its values.
 
@@ -844,7 +896,7 @@ export function MaintenanceDialog({
       pRecom = parsed.recomendaciones || "";
 
       if (Array.isArray(parsed.fotos)) {
-        initFotos = parsed.fotos.filter((f: any) => typeof f === "string" && f.length > 0);
+        initFotos = parsed.fotos.filter((f: any) => typeof f === "string" && f.length > 0 && isImageFile(f));
       }
     }
   } catch {
@@ -853,16 +905,21 @@ export function MaintenanceDialog({
 
   if (
     maintenance?.archivoBase64 &&
-    !maintenance.archivoBase64.endsWith(".pdf") &&
-    !maintenance.archivoBase64.includes("application/pdf") &&
+    isImageFile(maintenance.archivoBase64) &&
     !initFotos.includes(maintenance.archivoBase64)
   ) {
     initFotos.unshift(maintenance.archivoBase64);
   }
 
+  const initialTargetEquipo = db.equipment.find(
+    (e) => e.id === (maintenance?.equipoId ?? equipoId ?? db.equipment[0]?.id)
+  );
+  const initialNextDate = maintenance?.proximaFecha ?? initialTargetEquipo?.proximoMantenimiento ?? inDays(180);
+
   const [form, setForm] = useState({
     equipoId: maintenance?.equipoId ?? equipoId ?? db.equipment[0]?.id ?? "",
     tipo: maintenance?.tipo ?? (incidenciaId ? "Correctivo" : "Preventivo"),
+    incidenciaId: maintenance?.incidenciaId ?? incidenciaId ?? "",
     fecha: maintenance?.fecha ?? today(),
     biomedicoId: maintenance?.biomedicoId ?? user?.id ?? "",
     resultado: maintenance?.resultado ?? "En progreso",
@@ -870,7 +927,7 @@ export function MaintenanceDialog({
     perturbacion: pReportada,
     acciones: pAcciones,
     recomendaciones: pRecom,
-    proximaFecha: maintenance?.proximaFecha ?? inDays(180),
+    proximaFecha: initialNextDate,
     archivoBase64: maintenance?.archivoBase64 ?? "",
     fotos: initFotos,
   });
@@ -928,16 +985,21 @@ export function MaintenanceDialog({
 
       if (
         maintenance?.archivoBase64 &&
-        !maintenance.archivoBase64.endsWith(".pdf") &&
-        !maintenance.archivoBase64.includes("application/pdf") &&
+        isImageFile(maintenance.archivoBase64) &&
         !fts.includes(maintenance.archivoBase64)
       ) {
         fts.unshift(maintenance.archivoBase64);
       }
 
+      const currentEq = db.equipment.find(
+        (e) => e.id === (maintenance?.equipoId ?? equipoId ?? db.equipment[0]?.id)
+      );
+      const computedNextDate = maintenance?.proximaFecha ?? currentEq?.proximoMantenimiento ?? inDays(180);
+
       setForm({
         equipoId: maintenance?.equipoId ?? equipoId ?? db.equipment[0]?.id ?? "",
         tipo: maintenance?.tipo ?? (incidenciaId ? "Correctivo" : "Preventivo"),
+        incidenciaId: maintenance?.incidenciaId ?? incidenciaId ?? "",
         fecha: maintenance?.fecha ?? today(),
         biomedicoId: maintenance?.biomedicoId ?? user?.id ?? "",
         resultado: maintenance?.resultado ?? "En progreso",
@@ -945,7 +1007,7 @@ export function MaintenanceDialog({
         perturbacion: pReport,
         acciones: pAcc,
         recomendaciones: pRec,
-        proximaFecha: maintenance?.proximaFecha ?? inDays(180),
+        proximaFecha: computedNextDate,
         archivoBase64: maintenance?.archivoBase64 ?? "",
         fotos: fts,
       });
@@ -959,6 +1021,12 @@ export function MaintenanceDialog({
   const targetEquipo = useMemo(() => {
     return db.equipment.find((e) => e.id === form.equipoId);
   }, [db.equipment, form.equipoId]);
+
+  const activeOrderInProgress = useMemo(() => {
+    return (db.maintenance || []).find(
+      (m) => m && m.equipoId === form.equipoId && m.id !== maintenance?.id && m.resultado === "En progreso"
+    );
+  }, [db.maintenance, form.equipoId, maintenance?.id]);
 
   const matchingFallas = useMemo(() => {
     if (!fallasFrecuentes || fallasFrecuentes.length === 0) return [];
@@ -1055,6 +1123,21 @@ export function MaintenanceDialog({
 
   const save = async () => {
     if (isSubmitting) return;
+
+    // QA-048: Rechazar próximas fechas anteriores a la orden actual
+    if (form.proximaFecha && form.fecha && form.proximaFecha < form.fecha) {
+      toast.error("La próxima fecha de mantenimiento no puede ser anterior a la fecha de la orden");
+      return;
+    }
+
+    // QA-017 / QA-050: Impedir múltiples órdenes simultáneas 'En progreso' sobre el mismo equipo
+    if (form.resultado === "En progreso" && activeOrderInProgress) {
+      toast.error(
+        `El equipo ya cuenta con la orden #${activeOrderInProgress.id?.substring(0, 8)} 'En progreso'. Concluya o cancele la orden anterior antes de iniciar otra.`
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const payload = {
@@ -1083,9 +1166,9 @@ export function MaintenanceDialog({
 
         proximaFecha: form.proximaFecha,
 
-        archivoBase64: form.archivoBase64 || (form.fotos.length > 0 ? form.fotos[0] : ""),
+        archivoBase64: form.archivoBase64 || (form.fotos.length > 0 && isImageFile(form.fotos[0]) ? form.fotos[0] : ""),
 
-        incidenciaId: incidenciaId || maintenance?.incidenciaId || undefined,
+        incidenciaId: form.incidenciaId || incidenciaId || maintenance?.incidenciaId || undefined,
       };
 
       if (maintenance) {
@@ -1094,26 +1177,45 @@ export function MaintenanceDialog({
         await addMaintenance(payload);
       }
 
-      // Update equipment based on resultado
+      // Update incident if applicable (QA-059 y QA-066)
+      const tiedIncidentId = form.incidenciaId || incidenciaId || maintenance?.incidenciaId;
+      const tiedIncidentObj = tiedIncidentId ? db.incidents.find((i) => i.id === tiedIncidentId) : null;
 
+      if (tiedIncidentId) {
+        if (form.resultado === "Completado" || form.resultado === "De baja") {
+          await updateIncident(tiedIncidentId, { estado: "Cerrada" });
+        } else if (form.resultado === "En progreso") {
+          await updateIncident(tiedIncidentId, { estado: "En revision" });
+        }
+      }
+
+      // Update equipment based on resultado y sincronizar fecha oficial de inventario
       if (form.resultado === "Completado") {
-        await updateEquipment(form.equipoId, { estado: "Operativo" });
+        await updateEquipment(form.equipoId, {
+          estado: "Operativo",
+          proximoMantenimiento: form.proximaFecha,
+        });
       } else if (form.resultado === "De baja") {
         await updateEquipment(form.equipoId, { estado: "De baja" });
       } else if (form.resultado === "En progreso") {
         await updateEquipment(form.equipoId, { estado: "En mantenimiento" });
       }
 
-      // Update incident if applicable
+      // QA-048 y QA-066: Registrar trazabilidad clínica del mantenimiento
+      const targetEq = db.equipment.find((e) => e.id === form.equipoId);
+      if (targetEq) {
+        const traceMotivo = tiedIncidentObj
+          ? `Mantenimiento ${form.tipo}: '${form.resultado}'. Resolución de incidencia '${tiedIncidentObj.titulo}'. Próxima fecha: ${form.proximaFecha}`
+          : `Mantenimiento ${form.tipo}: '${form.resultado}'. Próxima fecha: ${form.proximaFecha}`;
 
-      const tiedIncident = incidenciaId ?? maintenance?.incidenciaId;
-
-      if (tiedIncident) {
-        if (form.resultado === "Completado" || form.resultado === "De baja") {
-          await updateIncident(tiedIncident, { estado: "Cerrada" });
-        } else if (form.resultado === "En progreso") {
-          await updateIncident(tiedIncident, { estado: "En revision" });
-        }
+        await addMovement({
+          equipoId: form.equipoId,
+          origenId: targetEq.ubicacionId,
+          destinoId: targetEq.ubicacionId,
+          motivo: traceMotivo,
+          usuarioId: user?.id || form.biomedicoId || "",
+          fecha: new Date().toISOString(),
+        }).catch(() => {});
       }
 
       toast.success("Registro de mantenimiento actualizado");
@@ -1181,6 +1283,18 @@ export function MaintenanceDialog({
               </Select>
             </div>
 
+            {activeOrderInProgress && form.resultado === "En progreso" && (
+              <div className="sm:col-span-2 p-3 rounded-lg border border-destructive/40 bg-destructive/10 text-destructive text-xs flex items-start gap-2">
+                <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Atención: Este equipo ya cuenta con una orden activa en progreso</p>
+                  <p className="mt-0.5 text-muted-foreground">
+                    Existe la orden #{activeOrderInProgress.id?.substring(0, 8)} iniciada el {formatDate(activeOrderInProgress.fecha)}. Para mantener la consistencia clínica del activo, concluya o edite la orden existente.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Estado del Mantenimiento</Label>
 
@@ -1227,6 +1341,51 @@ export function MaintenanceDialog({
                 </SelectContent>
               </Select>
             </div>
+
+            {form.tipo === "Correctivo" && (
+              <div className="space-y-2 sm:col-span-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
+                <Label className="flex items-center gap-1.5 text-xs font-semibold">
+                  <Wrench className="size-3.5 text-primary" />
+                  Incidencia / Avería que atiende (QA-059)
+                </Label>
+                <Select
+                  value={form.incidenciaId || "ninguna"}
+                  onValueChange={(v) => {
+                    const chosenId = v === "ninguna" ? "" : v;
+                    set("incidenciaId", chosenId);
+                    if (chosenId) {
+                      const foundInc = db.incidents.find((i) => i.id === chosenId);
+                      if (foundInc && !form.perturbacion) {
+                        set("perturbacion", foundInc.titulo);
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Seleccionar incidencia asociada..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ninguna">
+                      (Sin incidencia previa vinculada / Falla no registrada)
+                    </SelectItem>
+                    {(db.incidents || [])
+                      .filter(
+                        (i) =>
+                          (i.activoId === form.equipoId || (i as any).activo_id === form.equipoId) &&
+                          (i.estado !== "Cerrada" || i.id === form.incidenciaId),
+                      )
+                      .map((i) => (
+                        <SelectItem key={i.id} value={i.id}>
+                          {i.titulo} · Estado: {i.estado}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Al completar este correctivo, la incidencia seleccionada avanzará automáticamente a estado Cerrada.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="fecha">Fecha de ejecución</Label>
@@ -1948,16 +2107,24 @@ export function MarcaDialog({ trigger }: { trigger: ReactNode }) {
 }
 
 export function IncidentDialog({ equipoId, trigger }: { equipoId?: string; trigger: ReactNode }) {
-  const { db, addIncident, updateEquipment, fallasFrecuentes } = useBio();
+  const { db, addIncident, updateEquipment, addMovement, user, fallasFrecuentes } = useBio();
   const [open, setOpen] = useState(false);
   const [selectedEquipoId, setSelectedEquipoId] = useState(equipoId || "");
   const [incidentTitle, setIncidentTitle] = useState("");
   const [showAllFallas, setShowAllFallas] = useState(false);
 
+  const getInitialDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+  const [fechaOcurrencia, setFechaOcurrencia] = useState(getInitialDateTime);
+
   useEffect(() => {
     if (open) {
       setSelectedEquipoId(equipoId || "");
       setIncidentTitle("");
+      setFechaOcurrencia(getInitialDateTime());
       setShowAllFallas(false);
     }
   }, [open, equipoId]);
@@ -1999,8 +2166,27 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId?: string; trigg
       return;
     }
     try {
-      await addIncident({ activoId: targetId, activo_id: targetId, titulo: incidentTitle.trim(), estado: "Abierta" });
+      await addIncident({
+        activoId: targetId,
+        activo_id: targetId,
+        titulo: incidentTitle.trim(),
+        estado: "Abierta",
+        fechaOcurrencia,
+        fecha: fechaOcurrencia,
+      });
       await updateEquipment(targetId, { estado: "Fuera de servicio" });
+
+      if (targetEquipo) {
+        await addMovement({
+          equipoId: targetId,
+          origenId: targetEquipo.ubicacionId,
+          destinoId: targetEquipo.ubicacionId,
+          motivo: `Cambio a 'Fuera de servicio' por falla reportada (${fechaOcurrencia}): ${incidentTitle.trim()}`,
+          usuarioId: user?.id || "",
+          fecha: new Date().toISOString(),
+        }).catch(() => {});
+      }
+
       setOpen(false);
       setIncidentTitle("");
       toast.success("Falla reportada correctamente");
@@ -2049,6 +2235,20 @@ export function IncidentDialog({ equipoId, trigger }: { equipoId?: string; trigg
                 {targetEquipo?.nombre}
               </div>
             )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="inc-fecha-ocurrencia">Fecha y hora de ocurrencia (QA-059)</Label>
+              <Input
+                id="inc-fecha-ocurrencia"
+                type="datetime-local"
+                value={fechaOcurrencia}
+                onChange={(e) => setFechaOcurrencia(e.target.value)}
+                required
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Momento exacto en que se produjo la anomalía técnica.
+              </p>
+            </div>
 
             <div className="grid gap-2">
               <div className="flex items-center justify-between">

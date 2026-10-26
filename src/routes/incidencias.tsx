@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useBio } from "@/lib/bioasset/store";
+import { useBio, formatDateTime } from "@/lib/bioasset/store";
 import { cn } from "@/lib/utils";
 import { MaintenanceDialog, IncidentDialog } from "@/components/bioasset/dialogs";
 import { encryptUrlParam } from "@/lib/bioasset/security";
@@ -247,7 +247,12 @@ function IncidenciasPage() {
                         {e ? locationName(e.ubicacionId) : "N/A"}
                       </TableCell>
                       <TableCell className="max-w-md">
-                        <span className="text-sm">{i.titulo}</span>
+                        <span className="text-sm font-medium">{i.titulo}</span>
+                        {i.fechaOcurrencia && (
+                          <span className="text-[11px] text-muted-foreground block mt-0.5">
+                            Ocurrió el: {formatDateTime(i.fechaOcurrencia)}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1 items-start">

@@ -42,13 +42,15 @@ export async function fetchApi(path: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     if (response.status === 401) {
-      // Destruir sesión expirada o revocada
-      localStorage.removeItem("bioasset.token");
-      sessionStorage.clear();
-      if (window.location.pathname !== "/") {
-        window.location.href = "/";
-      } else {
-        window.location.reload();
+      // Destruir sesión expirada o revocada de forma segura
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("bioasset.token");
+        sessionStorage.clear();
+        if (window.location.pathname !== "/") {
+          window.location.replace("/");
+        } else {
+          window.location.reload();
+        }
       }
     }
     let message = `Error (${response.status})`;

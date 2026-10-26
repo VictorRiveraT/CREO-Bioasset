@@ -38,9 +38,10 @@ export function decryptUrlParam(cipherText: string): string {
       base64 += "=";
     }
     const decoded = decodeURIComponent(atob(base64));
-    const parts = decoded.split("::");
-    if (parts.length === 2 && parts[1] === URL_SECRET_KEY) {
-      return parts[0] || "";
+    const suffix = `::${URL_SECRET_KEY}`;
+    const lastIdx = decoded.lastIndexOf(suffix);
+    if (lastIdx !== -1 && lastIdx + suffix.length === decoded.length) {
+      return decoded.slice(0, lastIdx);
     }
     // Si no coincide la firma de la clave, retorna el texto original como fallback
     return cipherText;

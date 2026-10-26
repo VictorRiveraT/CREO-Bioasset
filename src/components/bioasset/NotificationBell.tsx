@@ -46,12 +46,30 @@ export function NotificationBell() {
     }
   });
 
-  const saveReadIds = (newSet: Set<string>) => {
-    setReadIds(newSet);
+  // QA-070: Sincronización en cliente para persistencia de notificaciones leídas tras F5 / refresh en SSR
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setReadIds(new Set(parsed));
+        }
+      }
     } catch (e) {
       console.error(e);
+    }
+  }, []);
+
+  const saveReadIds = (newSet: Set<string>) => {
+    setReadIds(newSet);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(newSet)));
+      } catch (e) {
+        console.error(e);
+      }
     }
   };
 
@@ -113,42 +131,65 @@ export function NotificationBell() {
 
     // 2. Incidencias Abiertas o En Revisión
     db.incidents.forEach((inc) => {
-      if (inc.estado === "Cerrada") return;
-      const eq = db.equipment.find((x) => x.id === inc.activoId);
-      if (eq && !isEquipmentInUserSede(eq)) return;
+      if (inc.estado === "Cerrada" || inc.estado === "Resuelta") return;
+      const eq = db.equipment.find((x) => x.id === (inc.activoId || (inc as any).activo_id));
+      if (!eq || !isEquipmentInUserSede(eq)) return;
 
       list.push({
         id: `inc-${inc.id}`,
-        equipoId: inc.activoId,
-        equipoCodigo: eq?.codigo || "N/A",
-        equipoNombre: eq?.nombre || "Equipo biomédico",
+        equipoId: inc.activoId || (inc as any).activo_id,
+        equipoCodigo: eq.codigo,
+        equipoNombre: eq.nombre,
         titulo: `Incidencia ${inc.estado}`,
         mensaje: inc.titulo,
         tipo: "incidencia",
         severidad: "alta",
-        fechaTexto: eq ? `${eq.codigo} — ${eq.nombre}` : "Reporte de falla",
+        fechaTexto: `${eq.codigo} — ${eq.nombre}`,
         leido: readIds.has(`inc-${inc.id}`),
       });
     });
 
-    // 3. Alertas registradas en BD
+    // 3. Alertas registradas en BD (RabbitMQ / Telemetría)
     (db.alertas || []).forEach((alt) => {
       if (alt.estado === "Atendida" || alt.estado === "Resuelta") return;
-      const eq = db.equipment.find((x) => x.id === alt.activoId);
-      if (eq && !isEquipmentInUserSede(eq)) return;
+      const eq = db.equipment.find((x) => x.id === (alt.activoId || (alt as any).activo_id));
+      if (!eq || !isEquipmentInUserSede(eq)) return;
 
       list.push({
         id: `alt-${alt.id}`,
-        equipoId: alt.activoId,
-        equipoCodigo: eq?.codigo,
-        equipoNombre: eq?.nombre,
-        titulo: alt.tipo || "Alerta de Equipo",
+        equipoId: alt.activoId || (alt as any).activo_id,
+        equipoCodigo: eq.codigo,
+        equipoNombre: eq.nombre,
+        titulo: alt.tipo || "Alerta Crítica",
         mensaje: alt.mensaje,
         tipo: "alerta",
         severidad: (alt.severidad?.toLowerCase() as any) === "alta" ? "alta" : "media",
-        fechaTexto: eq ? `${eq.codigo}` : "Alerta de sistema",
+        fechaTexto: eq.codigo,
         leido: readIds.has(`alt-${alt.id}`),
       });
+    });
+
+    // 4. Equipos Fuera de servicio o Inoperativos (QA-061: asegura que equipos inoperativos no se omitan)
+    db.equipment.forEach((e) => {
+      if (!e.activo || e.estado === "De baja") return;
+      if (!isEquipmentInUserSede(e)) return;
+      if ((e.estado as string) === "Fuera de servicio" || (e.estado as string) === "Inoperativo") {
+        const alreadyInList = list.some((item) => item.equipoId === e.id);
+        if (!alreadyInList) {
+          list.push({
+            id: `eq-down-${e.id}`,
+            equipoId: e.id,
+            equipoCodigo: e.codigo,
+            equipoNombre: e.nombre,
+            titulo: "Equipo Fuera de Servicio",
+            mensaje: `${e.codigo} — ${e.nombre}`,
+            tipo: "alerta",
+            severidad: "alta",
+            fechaTexto: "Requiere atención técnica",
+            leido: readIds.has(`eq-down-${e.id}`),
+          });
+        }
+      }
     });
 
     return list.sort((a, b) => {
@@ -222,8 +263,8 @@ export function NotificationBell() {
   };
 
   const handleMarkAllRead = () => {
-    const allIds = notifications.map((n) => n.id);
-    saveReadIds(new Set(allIds));
+    const allIds = new Set([...readIds, ...notifications.map((n) => n.id)]);
+    saveReadIds(allIds);
     toast.success("Notificaciones marcadas como leídas");
   };
 

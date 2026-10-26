@@ -484,13 +484,13 @@ function UsuariosPage() {
                                 <input
                                   type="checkbox"
 
-                                  checked={permisos[k].view}
+                                  checked={permisos[k]?.view ?? false}
 
                                   onChange={(e) =>
                                     setPermisos({
                                       ...permisos,
 
-                                      [k]: { ...permisos[k], view: e.target.checked },
+                                      [k]: { ...(permisos[k] || { view: false, edit: false }), view: e.target.checked },
                                     })
                                   }
                                 />
@@ -500,15 +500,13 @@ function UsuariosPage() {
                                 <input
                                   type="checkbox"
 
-                                  checked={permisos[k].edit}
-
-                                  disabled={k === "ubicaciones" && rol !== "admin"}
+                                  checked={permisos[k]?.edit ?? false}
 
                                   onChange={(e) =>
                                     setPermisos({
                                       ...permisos,
 
-                                      [k]: { ...permisos[k], edit: e.target.checked },
+                                      [k]: { ...(permisos[k] || { view: false, edit: false }), edit: e.target.checked },
                                     })
                                   }
                                 />
@@ -1262,7 +1260,7 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
                             <input
                               type="checkbox"
 
-                              checked={permisos[k].view}
+                              checked={permisos[k]?.view ?? false}
 
                               disabled={isSuperAdmin}
 
@@ -1270,7 +1268,7 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
                                 setPermisos({
                                   ...permisos,
 
-                                  [k]: { ...permisos[k], view: e.target.checked },
+                                  [k]: { ...(permisos[k] || { view: false, edit: false }), view: e.target.checked },
                                 })
                               }
                             />
@@ -1280,15 +1278,15 @@ function UserRow({ userItem, sedesList }: { userItem: any; sedesList: any[] }) {
                             <input
                               type="checkbox"
 
-                              checked={permisos[k].edit}
+                              checked={permisos[k]?.edit ?? false}
 
-                              disabled={isSuperAdmin || (k === "ubicaciones" && rol !== "admin")}
+                              disabled={isSuperAdmin}
 
                               onChange={(e) =>
                                 setPermisos({
                                   ...permisos,
 
-                                  [k]: { ...permisos[k], edit: e.target.checked },
+                                  [k]: { ...(permisos[k] || { view: false, edit: false }), edit: e.target.checked },
                                 })
                               }
                             />

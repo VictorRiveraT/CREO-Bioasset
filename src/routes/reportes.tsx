@@ -97,6 +97,16 @@ function downloadCSV(data: any[], filename: string) {
   toast.success(`Archivo ${filename} descargado exitosamente`);
 }
 
+function escapeHtml(str: any): string {
+  if (str === null || str === undefined) return "-";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function printReport(title: string, headers: string[], rows: any[][], filterSummary: string) {
   if (!rows || rows.length === 0) {
     toast.info("No hay registros que coincidan con los filtros seleccionados.");
@@ -111,7 +121,7 @@ function printReport(title: string, headers: string[], rows: any[][], filterSumm
   const rowsHtml = rows
     .map(
       (r) =>
-        `<tr>${r.map((cell) => `<td>${cell !== null && cell !== undefined ? cell : "-"}</td>`).join("")}</tr>`,
+        `<tr>${r.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`,
     )
     .join("");
 
@@ -230,9 +240,16 @@ function ReportesPage() {
     return db.incidents.filter((i) => {
       const e = equipmentById(i.activoId);
       if (sedeLocations && e && !sedeLocations.has(e.ubicacionId)) return false;
-      const iDate = (i.fecha || (i as any).fechaCreacion || "").substring(0, 10);
-      if (fechaDesde && iDate && iDate < fechaDesde) return false;
-      if (fechaHasta && iDate && iDate > fechaHasta) return false;
+      const rawDate =
+        i.fecha ||
+        (i as any).fechaCreacion ||
+        (i as any).fechaOcurrencia ||
+        (i as any).created_at ||
+        (i as any).createdAt ||
+        "";
+      const iDate = rawDate ? rawDate.substring(0, 10) : "";
+      if (fechaDesde && (!iDate || iDate < fechaDesde)) return false;
+      if (fechaHasta && (!iDate || iDate > fechaHasta)) return false;
       return true;
     });
   }, [db.incidents, equipmentById, sedeLocations, fechaDesde, fechaHasta, isInvalidDateRange]);

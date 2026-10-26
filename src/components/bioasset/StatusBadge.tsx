@@ -4,7 +4,7 @@ import type { EquipmentStatus } from "@/lib/bioasset/types";
 
 const MAP: Record<string, string> = {
   Operativo: "bg-success/15 text-success border-success/30",
-  "En mantenimiento": "bg-amber-500/20 text-amber-800 dark:text-white dark:bg-amber-600/50 border-amber-500/50 font-semibold",
+  "En mantenimiento": "bg-yellow-500/20 text-yellow-800 dark:bg-yellow-500 dark:text-white dark:border-yellow-400 font-semibold shadow-xs",
   "Fuera de servicio": "bg-destructive/15 text-destructive border-destructive/30",
   Inoperativo: "bg-destructive/15 text-destructive border-destructive/30",
   "De baja": "bg-muted text-muted-foreground border-border",
@@ -27,6 +27,16 @@ export function DueBadge({ days, status }: { days: number; status?: string }) {
         className="border-muted bg-muted/40 text-muted-foreground whitespace-nowrap shrink-0"
       >
         No aplica (Equipo de baja)
+      </Badge>
+    );
+  }
+  if (status === "En mantenimiento") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-yellow-500/50 bg-yellow-500/20 text-yellow-800 dark:bg-yellow-500 dark:text-white dark:border-yellow-400 whitespace-nowrap shrink-0 font-semibold shadow-xs"
+      >
+        En atención {days < 0 ? `(Venció hace ${Math.abs(days)} d)` : ""}
       </Badge>
     );
   }

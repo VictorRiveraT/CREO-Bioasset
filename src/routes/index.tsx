@@ -95,7 +95,12 @@ function Dashboard() {
   const { db, locationName, user } = useBio();
   const eq = db.equipment;
 
-  const count = (s: string) => eq.filter((e) => e.estado === s).length;
+  const count = (s: string) => {
+    if (s === "Fuera de servicio") {
+      return eq.filter((e) => e.estado === "Fuera de servicio" || e.estado === "Inoperativo").length;
+    }
+    return eq.filter((e) => e.estado === s).length;
+  };
   const proximos = eq.filter(
     (e) =>
       e.estado !== "De baja" &&
@@ -120,10 +125,15 @@ function Dashboard() {
     const d = new Date();
     d.setDate(1);
     d.setMonth(d.getMonth() - (5 - i));
-    const key = d.toISOString().slice(0, 7);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const key = `${year}-${month}`;
     return {
       name: d.toLocaleDateString("es-PE", { month: "short" }),
-      value: (db.maintenance || []).filter((m) => (m?.fecha || "").slice(0, 7) === key).length,
+      value: (db.maintenance || []).filter((m) => {
+        const mFecha = (m?.fecha || "").substring(0, 7);
+        return mFecha === key;
+      }).length,
     };
   });
 
@@ -135,10 +145,25 @@ function Dashboard() {
     "#3b82f6", // Default / other
   ];
 
-  const proximosOrdenados = [...eq]
-    .filter((e) => e.estado !== "De baja")
-    .sort((a, b) => daysUntil(a.proximoMantenimiento) - daysUntil(b.proximoMantenimiento))
-    .slice(0, 8);
+  const [mantenimientoTab, setMantenimientoTab] = useState<"proximos" | "vencidos">("proximos");
+
+  // Equipos con fecha futura o vigente (verdaderamente próximos)
+  const proximosFuturos = useMemo(() => {
+    return [...eq]
+      .filter((e) => e.estado !== "De baja" && daysUntil(e.proximoMantenimiento) >= 0)
+      .sort((a, b) => daysUntil(a.proximoMantenimiento) - daysUntil(b.proximoMantenimiento))
+      .slice(0, 8);
+  }, [eq]);
+
+  // Equipos con fecha vencida que requieren atención
+  const vencidosUrgentes = useMemo(() => {
+    return [...eq]
+      .filter((e) => e.estado !== "De baja" && daysUntil(e.proximoMantenimiento) < 0)
+      .sort((a, b) => daysUntil(a.proximoMantenimiento) - daysUntil(b.proximoMantenimiento))
+      .slice(0, 8);
+  }, [eq]);
+
+  const listaMantenimientos = mantenimientoTab === "proximos" ? proximosFuturos : vencidosUrgentes;
 
   return (
     <AppShell title="Dashboard" description="Resumen en tiempo real de equipos e indicadores">
@@ -194,28 +219,32 @@ function Dashboard() {
           value={count("En mantenimiento")}
           icon={Wrench}
           tone="bg-warning/20 text-warning-foreground"
-          to="/mantenimiento"
+          to="/equipos"
+          search={{ estado: "En mantenimiento" }}
         />
         <Kpi
           label="Fuera de servicio"
           value={count("Fuera de servicio")}
           icon={XCircle}
           tone="bg-destructive/15 text-destructive"
-          to="/incidencias"
+          to="/equipos"
+          search={{ estado: "Fuera de servicio" }}
         />
         <Kpi
           label="Mantenimientos próximos (30 d)"
           value={proximos.length}
           icon={Clock}
           tone="bg-info/15 text-info"
-          to="/mantenimiento"
+          to="/equipos"
+          search={{ mantenimiento: "proximo" }}
         />
         <Kpi
           label="Mantenimientos vencidos"
           value={vencidos.length}
           icon={AlertTriangle}
           tone="bg-destructive/15 text-destructive"
-          to="/alertas"
+          to="/equipos"
+          search={{ mantenimiento: "vencido" }}
         />
       </div>
 
@@ -292,10 +321,38 @@ function Dashboard() {
         </Card>
       </div>
 
-      {/* Upcoming Maintenance Table */}
+      {/* Upcoming & Overdue Maintenance Table */}
       <Card className="shadow-[var(--shadow-card)] mt-4">
-        <CardHeader>
-          <CardTitle className="text-base">Próximos mantenimientos</CardTitle>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 gap-2">
+          <CardTitle className="text-base">
+            {mantenimientoTab === "proximos"
+              ? "Próximos mantenimientos programados"
+              : "Mantenimientos vencidos (requieren atención)"}
+          </CardTitle>
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg text-xs self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setMantenimientoTab("proximos")}
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                mantenimientoTab === "proximos"
+                  ? "bg-card text-foreground shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Próximos ({proximosFuturos.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setMantenimientoTab("vencidos")}
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                mantenimientoTab === "vencidos"
+                  ? "bg-card text-destructive shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Vencidos ({vencidosUrgentes.length})
+            </button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table className="min-w-[700px]">
@@ -310,7 +367,7 @@ function Dashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {proximosOrdenados.map((e) => (
+              {listaMantenimientos.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell>
                     {e && e.id ? (
@@ -328,7 +385,14 @@ function Dashboard() {
                   <TableCell>{e.nombre}</TableCell>
                   <TableCell>{locationName(e.ubicacionId)}</TableCell>
                   <TableCell>
-                    <StatusBadge status={e.estado} />
+                    <div className="flex flex-col gap-0.5 items-start">
+                      <StatusBadge status={e.estado} />
+                      {e.estado === "Operativo" && daysUntil(e.proximoMantenimiento) < 0 && (
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                          Requiere calibración
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>{formatDate(e.proximoMantenimiento)}</TableCell>
                   <TableCell>
@@ -336,6 +400,15 @@ function Dashboard() {
                   </TableCell>
                 </TableRow>
               ))}
+              {listaMantenimientos.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-muted-foreground text-sm">
+                    {mantenimientoTab === "proximos"
+                      ? "Sin mantenimientos futuros programados."
+                      : "Sin mantenimientos vencidos pendientes."}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

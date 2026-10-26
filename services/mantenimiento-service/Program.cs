@@ -44,6 +44,7 @@ async Task<string?> ProcessUpload(string? base64Str) {
         if (parts.Length > 1) {
             var meta = parts[0];
             var base64Data = parts[1];
+            if (base64Data.Length > 20 * 1024 * 1024) return null; // Reject > ~15MB
             var ext = meta.Contains("application/pdf") ? ".pdf" : 
                       meta.Contains("image/png") ? ".png" : 
                       meta.Contains("image/jpeg") ? ".jpg" : ".bin";
@@ -275,12 +276,20 @@ app.MapPost("/incidencias", [Authorize] async (CreateIncidenciaDto dto, MantDb d
             if (u == null || u.Sede != sede) return Results.Forbid();
         }
     }
+    var userIdStr = ctx.User.FindFirst("id")?.Value;
+    Guid userGuid = Guid.Empty;
+    if (!string.IsNullOrEmpty(userIdStr)) Guid.TryParse(userIdStr, out userGuid);
     var entity = new Incidencia {
         Id = Guid.NewGuid(),
         ActivoId = dto.ActivoId,
         Titulo = dto.Titulo ?? "",
         Estado = dto.Estado ?? "Abierta",
-        RelacionadaId = dto.RelacionadaId
+        RelacionadaId = dto.RelacionadaId,
+        FechaOcurrencia = dto.FechaOcurrencia,
+        Descripcion = dto.Descripcion,
+        Prioridad = dto.Prioridad ?? "Media",
+        UsuarioId = dto.UsuarioId.HasValue && dto.UsuarioId.Value != Guid.Empty ? dto.UsuarioId.Value : (userGuid != Guid.Empty ? userGuid : null),
+        FechaCreacion = !string.IsNullOrEmpty(dto.FechaCreacion) ? dto.FechaCreacion : DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
     };
     db.Incidencias.Add(entity);
     await db.SaveChangesAsync();
@@ -303,6 +312,9 @@ app.MapPut("/incidencias/{id}", [Authorize] async (Guid id, UpdateIncidenciaDto 
     if (!string.IsNullOrEmpty(dto.Estado)) i.Estado = dto.Estado;
     if (!string.IsNullOrEmpty(dto.Titulo)) i.Titulo = dto.Titulo;
     if (dto.RelacionadaId.HasValue) i.RelacionadaId = dto.RelacionadaId;
+    if (!string.IsNullOrEmpty(dto.FechaOcurrencia)) i.FechaOcurrencia = dto.FechaOcurrencia;
+    if (dto.Descripcion != null) i.Descripcion = dto.Descripcion;
+    if (!string.IsNullOrEmpty(dto.Prioridad)) i.Prioridad = dto.Prioridad;
     await db.SaveChangesAsync();
     return Results.NoContent();
 });
@@ -334,6 +346,14 @@ using (var scope = app.Services.CreateScope()) {
             IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'RelacionadaId' AND Object_ID = Object_ID(N'[mantenimiento].[Incidencias]'))
             BEGIN
                 ALTER TABLE [mantenimiento].[Incidencias] ADD RelacionadaId UNIQUEIDENTIFIER NULL
+            END
+            IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'fecha_ocurrencia' AND Object_ID = Object_ID(N'[mantenimiento].[Incidencias]'))
+            BEGIN
+                ALTER TABLE [mantenimiento].[Incidencias] ADD fecha_ocurrencia NVARCHAR(MAX) NULL
+                ALTER TABLE [mantenimiento].[Incidencias] ADD descripcion NVARCHAR(MAX) NULL
+                ALTER TABLE [mantenimiento].[Incidencias] ADD prioridad NVARCHAR(50) NULL
+                ALTER TABLE [mantenimiento].[Incidencias] ADD usuario_id UNIQUEIDENTIFIER NULL
+                ALTER TABLE [mantenimiento].[Incidencias] ADD fecha_creacion NVARCHAR(MAX) NULL
             END
             UPDATE [mantenimiento].[Mantenimientos] SET Fecha = proxima_fecha WHERE Fecha IS NULL;
             UPDATE [mantenimiento].[Mantenimientos] SET Descripcion = 'Mantenimiento preventivo general' WHERE Descripcion IS NULL;
@@ -391,6 +411,11 @@ public class Incidencia {
     public string Titulo { get; set; } = "";
     public string Estado { get; set; } = "";
     [Column("RelacionadaId"), JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
+    [Column("fecha_ocurrencia"), JsonPropertyName("fecha_ocurrencia")] public string? FechaOcurrencia { get; set; }
+    [Column("descripcion"), JsonPropertyName("descripcion")] public string? Descripcion { get; set; }
+    [Column("prioridad"), JsonPropertyName("prioridad")] public string? Prioridad { get; set; }
+    [Column("usuario_id"), JsonPropertyName("usuario_id")] public Guid? UsuarioId { get; set; }
+    [Column("fecha_creacion"), JsonPropertyName("fecha_creacion")] public string? FechaCreacion { get; set; }
 }
 
 public class CreateMantenimientoDto {
@@ -426,12 +451,20 @@ public class CreateIncidenciaDto {
     public string Titulo { get; set; } = "";
     public string? Estado { get; set; } = "Abierta";
     [JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
+    [JsonPropertyName("fecha_ocurrencia")] public string? FechaOcurrencia { get; set; }
+    [JsonPropertyName("descripcion")] public string? Descripcion { get; set; }
+    [JsonPropertyName("prioridad")] public string? Prioridad { get; set; }
+    [JsonPropertyName("usuario_id")] public Guid? UsuarioId { get; set; }
+    [JsonPropertyName("fecha_creacion")] public string? FechaCreacion { get; set; }
 }
 
 public class UpdateIncidenciaDto {
     public string? Titulo { get; set; }
     public string? Estado { get; set; }
     [JsonPropertyName("relacionada_id")] public Guid? RelacionadaId { get; set; }
+    [JsonPropertyName("fecha_ocurrencia")] public string? FechaOcurrencia { get; set; }
+    [JsonPropertyName("descripcion")] public string? Descripcion { get; set; }
+    [JsonPropertyName("prioridad")] public string? Prioridad { get; set; }
 }
 
 static class EventBus {

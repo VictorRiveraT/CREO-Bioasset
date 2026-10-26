@@ -109,32 +109,39 @@ function SedeDialog({ trigger }: { trigger: React.ReactNode }) {
             if (isSubmitting) return;
             const trimmed = nombre.trim();
             if (!trimmed) return;
+            const invalidValues = ["___empty___", "n/a", "xd", "test", "asdf"];
+            if (invalidValues.includes(trimmed.toLowerCase())) {
+              toast.error("El nombre de la sede no es válido.");
+              return;
+            }
+            const normalized = trimmed.toLowerCase() === "surco" ? "Santiago de Surco" : trimmed;
             const exists = db.locations.some(
-              (l) => (l.sede || "").trim().toLowerCase() === trimmed.toLowerCase(),
+              (l) => (l.sede || "").trim().toLowerCase() === normalized.toLowerCase(),
             );
             if (exists) {
-              toast.error(`Ya existe una sede registrada con el nombre "${trimmed}".`);
+              toast.error(`Ya existe una sede registrada con el nombre "${normalized}".`);
               return;
             }
             setIsSubmitting(true);
             try {
               const n = parseInt(pisos) || 1;
 
+              const { fetchApi } = await import("@/lib/bioasset/apiClient");
               for (let i = 1; i <= n; i++) {
-                await saveLocation({
-                  id: undefined,
-
-                  nombre: "___EMPTY___",
-
-                  descripcion: "",
-
-                  activo: false,
-
-                  sede: trimmed,
-
-                  piso: `Piso ${i}`,
+                await fetchApi("/inventario/ubicaciones", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    id: undefined,
+                    nombre: "___EMPTY___",
+                    descripcion: "",
+                    activo: false,
+                    sede: normalized,
+                    piso: `Piso ${i}`,
+                  }),
                 });
               }
+              await db.locations; // Trigger refresh
+              window.location.reload();
 
               toast.success(`Sede creada con ${n} piso(s)`);
 
@@ -255,12 +262,18 @@ function LocationDialog({
             e.preventDefault();
             if (isSubmitting) return;
             const trimmed = nombre.trim();
+            const trimmedDesc = descripcion.trim();
             if (!trimmed) {
               toast.error("El nombre del área es obligatorio.");
               return;
             }
-            if (trimmed === "___EMPTY___" || trimmed.toLowerCase() === "n/a") {
-              toast.error("El nombre ingresado no es válido.");
+            const invalidValues = ["___empty___", "n/a", "xd", "test", "asdf"];
+            if (invalidValues.includes(trimmed.toLowerCase())) {
+              toast.error("El nombre del área no es válido.");
+              return;
+            }
+            if (invalidValues.includes(trimmedDesc.toLowerCase())) {
+              toast.error("La descripción ingresada no es válida.");
               return;
             }
             const exists = db.locations.some(
@@ -345,7 +358,10 @@ function UbicacionesPage() {
 
   const agrupado = db.locations.reduce(
     (acc, loc) => {
-      const s = loc.sede || "Sede Principal";
+      let s = (loc.sede || "Sede Principal").trim();
+      if (s.toLowerCase() === "surco") {
+        s = "Santiago de Surco";
+      }
 
       const p = loc.piso || "Piso 1";
 
@@ -384,7 +400,17 @@ function UbicacionesPage() {
           <div className="text-center text-muted-foreground py-12">No hay sedes registradas.</div>
         ) : (
           <Accordion type="multiple" className="space-y-4">
-            {Object.entries(agrupado).map(([sedeName, pisos]) => (
+            {Object.entries(agrupado).map(([sedeName, pisos]) => {
+              const sedeTotalEquipos = db.equipment.filter((e) => {
+                const loc = db.locations.find((l) => l.id === e.ubicacionId);
+                return (
+                  loc &&
+                  ((loc.sede || "").trim().toLowerCase() === sedeName.toLowerCase() ||
+                    (sedeName === "Santiago de Surco" && (loc.sede || "").trim().toLowerCase() === "surco"))
+                );
+              }).length;
+
+              return (
               <AccordionItem
                 key={sedeName}
 
@@ -393,7 +419,56 @@ function UbicacionesPage() {
                 className="border bg-card text-card-foreground shadow-sm rounded-lg overflow-hidden"
               >
                 <AccordionTrigger className="px-6 py-4 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-2 text-xl font-bold">{sedeName}</div>
+                  <div className="flex items-center justify-between w-full pr-4">
+                    <div className="flex items-center gap-2 text-xl font-bold">{sedeName}</div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="text-xs font-mono font-normal">
+                        {sedeTotalEquipos} {sedeTotalEquipos === 1 ? "equipo" : "equipos"}
+                      </Badge>
+                      {canEdit("ubicaciones") && sedeTotalEquipos === 0 && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs text-destructive hover:bg-destructive/10 h-7 px-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              Eliminar sede vacía
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Eliminar sede {sedeName}</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Se eliminarán los registros de la sede "{sedeName}". Esta acción no se puede deshacer.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={async () => {
+                                  const sedeLocs = db.locations.filter(
+                                    (l) =>
+                                      (l.sede || "").trim().toLowerCase() === sedeName.toLowerCase() ||
+                                      (sedeName === "Santiago de Surco" &&
+                                        (l.sede || "").trim().toLowerCase() === "surco"),
+                                  );
+                                  for (const l of sedeLocs) {
+                                    await deleteLocation(l.id).catch(() => {});
+                                  }
+                                  toast.success(`Sede ${sedeName} eliminada.`);
+                                }}
+                              >
+                                Eliminar sede
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                  </div>
                 </AccordionTrigger>
 
                 <AccordionContent className="px-6 pb-6 pt-2 space-y-6">
@@ -591,7 +666,8 @@ function UbicacionesPage() {
                   </Accordion>
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            );
+          })}
           </Accordion>
         )}
       </div>

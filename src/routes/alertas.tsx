@@ -17,6 +17,7 @@ import { daysUntil, formatDate, formatDateTime, useBio } from "@/lib/bioasset/st
 import { MaintenanceDialog } from "@/components/bioasset/dialogs";
 import type { Equipment } from "@/lib/bioasset/types";
 import { encryptUrlParam } from "@/lib/bioasset/security";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/alertas")({
   head: () => ({
@@ -109,7 +110,13 @@ function AlertGroup({
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <StatusBadge status={e.estado} />
-                <DueBadge days={daysUntil(e.proximoMantenimiento)} status={e.estado} />
+                {e.estado !== "De baja" ? (
+                  <DueBadge days={daysUntil(e.proximoMantenimiento)} status={e.estado} />
+                ) : (
+                  <Badge variant="outline" className="border-muted text-muted-foreground bg-muted/40 font-medium text-[10px]">
+                    Dado de baja · Retirado
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -124,20 +131,26 @@ function AlertGroup({
                 <span className="font-medium text-foreground">{cleanLocation(e.ubicacionId)}</span>
               </div>
 
-              {canEdit("mantenimiento") && e.id && e.id !== "ALERTA" && (
-                <MaintenanceDialog
-                  equipoId={e.id}
-                  trigger={
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2.5 text-xs gap-1.5 border-primary/40 hover:bg-primary/10 hover:text-primary shrink-0 font-medium"
-                    >
-                      <Wrench className="size-3 text-primary" />
-                      Atender
-                    </Button>
-                  }
-                />
+              {e.estado === "De baja" ? (
+                <span className="text-[11px] text-muted-foreground italic">
+                  Equipo retirado · No requiere servicio
+                </span>
+              ) : (
+                canEdit("mantenimiento") && e.id && e.id !== "ALERTA" && (
+                  <MaintenanceDialog
+                    equipoId={e.id}
+                    trigger={
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2.5 text-xs gap-1.5 border-primary/40 hover:bg-primary/10 hover:text-primary shrink-0 font-medium"
+                      >
+                        <Wrench className="size-3 text-primary" />
+                        {e.estado === "En mantenimiento" ? "Seguimiento" : "Atender"}
+                      </Button>
+                    }
+                  />
+                )
               )}
             </div>
           </div>
@@ -163,8 +176,17 @@ function AlertGroup({
 }
 
 function AlertasPage() {
-  const { db } = useBio();
+  const { db, updateAlerta, canEdit } = useBio();
   const [sedeFilter, setSedeFilter] = useState("todas");
+
+  const handleResolveAlert = async (alertId: string) => {
+    try {
+      await updateAlerta(alertId, { estado: "Atendida" });
+      toast.success("Evento de telemetría marcado como atendido.");
+    } catch {
+      toast.error("Error al actualizar la alerta.");
+    }
+  };
 
   const sedes = useMemo(() => {
     const s = new Set<string>();
@@ -196,16 +218,24 @@ function AlertasPage() {
   );
   const enMantenimiento = useMemo(() => eq.filter((e) => e.estado === "En mantenimiento"), [eq]);
   const fueraServicio = useMemo(
-    () => eq.filter((e) => (e.estado as string) === "Fuera de servicio" || (e.estado as string) === "Inoperativo"),
-    [eq],
+    () =>
+      db.equipment
+        .filter((e) => !sedeLocations || sedeLocations.has(e.ubicacionId))
+        .filter(
+          (e) =>
+            (e.estado as string) === "Fuera de servicio" ||
+            (e.estado as string) === "Inoperativo" ||
+            (e.estado as string) === "De baja",
+        ),
+    [db.equipment, sedeLocations],
   );
 
   const incidenciasAbiertas = useMemo(() => {
     return (db.incidents || []).filter((inc) => {
       if (inc.estado === "Cerrada" || inc.estado === "Resuelta") return false;
       if (!sedeLocations) return true;
-      const eqFound = db.equipment.find((x) => x.id === inc.activoId);
-      if (!eqFound) return true;
+      const eqFound = db.equipment.find((x) => x.id === (inc.activoId || (inc as any).activo_id));
+      if (!eqFound) return false;
       return sedeLocations.has(eqFound.ubicacionId);
     });
   }, [db.incidents, db.equipment, sedeLocations]);
@@ -214,8 +244,8 @@ function AlertasPage() {
     return (db.alertas || []).filter((a: any) => {
       if (a.estado === "Atendida" || a.estado === "Resuelta") return false;
       if (!sedeLocations) return true;
-      const eqFound = db.equipment.find((x) => x.id === a.activoId);
-      if (!eqFound) return true;
+      const eqFound = db.equipment.find((x) => x.id === (a.activoId || (a as any).activo_id));
+      if (!eqFound) return false;
       return sedeLocations.has(eqFound.ubicacionId);
     });
   }, [db.alertas, db.equipment, sedeLocations]);
@@ -226,18 +256,30 @@ function AlertasPage() {
   const visibleIncidencias = expandedIncidencias ? incidenciasAbiertas : incidenciasAbiertas.slice(0, 4);
   const visibleCriticas = expandedCriticas ? criticalAlerts : criticalAlerts.slice(0, 4);
 
-  const totalAlertas =
-    vencidos.length +
-    proximos.length +
-    enMantenimiento.length +
-    fueraServicio.length +
-    incidenciasAbiertas.length +
-    criticalAlerts.length;
+  const distinctEquiposConAlertas = useMemo(() => {
+    const ids = new Set<string>();
+    vencidos.forEach((e) => ids.add(e.id));
+    proximos.forEach((e) => ids.add(e.id));
+    enMantenimiento.forEach((e) => ids.add(e.id));
+    fueraServicio.forEach((e) => ids.add(e.id));
+    incidenciasAbiertas.forEach((i) => {
+      const idVal = i.activoId || (i as any).activo_id;
+      if (idVal) ids.add(idVal);
+    });
+    criticalAlerts.forEach((a) => {
+      const idVal = a.activoId || (a as any).activo_id;
+      if (idVal) ids.add(idVal);
+    });
+    return ids.size;
+  }, [vencidos, proximos, enMantenimiento, fueraServicio, incidenciasAbiertas, criticalAlerts]);
+
+  const alertasAccion = vencidos.length + proximos.length + incidenciasAbiertas.length + criticalAlerts.length;
+  const seguimientoOperativo = enMantenimiento.length + fueraServicio.length;
 
   return (
     <AppShell
       title="Centro de Alertas"
-      description={`${totalAlertas} alertas de mantenimiento, averías y operatividad activas`}
+      description={`${alertasAccion} alertas de atención prioritaria y ${seguimientoOperativo} equipos en seguimiento operativo (${distinctEquiposConAlertas} equipos involucrados)`}
     >
       {/* Sede Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-card border rounded-lg px-4 py-2.5 shadow-[var(--shadow-card)]">
@@ -280,7 +322,9 @@ function AlertasPage() {
           tone="bg-destructive/15 text-destructive"
           items={vencidos}
           message={(e) =>
-            `El equipo ${e.codigo} tiene mantenimiento vencido desde el ${formatDate(e.proximoMantenimiento)}.`
+            e.estado === "En mantenimiento"
+              ? `El equipo ${e.codigo} tenía fecha el ${formatDate(e.proximoMantenimiento)}, pero ya se encuentra en atención con orden en curso.`
+              : `El equipo ${e.codigo} tiene mantenimiento vencido desde el ${formatDate(e.proximoMantenimiento)}.`
           }
         />
 
@@ -305,11 +349,15 @@ function AlertasPage() {
         />
 
         <AlertGroup
-          title="Equipos fuera de servicio / Inoperativos"
+          title="Equipos fuera de servicio / Inoperativos / De baja"
           icon={XCircle}
           tone="bg-destructive/15 text-destructive"
           items={fueraServicio}
-          message={(e) => `El equipo ${e.codigo} presenta falla técnica o estado inoperativo.`}
+          message={(e) =>
+            e.estado === "De baja"
+              ? `El equipo ${e.codigo} ha sido dado de baja permanentemente y retirado de servicio activo.`
+              : `El equipo ${e.codigo} presenta falla técnica o estado inoperativo.`
+          }
         />
 
         {/* Incidencias / Averías Abiertas */}
@@ -327,7 +375,7 @@ function AlertasPage() {
           </CardHeader>
           <CardContent className="space-y-3 pt-3">
             {visibleIncidencias.map((inc) => {
-              const eqFound = db.equipment.find((x) => x.id === inc.activoId);
+              const eqFound = db.equipment.find((x) => x.id === (inc.activoId || (inc as any).activo_id));
               return (
                 <div
                   key={inc.id}
@@ -352,23 +400,48 @@ function AlertasPage() {
                         {inc.titulo}
                       </span>
                     </div>
-                    <Badge variant="destructive" className="text-[10px] uppercase">
-                      {inc.estado}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {eqFound?.estado === "En mantenimiento" && (
+                        <Badge variant="outline" className="border-amber-500/50 bg-amber-500/20 text-amber-800 dark:text-amber-200 text-[10px] font-semibold">
+                          En atención
+                        </Badge>
+                      )}
+                      <Badge variant="destructive" className="text-[10px] uppercase">
+                        {inc.estado}
+                      </Badge>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {eqFound ? `${eqFound.nombre} · ${eqFound.marca || ""} ${eqFound.modelo || ""}` : "Equipo reportado con falla"}
                   </p>
-                  <div className="flex items-center justify-between pt-2 border-t text-xs">
+                  <div className="flex flex-wrap items-center justify-between pt-2 border-t text-xs gap-2">
                     <span className="text-muted-foreground">
                       Fecha: {formatDateTime(inc.fecha || inc.fechaCreacion || new Date().toISOString())}
                     </span>
-                    <Link
-                      to="/incidencias"
-                      className="text-xs text-primary font-semibold hover:underline"
-                    >
-                      Ir a incidencias →
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {canEdit("mantenimiento") && eqFound && eqFound.estado !== "De baja" && (
+                        <MaintenanceDialog
+                          equipoId={eqFound.id}
+                          incidenciaId={inc.id}
+                          trigger={
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2.5 text-xs gap-1 border-primary/40 hover:bg-primary/10 hover:text-primary font-medium"
+                            >
+                              <Wrench className="size-3 text-primary" />
+                              Atender correctivo
+                            </Button>
+                          }
+                        />
+                      )}
+                      <Link
+                        to="/incidencias"
+                        className="text-xs text-primary font-semibold hover:underline"
+                      >
+                        Ir a incidencias →
+                      </Link>
+                    </div>
                   </div>
                 </div>
               );
@@ -406,7 +479,7 @@ function AlertasPage() {
           </CardHeader>
           <CardContent className="space-y-3 pt-3">
             {visibleCriticas.map((a: any) => {
-              const eqFound = db.equipment.find((x) => x.id === a.activoId);
+              const eqFound = db.equipment.find((x) => x.id === (a.activoId || (a as any).activo_id));
               return (
                 <div
                   key={a.id}
@@ -418,29 +491,74 @@ function AlertasPage() {
                         ID #{a.id?.substring(0, 8)}
                       </span>
                       <span className="text-sm font-semibold text-foreground">
-                        {a.tipo || "Alerta de Telemetría"}
+                        {a.codigoError ? `${a.codigoError} · ` : ""}{a.tipo || "Alerta de Telemetría"}
                       </span>
                     </div>
-                    <Badge variant="outline" className="border-purple-500/30 text-purple-600 dark:text-purple-300 text-[10px] font-semibold">
-                      {a.severidad || "Alta"} · {a.estado || "Activa"}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {eqFound?.estado === "En mantenimiento" && (
+                        <Badge variant="outline" className="border-amber-500/50 bg-amber-500/20 text-amber-800 dark:text-amber-200 text-[10px] font-semibold">
+                          En atención
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="border-purple-500/30 text-purple-600 dark:text-purple-300 text-[10px] font-semibold">
+                        {a.severidad || "Alta"} · {a.estado || "Activa"}
+                      </Badge>
+                    </div>
                   </div>
+
+                  <div className="p-2 rounded bg-muted/40 text-[11px] font-mono grid grid-cols-1 sm:grid-cols-2 gap-1 text-muted-foreground border border-border/50">
+                    <div>
+                      <span className="font-semibold text-foreground">Cola: </span>
+                      {a.cola || "cola.alertas.criticas"}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-foreground">Servicio: </span>
+                      {a.servicio || "telemetria-biomedica"}
+                    </div>
+                  </div>
+
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {a.mensaje || "Evento crítico transmitido por el bus de mensajería asíncrona."}
                   </p>
-                  <div className="flex items-center justify-between pt-2 border-t text-xs">
+
+                  <div className="flex flex-wrap items-center justify-between pt-2 border-t text-xs gap-2">
                     <span className="text-muted-foreground font-mono text-[11px]">
-                      Origen: RabbitMQ · {formatDateTime(a.fechaCreacion || a.fecha || new Date().toISOString())}
+                      Origen: Bus RabbitMQ · {formatDateTime(a.fechaCreacion || a.fecha || new Date().toISOString())}
                     </span>
-                    {eqFound && eqFound.id && (
-                      <Link
-                        to="/equipos/$id"
-                        params={{ id: encryptUrlParam(eqFound.id) }}
-                        className="text-xs text-primary font-semibold hover:underline"
+                    <div className="flex items-center gap-2">
+                      {canEdit("mantenimiento") && eqFound && eqFound.estado !== "De baja" && (
+                        <MaintenanceDialog
+                          equipoId={eqFound.id}
+                          trigger={
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs gap-1 border-purple-500/40 hover:bg-purple-500/10 text-purple-700 dark:text-purple-300 font-medium"
+                            >
+                              <Wrench className="size-3 text-purple-600" />
+                              Atender
+                            </Button>
+                          }
+                        />
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleResolveAlert(a.id)}
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
                       >
-                        Ver {eqFound.codigo} →
-                      </Link>
-                    )}
+                        Resolver
+                      </Button>
+                      {eqFound && eqFound.id && (
+                        <Link
+                          to="/equipos/$id"
+                          params={{ id: encryptUrlParam(eqFound.id) }}
+                          className="text-xs text-primary font-semibold hover:underline"
+                        >
+                          Ver equipo →
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

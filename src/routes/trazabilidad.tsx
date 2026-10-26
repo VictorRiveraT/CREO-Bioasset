@@ -57,6 +57,7 @@ function TrazabilidadPage() {
   const { db, locationName, userName, canEdit } = useBio();
   const [q, setQ] = useState("");
   const [ubi, setUbi] = useState("todas");
+  const [ubiMode, setUbiMode] = useState<"destino" | "origen" | "ambas">("destino");
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -72,16 +73,23 @@ function TrazabilidadPage() {
           (e.codigo || "").toLowerCase().includes(q.toLowerCase()) ||
           (e.nombre || "").toLowerCase().includes(q.toLowerCase());
 
-        const inUbi = ubi === "todas" || m.origenId === ubi || m.destinoId === ubi;
+        const inUbi =
+          ubi === "todas"
+            ? true
+            : ubiMode === "destino"
+              ? m.destinoId === ubi
+              : ubiMode === "origen"
+                ? m.origenId === ubi
+                : m.origenId === ubi || m.destinoId === ubi;
 
         return match && inUbi;
       });
-  }, [db.movements, db.equipment, q, ubi]);
+  }, [db.movements, db.equipment, q, ubi, ubiMode]);
 
   // Resetear a página 1 al cambiar filtros o búsqueda
   useEffect(() => {
     setCurrentPage(1);
-  }, [q, ubi]);
+  }, [q, ubi, ubiMode]);
 
   // Paginación: Cálculos
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -104,7 +112,7 @@ function TrazabilidadPage() {
     return [1, "...", currentPageClamped - 1, currentPageClamped, currentPageClamped + 1, "...", totalPages];
   }, [totalPages, currentPageClamped]);
 
-  const hasFilters = Boolean(q || ubi !== "todas");
+  const hasFilters = Boolean(q || ubi !== "todas" || ubiMode !== "destino");
 
   return (
     <AppShell
@@ -123,7 +131,7 @@ function TrazabilidadPage() {
       }
     >
       <Card className="shadow-[var(--shadow-card)]">
-        <CardContent className="grid gap-3 py-4 md:grid-cols-3">
+        <CardContent className="grid gap-3 py-4 md:grid-cols-4">
           <div className="relative md:col-span-2">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -165,6 +173,20 @@ function TrazabilidadPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select
+            value={ubiMode}
+            onValueChange={(v) => setUbiMode(v as any)}
+            disabled={ubi === "todas"}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Criterio" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="destino">Destino (Llegada)</SelectItem>
+              <SelectItem value="origen">Origen (Salida)</SelectItem>
+              <SelectItem value="ambas">Origen o Destino</SelectItem>
+            </SelectContent>
+          </Select>
         </CardContent>
 
         {hasFilters && (
@@ -176,6 +198,7 @@ function TrazabilidadPage() {
               onClick={() => {
                 setQ("");
                 setUbi("todas");
+                setUbiMode("destino");
                 setCurrentPage(1);
               }}
               className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
@@ -224,13 +247,19 @@ function TrazabilidadPage() {
                       <span className="text-muted-foreground">{e?.nombre || ""}</span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                        <span className="text-muted-foreground font-normal">
-                          {m.origenId ? locationName(m.origenId) : "Alta inicial"}
+                      {m.origenId === m.destinoId ? (
+                        <span className="text-xs font-medium text-foreground">
+                          {locationName(m.destinoId)}
                         </span>
-                        <ArrowRight className="size-3 text-primary shrink-0" />
-                        <span className="text-primary font-semibold">{locationName(m.destinoId)}</span>
-                      </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                          <span className="text-muted-foreground font-normal">
+                            {m.origenId ? locationName(m.origenId) : "Alta inicial"}
+                          </span>
+                          <ArrowRight className="size-3 text-primary shrink-0" />
+                          <span className="text-primary font-semibold">{locationName(m.destinoId)}</span>
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>{m.motivo}</TableCell>
                     <TableCell>{userName(m.usuarioId)}</TableCell>
@@ -268,14 +297,14 @@ function TrazabilidadPage() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1 sm:gap-1.5 w-full sm:w-auto">
                 {/* Botón Primera Página */}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(1)}
                   disabled={currentPageClamped <= 1}
-                  className="h-8 w-8 p-0"
+                  className="hidden sm:inline-flex h-8 w-8 p-0"
                   title="Primera página"
                 >
                   <ChevronsLeft className="size-4" />
@@ -289,7 +318,8 @@ function TrazabilidadPage() {
                   disabled={currentPageClamped <= 1}
                   className="h-8 px-2 text-xs font-medium"
                 >
-                  <ChevronLeft className="size-3.5 mr-1" /> Anterior
+                  <ChevronLeft className="size-3.5 sm:mr-1" />
+                  <span className="hidden sm:inline">Anterior</span>
                 </Button>
 
                 {/* Botones de Páginas Numéricas */}
@@ -323,7 +353,8 @@ function TrazabilidadPage() {
                   disabled={currentPageClamped >= totalPages}
                   className="h-8 px-2 text-xs font-medium"
                 >
-                  Siguiente <ChevronRight className="size-3.5 ml-1" />
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <ChevronRight className="size-3.5 sm:ml-1" />
                 </Button>
 
                 {/* Botón Última Página */}
@@ -332,7 +363,7 @@ function TrazabilidadPage() {
                   size="sm"
                   onClick={() => setCurrentPage(totalPages)}
                   disabled={currentPageClamped >= totalPages}
-                  className="h-8 w-8 p-0"
+                  className="hidden sm:inline-flex h-8 w-8 p-0"
                   title="Última página"
                 >
                   <ChevronsRight className="size-4" />

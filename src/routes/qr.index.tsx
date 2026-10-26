@@ -24,12 +24,14 @@ function QRScannerIndexPage() {
   const [manualCode, setManualCode] = useState("");
 
   useEffect(() => {
-    if (ready && !user) {
-      navigate({ to: "/" });
+    const token = typeof window !== "undefined" ? localStorage.getItem("bioasset.token") : null;
+    if (!token || (ready && !user)) {
+      navigate({ to: "/", replace: true });
     }
   }, [ready, user, navigate]);
 
-  if (!ready || !user) {
+  const hasToken = typeof window !== "undefined" ? Boolean(localStorage.getItem("bioasset.token")) : false;
+  if (!hasToken || !ready || !user) {
     return null;
   }
 

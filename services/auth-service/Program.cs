@@ -648,7 +648,11 @@ app.MapPost("/usuarios", [Authorize(Roles="admin")] async (UsuarioDto req, AuthD
 
 
 
-app.MapPut("/usuarios/{id}/toggle", [Authorize] async (Guid id, AuthDb db, HttpContext ctx) => {
+app.MapPut("/usuarios/{id}/toggle", [Authorize(Roles = "admin")] async (Guid id, AuthDb db, HttpContext ctx) => {
+    var callerIdStr = ctx.User.FindFirst("id")?.Value;
+    if (Guid.TryParse(callerIdStr, out var callerId) && callerId == id) {
+        return Results.BadRequest(new { error = "No puedes desactivar tu propia cuenta de administrador." });
+    }
 
 
     var user = await db.Usuarios.FindAsync(id);

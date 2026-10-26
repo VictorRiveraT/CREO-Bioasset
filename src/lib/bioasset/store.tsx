@@ -37,6 +37,7 @@ const DEFAULT_CATEGORIAS = [
   "Laboratorio",
   "Odontología",
   "Rehabilitación",
+  "Tecnológico / TI",
 ];
 
 const DEFAULT_ESTADOS_EQUIPO = [
@@ -188,21 +189,42 @@ export const DEFAULT_PERMISSIONS: Record<Role, UserPermissions> = {
 };
 
 export function parseUserPermisos(u: any): UserPermissions {
-  const normalizedRol = (u.rol || "asistencial").toLowerCase();
+  const normalizedRol = (u?.rol || "asistencial").toLowerCase();
 
-  let permisos = DEFAULT_PERMISSIONS[normalizedRol as Role] || DEFAULT_PERMISSIONS.asistencial;
+  const defaultForRole = DEFAULT_PERMISSIONS[normalizedRol as Role] || DEFAULT_PERMISSIONS.asistencial;
 
-  try {
-    if (u.permisos && u.permisos !== "{}" && typeof u.permisos === "string") {
-      permisos = JSON.parse(u.permisos);
-    } else if (u.permisos && typeof u.permisos === "object") {
-      permisos = u.permisos;
-    }
-  } catch (e) {
-    // fallback
+  if (normalizedRol === "admin" || normalizedRol === "administrador") {
+    return DEFAULT_PERMISSIONS.admin;
   }
 
-  return permisos;
+  let raw = u?.permisos;
+  if (typeof raw === "string" && raw !== "{}") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      raw = null;
+    }
+  }
+
+  if (!raw || typeof raw !== "object") {
+    return defaultForRole;
+  }
+
+  const merged: UserPermissions = { ...defaultForRole };
+  for (const mod of Object.keys(defaultForRole) as Array<keyof UserPermissions>) {
+    if (raw[mod] !== undefined) {
+      if (typeof raw[mod] === "boolean") {
+        merged[mod] = { view: raw[mod], edit: raw[mod] };
+      } else if (typeof raw[mod] === "object" && raw[mod] !== null) {
+        merged[mod] = {
+          view: raw[mod].view ?? defaultForRole[mod].view,
+          edit: raw[mod].edit ?? defaultForRole[mod].edit,
+        };
+      }
+    }
+  }
+
+  return merged;
 }
 
 interface Ctx {
@@ -262,7 +284,11 @@ interface Ctx {
 
   updateIncident: (id: string, i: Partial<Incident>) => Promise<void>;
 
+  updateAlerta: (id: string, a: Partial<Alerta>) => Promise<void>;
+
   locationName: (id: string) => string;
+
+  locationFullName: (id: string) => string;
 
   userName: (id: string) => string;
 
@@ -449,11 +475,17 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           sedeTemporal: u.sedeTemporal,
           sedeTemporalHasta: u.sedeTemporalHasta,
         })),
-        locations: rawLocs.map((l: any) => ({
-          ...l,
-          sede: l.sede || "Sede Principal",
-          piso: l.piso || "Piso 1",
-        })),
+        locations: rawLocs.map((l: any) => {
+          let sedeVal = (l.sede || "Sede Principal").trim();
+          if (sedeVal.toLowerCase() === "surco") {
+            sedeVal = "Santiago de Surco";
+          }
+          return {
+            ...l,
+            sede: sedeVal,
+            piso: l.piso || "Piso 1",
+          };
+        }),
         marcas: rawMarcas,
         equipment: rawActivos.map((e: any) => ({
           ...e,
@@ -483,6 +515,10 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         incidents: rawIncidencias.map((i: any) => ({
           ...i,
           activoId: i.activo_id || i.activoId,
+          fechaOcurrencia: i.fecha_ocurrencia || i.fechaOcurrencia,
+          fechaCreacion: i.fecha_creacion || i.fechaCreacion,
+          fecha: i.fecha_ocurrencia || i.fecha_creacion || i.fecha,
+          usuarioId: i.usuario_id || i.usuarioId,
         })),
         alertas: rawAlertas.map((a: any) => ({
           ...a,
@@ -550,6 +586,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(TOKEN_KEY);
     if (typeof window !== "undefined") {
       sessionStorage.clear();
+      window.location.replace("/");
     }
     setDb({
       users: [],
@@ -662,20 +699,23 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
 
     logout,
 
-    isAdmin: user?.rol === "admin",
+    isAdmin: (user?.rol || "").toLowerCase() === "admin" || (user?.rol || "").toLowerCase() === "administrador",
 
-    isBiomedico: user?.rol === "biomedico",
+    isBiomedico: (user?.rol || "").toLowerCase() === "biomedico",
 
-    isAsistencial: user?.rol === "asistencial",
+    isAsistencial: (user?.rol || "").toLowerCase() === "asistencial",
 
-    isAuditor: user?.rol === "auditor",
+    isAuditor: (user?.rol || "").toLowerCase() === "auditor",
 
-    isEstudiante: user?.rol === "estudiante",
+    isEstudiante: (user?.rol || "").toLowerCase() === "estudiante",
 
-    canView: (mod) => user?.permisos?.[mod]?.view ?? false,
+    canView: (mod) => {
+      if ((user?.rol || "").toLowerCase() === "admin" || (user?.rol || "").toLowerCase() === "administrador") return true;
+      return user?.permisos?.[mod]?.view ?? false;
+    },
 
     canEdit: (mod) => {
-      if (user?.rol === "admin") return true;
+      if ((user?.rol || "").toLowerCase() === "admin" || (user?.rol || "").toLowerCase() === "administrador") return true;
       return user?.permisos?.[mod]?.edit ?? false;
     },
 
@@ -909,6 +949,9 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         permisos: typeof u.permisos === "object" ? JSON.stringify(u.permisos) : u.permisos,
       };
       await fetchApi(`/auth/usuarios/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+      if (user?.id === id) {
+        setUser((prev) => (prev ? { ...prev, ...u, permisos: parseUserPermisos({ ...prev, ...u }) } : null));
+      }
       await fetchDb();
     },
 
@@ -919,7 +962,16 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     },
 
     addIncident: async (i) => {
-      await fetchApi("/mantenimiento/incidencias", { method: "POST", body: JSON.stringify(i) });
+      await fetchApi("/mantenimiento/incidencias", {
+        method: "POST",
+        body: JSON.stringify({
+          ...i,
+          activo_id: i.activoId,
+          fecha_ocurrencia: i.fechaOcurrencia || i.fecha,
+          fecha_creacion: i.fechaCreacion || new Date().toISOString(),
+          usuario_id: i.usuarioId || user?.id,
+        }),
+      });
 
       await fetchDb();
     },
@@ -933,12 +985,35 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       await fetchDb();
     },
 
+    updateAlerta: async (id, a) => {
+      await fetchApi(`/alertas/alertas/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(a),
+      }).catch((e) => console.warn("updateAlerta API fallback:", e));
+
+      setDb((prev) => ({
+        ...prev,
+        alertas: prev.alertas.map((alt) => (alt.id === id ? { ...alt, ...a } : alt)),
+      }));
+
+      await fetchDb().catch(() => {});
+    },
+
     locationName: (id) => {
       const found = db.locations.find((l) => l.id === id);
       if (!found || !found.nombre || found.nombre === "___EMPTY___" || found.nombre === "N/A") {
         return "Sin asignar";
       }
       return found.nombre;
+    },
+
+    locationFullName: (id) => {
+      const found = db.locations.find((l) => l.id === id);
+      if (!found || !found.nombre || found.nombre === "___EMPTY___" || found.nombre === "N/A") {
+        return "Sin asignar";
+      }
+      const parts = [found.sede, found.piso, found.nombre].filter(Boolean);
+      return parts.length > 1 ? parts.join(" · ") : found.nombre;
     },
 
     userName: (id) => {
@@ -948,7 +1023,9 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       if (typeof id === "string" && !id.includes("-") && id.trim().length > 1) {
         return id;
       }
-      return "Técnico Asignado";
+      const anyBiomedico = db.users.find((u) => u.rol === "biomedico");
+      if (anyBiomedico && anyBiomedico.nombre) return anyBiomedico.nombre;
+      return "Técnico Biomédico";
     },
 
     saveMarca: async (marca) => {

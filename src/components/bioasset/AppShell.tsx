@@ -120,16 +120,14 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
 function Brand() {
   return (
-    <div className="flex flex-col gap-1 px-6 py-8">
-      {/* TODO: reemplazar con logo SVG oficial */}
-
-      <div className="text-4xl font-bold tracking-tight text-sidebar-foreground mb-4">
+    <div className="flex flex-col gap-0.5 px-6 pt-5 pb-3 shrink-0">
+      <div className="text-3xl font-bold tracking-tight text-sidebar-foreground mb-1">
         Creo<span className="text-[#F2B705]">+</span>
       </div>
 
-      <p className="text-sm font-medium text-[#F2B705]">BIOASSET</p>
+      <p className="text-sm font-semibold text-[#F2B705]">BIOASSET</p>
 
-      <p className="text-xs text-sidebar-foreground/60 leading-tight">
+      <p className="text-xs text-sidebar-foreground/70 leading-tight">
         Sistema Inteligente de Gestión y Trazabilidad de Equipos Biomédicos
       </p>
     </div>
@@ -654,34 +652,33 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen w-full bg-background transition-colors duration-200">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
-        <Brand />
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex h-screen sticky top-0 overflow-hidden">
+        <div className="flex-1 overflow-y-auto overscroll-contain py-2">
+          <Brand />
+          <NavList />
+        </div>
 
-        <NavList />
-
-        <div className="mt-auto border-t border-sidebar-border p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="size-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs text-foreground">
+        <div className="border-t border-sidebar-border p-4 flex items-center justify-between shrink-0 bg-sidebar">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs text-foreground shrink-0 border border-border/60">
               {(user?.nombre || user?.email || "U").charAt(0).toUpperCase()}
             </div>
 
-            <div>
-              <p className="text-sm font-medium text-sidebar-foreground truncate w-32">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-sidebar-foreground truncate">
                 {user.nombre}
               </p>
 
-              <p className="text-xs capitalize text-sidebar-foreground/60">{user.rol}</p>
+              <p className="text-xs capitalize text-sidebar-foreground/60 truncate">{user.rol}</p>
             </div>
           </div>
 
           <Button
             variant="ghost"
-
             size="icon"
-
-            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground shrink-0 cursor-pointer"
             onClick={logout}
+            title="Cerrar sesión"
           >
             <LogOut className="size-4" />
           </Button>
@@ -698,12 +695,38 @@ export function AppShell({
                     <Menu className="size-4" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="w-64 border-sidebar-border bg-sidebar p-0">
+                <SheetContent
+                  side="left"
+                  className="w-72 sm:w-80 border-sidebar-border bg-sidebar p-0 flex flex-col h-[100dvh] max-h-[100dvh] overflow-hidden"
+                >
                   <SheetTitle className="sr-only">Navegación</SheetTitle>
-                  <Brand />
-                  <NavList onNavigate={() => setOpen(false)} />
-                  <div className="mt-auto border-t border-sidebar-border p-4">
-                    <Button variant="secondary" size="sm" className="w-full" onClick={logout}>
+                  <div className="flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] py-2">
+                    <Brand />
+                    <NavList onNavigate={() => setOpen(false)} />
+                  </div>
+                  <div className="shrink-0 border-t border-sidebar-border p-4 bg-sidebar">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="size-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs text-foreground shrink-0 border border-border/60">
+                        {(user?.nombre || user?.email || "U").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                          {user.nombre}
+                        </p>
+                        <p className="text-xs capitalize text-sidebar-foreground/70 truncate">
+                          {user.rol} {user.sede && user.sede !== "Todas" ? `· ${user.sede}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="w-full gap-2 cursor-pointer font-medium"
+                      onClick={() => {
+                        setOpen(false);
+                        logout();
+                      }}
+                    >
                       <LogOut className="size-4" /> Cerrar sesión
                     </Button>
                   </div>

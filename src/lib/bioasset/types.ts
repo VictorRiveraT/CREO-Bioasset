@@ -1,6 +1,11 @@
 export type Role = "admin" | "biomedico" | "asistencial" | "auditor" | "estudiante";
 
-export type EquipmentStatus = "Operativo" | "En mantenimiento" | "Fuera de servicio" | "De baja";
+export type EquipmentStatus =
+  | "Operativo"
+  | "En mantenimiento"
+  | "Fuera de servicio"
+  | "Inoperativo"
+  | "De baja";
 
 export const EQUIPMENT_STATUSES: EquipmentStatus[] = [
   "Operativo",
@@ -15,6 +20,7 @@ export const CATEGORIES = [
   "Soporte vital",
   "Terapia",
   "Laboratorio",
+  "Tecnológico / TI",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -120,6 +126,7 @@ export interface Incident {
   titulo: string;
   estado: string;
   fecha?: string;
+  fechaOcurrencia?: string;
   fechaCreacion?: string;
 }
 
@@ -144,6 +151,9 @@ export interface Alerta {
   estado: string;
   fecha?: string;
   fechaCreacion?: string;
+  cola?: string;
+  servicio?: string;
+  codigoError?: string;
 }
 
 export interface OpcionCatalogo {
