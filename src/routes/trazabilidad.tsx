@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { ArrowRight, Plus, Search, X } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import {
+  ArrowRight,
+  Plus,
+  Search,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { MovementDialog } from "@/components/bioasset/dialogs";
 import { encryptUrlParam } from "@/lib/bioasset/security";
@@ -42,10 +51,15 @@ export const Route = createFileRoute("/trazabilidad")({
   component: TrazabilidadPage,
 });
 
+const PAGE_SIZE = 10;
+
 function TrazabilidadPage() {
   const { db, locationName, userName, canEdit } = useBio();
   const [q, setQ] = useState("");
   const [ubi, setUbi] = useState("todas");
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
 
   const rows = useMemo(() => {
     return [...(db.movements || [])]
@@ -63,6 +77,32 @@ function TrazabilidadPage() {
         return match && inUbi;
       });
   }, [db.movements, db.equipment, q, ubi]);
+
+  // Resetear a página 1 al cambiar filtros o búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [q, ubi]);
+
+  // Paginación: Cálculos
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const currentPageClamped = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (currentPageClamped - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, rows.length);
+  const pagedRows = rows.slice(startIndex, endIndex);
+
+  // Generador de números de página para la barra de navegación
+  const pageNumbers = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPageClamped <= 3) {
+      return [1, 2, 3, 4, "...", totalPages];
+    }
+    if (currentPageClamped >= totalPages - 2) {
+      return [1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, "...", currentPageClamped - 1, currentPageClamped, currentPageClamped + 1, "...", totalPages];
+  }, [totalPages, currentPageClamped]);
 
   const hasFilters = Boolean(q || ubi !== "todas");
 
@@ -136,6 +176,7 @@ function TrazabilidadPage() {
               onClick={() => {
                 setQ("");
                 setUbi("todas");
+                setCurrentPage(1);
               }}
               className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
             >
@@ -145,7 +186,7 @@ function TrazabilidadPage() {
         )}
       </Card>
 
-      <Card className="shadow-[var(--shadow-card)] mt-4">
+      <Card className="shadow-[var(--shadow-card)] mt-4 overflow-hidden">
         <CardContent className="p-0">
           <Table className="min-w-[750px]">
             <TableHeader>
@@ -159,7 +200,7 @@ function TrazabilidadPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((m) => {
+              {pagedRows.map((m) => {
                 const e = db.equipment.find((x) => x.id === m.equipoId);
                 return (
                   <TableRow key={m.id}>
@@ -208,6 +249,97 @@ function TrazabilidadPage() {
               )}
             </TableBody>
           </Table>
+
+          {/* Barra de Paginación (Máximo 10 registros por página) */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3.5 border-t bg-card/60">
+            <div className="text-xs text-muted-foreground">
+              {rows.length === 0 ? (
+                "0 movimientos"
+              ) : (
+                <>
+                  Mostrando <strong className="text-foreground font-semibold">{startIndex + 1}</strong> -{" "}
+                  <strong className="text-foreground font-semibold">{endIndex}</strong> de{" "}
+                  <strong className="text-foreground font-semibold">{rows.length}</strong> movimientos
+                  {rows.length !== (db.movements?.length || 0) && (
+                    <span className="ml-1 text-muted-foreground">({db.movements?.length || 0} totales)</span>
+                  )}
+                </>
+              )}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                {/* Botón Primera Página */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPageClamped <= 1}
+                  className="h-8 w-8 p-0"
+                  title="Primera página"
+                >
+                  <ChevronsLeft className="size-4" />
+                </Button>
+
+                {/* Botón Página Anterior */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPageClamped <= 1}
+                  className="h-8 px-2 text-xs font-medium"
+                >
+                  <ChevronLeft className="size-3.5 mr-1" /> Anterior
+                </Button>
+
+                {/* Botones de Páginas Numéricas */}
+                <div className="flex items-center gap-1">
+                  {pageNumbers.map((p, idx) =>
+                    typeof p === "number" ? (
+                      <Button
+                        key={p}
+                        variant={p === currentPageClamped ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(p)}
+                        className={`h-8 w-8 p-0 text-xs font-semibold ${
+                          p === currentPageClamped ? "shadow-xs" : ""
+                        }`}
+                      >
+                        {p}
+                      </Button>
+                    ) : (
+                      <span key={`ellipsis-${idx}`} className="px-1 text-xs text-muted-foreground select-none">
+                        ...
+                      </span>
+                    )
+                  )}
+                </div>
+
+                {/* Botón Página Siguiente */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPageClamped >= totalPages}
+                  className="h-8 px-2 text-xs font-medium"
+                >
+                  Siguiente <ChevronRight className="size-3.5 ml-1" />
+                </Button>
+
+                {/* Botón Última Página */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPageClamped >= totalPages}
+                  className="h-8 w-8 p-0"
+                  title="Última página"
+                >
+                  <ChevronsRight className="size-4" />
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </AppShell>
