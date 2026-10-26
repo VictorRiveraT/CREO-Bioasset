@@ -51,6 +51,7 @@ function AlertGroup({
   message: (e: Equipment) => string;
 }) {
   const { locationName, canEdit } = useBio();
+  const [expanded, setExpanded] = useState(false);
 
   const cleanLocation = (id?: string) => {
     if (!id) return "Sin asignar";
@@ -58,6 +59,8 @@ function AlertGroup({
     if (!name || name === "___EMPTY___" || name === "N/A") return "Sin asignar";
     return name;
   };
+
+  const visibleItems = expanded ? items : items.slice(0, 4);
 
   return (
     <Card className="shadow-[var(--shadow-card)]">
@@ -73,7 +76,7 @@ function AlertGroup({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pt-3">
-        {items.map((e) => (
+        {visibleItems.map((e) => (
           <div
             key={e.id}
             className="rounded-lg border bg-card p-3 shadow-xs space-y-2 hover:border-primary/40 hover:shadow-sm transition-all"
@@ -144,6 +147,16 @@ function AlertGroup({
             Sin alertas en esta categoría.
           </p>
         )}
+        {items.length > 4 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setExpanded(!expanded)}
+            className="w-full text-xs text-primary hover:text-primary/90 hover:bg-primary/5 mt-1 font-medium"
+          >
+            {expanded ? "Mostrar solo 4" : `Ver ${items.length - 4} alertas más`}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
@@ -206,6 +219,12 @@ function AlertasPage() {
       return sedeLocations.has(eqFound.ubicacionId);
     });
   }, [db.alertas, db.equipment, sedeLocations]);
+
+  const [expandedIncidencias, setExpandedIncidencias] = useState(false);
+  const [expandedCriticas, setExpandedCriticas] = useState(false);
+
+  const visibleIncidencias = expandedIncidencias ? incidenciasAbiertas : incidenciasAbiertas.slice(0, 4);
+  const visibleCriticas = expandedCriticas ? criticalAlerts : criticalAlerts.slice(0, 4);
 
   const totalAlertas =
     vencidos.length +
@@ -307,7 +326,7 @@ function AlertasPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 pt-3">
-            {incidenciasAbiertas.map((inc) => {
+            {visibleIncidencias.map((inc) => {
               const eqFound = db.equipment.find((x) => x.id === inc.activoId);
               return (
                 <div
@@ -359,6 +378,16 @@ function AlertasPage() {
                 Sin incidencias abiertas pendientes.
               </p>
             )}
+            {incidenciasAbiertas.length > 4 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpandedIncidencias(!expandedIncidencias)}
+                className="w-full text-xs text-primary hover:text-primary/90 hover:bg-primary/5 mt-1 font-medium"
+              >
+                {expandedIncidencias ? "Mostrar solo 4" : `Ver ${incidenciasAbiertas.length - 4} incidencias más`}
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -376,7 +405,7 @@ function AlertasPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 pt-3">
-            {criticalAlerts.map((a: any) => {
+            {visibleCriticas.map((a: any) => {
               const eqFound = db.equipment.find((x) => x.id === a.activoId);
               return (
                 <div
@@ -420,6 +449,16 @@ function AlertasPage() {
               <p className="text-sm text-muted-foreground text-center py-6">
                 Sin eventos críticos activos en el bus de mensajería.
               </p>
+            )}
+            {criticalAlerts.length > 4 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpandedCriticas(!expandedCriticas)}
+                className="w-full text-xs text-primary hover:text-primary/90 hover:bg-primary/5 mt-1 font-medium"
+              >
+                {expandedCriticas ? "Mostrar solo 4" : `Ver ${criticalAlerts.length - 4} eventos más`}
+              </Button>
             )}
           </CardContent>
         </Card>
