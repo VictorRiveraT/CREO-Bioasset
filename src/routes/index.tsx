@@ -96,6 +96,35 @@ function Dashboard() {
   const { db, locationName, user } = useBio();
   const eq = db.equipment;
 
+  const temporalSedesList = useMemo(() => {
+    if (!user?.sedeTemporal || user.sedeTemporal === "Ninguna" || user.sedeTemporal === "[]") {
+      return [];
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    try {
+      if (user.sedeTemporal.startsWith("[")) {
+        const parsed = JSON.parse(user.sedeTemporal);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((item: any) => {
+            if (!item || !item.sede || item.sede === "Ninguna") return false;
+            if (!item.hasta) return true;
+            return new Date(item.hasta) >= today;
+          });
+        }
+      }
+    } catch {
+      // not JSON
+    }
+
+    if (user.sedeTemporalHasta && new Date(user.sedeTemporalHasta) < today) {
+      return [];
+    }
+
+    return [{ sede: user.sedeTemporal, hasta: user.sedeTemporalHasta || "" }];
+  }, [user?.sedeTemporal, user?.sedeTemporalHasta]);
+
   const count = (s: string) => {
     if (s === "Fuera de servicio") {
       return eq.filter((e) => e.estado === "Fuera de servicio" || e.estado === "Inoperativo").length;
@@ -184,14 +213,20 @@ function Dashboard() {
                 <div className="bg-muted px-3 py-1 rounded-full">
                   <span className="font-semibold">Sede Principal:</span> {user.sede || "Todas"}
                 </div>
-                {user.sedeTemporal && user.sedeTemporal !== "Ninguna" && (
-                  <div className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800">
-                    <span className="font-semibold">Sede Temporal:</span> {user.sedeTemporal}
-                    {user.sedeTemporalHasta
-                      ? ` (hasta ${user.sedeTemporalHasta.substring(0, 10)})`
-                      : ""}
+                {temporalSedesList.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800"
+                  >
+                    <span className="font-semibold">Sede Temporal:</span>
+                    <span>{item.sede}</span>
+                    {item.hasta && (
+                      <span className="text-blue-700/80 dark:text-blue-300/80 font-normal">
+                        (hasta {formatDate(item.hasta)})
+                      </span>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
             </div>
           </CardContent>
