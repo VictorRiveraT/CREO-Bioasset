@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   ArrowLeft,
@@ -195,11 +195,9 @@ function DetalleEquipo() {
 
   const orderInProgress = mantenimientos.find((m) => m.resultado === "En progreso");
 
-  const equipmentAlerts = useMemo(() => {
-    return (db.alertas || []).filter(
-      (a) => a && (a.activoId === equipo.id || (a as any).activo_id === equipo.id)
-    );
-  }, [db.alertas, equipo.id]);
+  const equipmentAlerts = (db.alertas || []).filter(
+    (a) => a && (a.activoId === equipo.id || (a as any).activo_id === equipo.id),
+  );
 
   const activeAlert = equipmentAlerts.find(
     (a) => a.estado !== "Atendida" && a.estado !== "Resuelta",
