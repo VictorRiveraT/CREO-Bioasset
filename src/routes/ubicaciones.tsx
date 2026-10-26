@@ -352,7 +352,11 @@ function LocationDialog({
 }
 
 function UbicacionesPage() {
-  const { db, canEdit, toggleLocation, deleteLocation } = useBio();
+  const { db, user, canEdit, toggleLocation, deleteLocation } = useBio();
+
+  const isGlobalUser =
+    user?.email === "admin@bioasset.pe" ||
+    (user?.sede || "").toLowerCase().includes("todas");
 
   // Group locations by Sede -> Piso
 
@@ -377,6 +381,12 @@ function UbicacionesPage() {
     {} as Record<string, Record<string, Location[]>>,
   );
 
+  // Si la sede del usuario no tiene ubicaciones aún, aseguramos que aparezca para que pueda crear su primera área
+  const userSedeName = user?.sede && !user.sede.toLowerCase().includes("todas") ? user.sede : null;
+  if (userSedeName && !agrupado[userSedeName]) {
+    agrupado[userSedeName] = { "Piso 1": [] };
+  }
+
   return (
     <AppShell
       title="Ubicaciones"
@@ -384,7 +394,7 @@ function UbicacionesPage() {
       description="Catálogo estructurado por Sedes y Pisos"
 
       actions={
-        canEdit("ubicaciones") ? (
+        canEdit("ubicaciones") && isGlobalUser ? (
           <SedeDialog
             trigger={
               <Button size="sm">

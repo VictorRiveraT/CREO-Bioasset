@@ -76,17 +76,47 @@ export function NotificationBell() {
   // Helper para verificar si un equipo pertenece a la sede autorizada del usuario
   const isEquipmentInUserSede = (eq: any) => {
     if (!user) return true;
-    const userSede = user.sede || "";
-    if (!userSede || userSede.toLowerCase().includes("todas")) return true;
+    const userSedeRaw = (user.sede || "").trim();
+    if (
+      user.email === "admin@bioasset.pe" ||
+      userSedeRaw.toLowerCase().includes("todas")
+    ) {
+      return true;
+    }
+    if (!userSedeRaw) return false;
+
+    let primarySede = userSedeRaw.toLowerCase() === "surco" ? "santiago de surco" : userSedeRaw.toLowerCase();
 
     const loc = db.locations.find((l) => l.id === eq.ubicacionId);
-    const eqSede = loc?.sede || "Sede Principal";
+    if (!loc || !loc.sede) return false;
 
-    const matchSede = userSede.toLowerCase().includes(eqSede.toLowerCase());
-    const matchSedeTemp =
-      user.sedeTemporal && user.sedeTemporal.toLowerCase().includes(eqSede.toLowerCase());
+    let eqSede = (loc.sede || "Sede Principal").trim().toLowerCase();
+    if (eqSede === "surco") eqSede = "santiago de surco";
 
-    return matchSede || matchSedeTemp;
+    if (
+      primarySede === eqSede ||
+      primarySede.includes(eqSede) ||
+      eqSede.includes(primarySede)
+    ) {
+      return true;
+    }
+
+    try {
+      if (user.sedeTemporal && user.sedeTemporal.startsWith("[")) {
+        const arr = JSON.parse(user.sedeTemporal);
+        return arr.some((x: any) => {
+          let s = (x?.sede || "").trim().toLowerCase();
+          if (s === "surco") s = "santiago de surco";
+          return s === eqSede || s.includes(eqSede) || eqSede.includes(s);
+        });
+      } else if (user.sedeTemporal && user.sedeTemporal !== "Ninguna" && user.sedeTemporal !== "[]") {
+        let s = user.sedeTemporal.trim().toLowerCase();
+        if (s === "surco") s = "santiago de surco";
+        return s === eqSede || s.includes(eqSede) || eqSede.includes(s);
+      }
+    } catch {}
+
+    return false;
   };
 
   // Construir lista dinámica filtrada estrictamente por la SEDE del usuario

@@ -128,7 +128,13 @@ function UsuariosPage() {
 
   const [filterRol, setFilterRol] = useState("todos");
 
-  const [filterSede, setFilterSede] = useState("todas");
+  const isGlobalUser =
+    user?.email === "admin@bioasset.pe" ||
+    (user?.sede || "").toLowerCase().includes("todas");
+
+  const [filterSede, setFilterSede] = useState(
+    isGlobalUser ? "todas" : (user?.sede || "todas"),
+  );
 
   const sedesList = Array.from(new Set(db.locations.map((l) => l.sede))).filter(Boolean);
 
@@ -576,9 +582,8 @@ function UsuariosPage() {
                 </SelectTrigger>
 
                 <SelectContent>
-                  <SelectItem value="todas">Todas las sedes</SelectItem>
-
-                  <SelectItem value="Todas">Sede: Todas</SelectItem>
+                  {isGlobalUser && <SelectItem value="todas">Todas las sedes</SelectItem>}
+                  {isGlobalUser && <SelectItem value="Todas">Sede: Todas</SelectItem>}
 
                   {sedesList.map((s) => (
                     <SelectItem key={s} value={s as string}>
@@ -588,14 +593,14 @@ function UsuariosPage() {
                 </SelectContent>
               </Select>
 
-              {(search || filterRol !== "todos" || filterSede !== "todas") && (
+              {(search || filterRol !== "todos" || (isGlobalUser ? filterSede !== "todas" : filterSede !== user?.sede)) && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
                     setSearch("");
                     setFilterRol("todos");
-                    setFilterSede("todas");
+                    setFilterSede(isGlobalUser ? "todas" : (user?.sede || "todas"));
                     setCurrentPage(1);
                   }}
                   className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"

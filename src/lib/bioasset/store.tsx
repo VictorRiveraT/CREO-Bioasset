@@ -467,15 +467,21 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
       );
 
       setDb({
-        users: rawUsers.map((u: any) => ({
-          ...u,
-          email: u.email,
-          permisos: parseUserPermisos(u),
-          sede: u.sede,
-          accesoHasta: u.accesoHasta,
-          sedeTemporal: u.sedeTemporal,
-          sedeTemporalHasta: u.sedeTemporalHasta,
-        })),
+        users: rawUsers.map((u: any) => {
+          let uSede = (u.sede || "").trim();
+          if (uSede.toLowerCase() === "surco") {
+            uSede = "Santiago de Surco";
+          }
+          return {
+            ...u,
+            email: u.email,
+            permisos: parseUserPermisos(u),
+            sede: uSede,
+            accesoHasta: u.accesoHasta,
+            sedeTemporal: u.sedeTemporal,
+            sedeTemporalHasta: u.sedeTemporalHasta,
+          };
+        }),
         locations: rawLocs.map((l: any) => {
           let sedeVal = (l.sede || "Sede Principal").trim();
           if (sedeVal.toLowerCase() === "surco") {
@@ -546,7 +552,15 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
           ) {
             throw new Error("force_reset");
           }
-          const finalUser = { ...res.user, permisos: parseUserPermisos(res.user) };
+          let uSede = (res.user.sede || "").trim();
+          if (uSede.toLowerCase() === "surco") {
+            uSede = "Santiago de Surco";
+          }
+          const finalUser = {
+            ...res.user,
+            sede: uSede,
+            permisos: parseUserPermisos(res.user),
+          };
           localStorage.setItem("bioasset_user_id_temp", finalUser.id);
           setUser(finalUser);
           fetchDb();
@@ -571,7 +585,15 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
         if (typeof window !== "undefined") {
           sessionStorage.removeItem(`bioasset_toast_shown_${res.user.id}`);
         }
-        setUser({ ...res.user, permisos: parseUserPermisos(res.user) });
+        let uSede = (res.user.sede || "").trim();
+        if (uSede.toLowerCase() === "surco") {
+          uSede = "Santiago de Surco";
+        }
+        setUser({
+          ...res.user,
+          sede: uSede,
+          permisos: parseUserPermisos(res.user),
+        });
         await fetchDb();
         toast.success(`¡Sesión iniciada como ${res.user.nombre}!`);
         return null;
@@ -606,82 +628,122 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     if (!user) return db;
 
     const userSedeRaw = (user.sede || "").trim();
-    if (!userSedeRaw || userSedeRaw.toLowerCase().includes("todas") || user.rol === "admin") {
+    // Acceso global irrestricto ÚNICAMENTE si:
+    // 1. Es el superadministrador principal 'admin@bioasset.pe'
+    // 2. O su sede principal está configurada explícitamente como 'Todas' o 'Todas las sedes'
+    const isGlobalAccess =
+      user.email === "admin@bioasset.pe" ||
+      userSedeRaw.toLowerCase() === "todas" ||
+      userSedeRaw.toLowerCase() === "todas las sedes" ||
+      userSedeRaw.toLowerCase().includes("todas");
+
+    if (isGlobalAccess) {
       return db;
     }
 
-    // Si tiene una sede temporal asignada y aún es válida
-
-    let hasValidTemporary = false;
-
-    const today = new Date();
-
-    today.setHours(0, 0, 0, 0);
-
-    if (user.sedeTemporal && user.sedeTemporal !== "Ninguna" && user.sedeTemporalHasta) {
-      const expirationDate = new Date(user.sedeTemporalHasta);
-
-      if (expirationDate >= today) {
-        hasValidTemporary = true;
-      }
+    // Si el usuario no tiene ninguna sede asignada, por principio estricto de menor privilegio
+    // no puede ver datos de ninguna sede hasta que se le asigne una
+    if (!userSedeRaw) {
+      return {
+        ...db,
+        locations: [],
+        equipment: [],
+        movements: [],
+        maintenance: [],
+        incidents: [],
+        alertas: [],
+        users: [user],
+      };
     }
 
-    // Parse multiple sedes
+    let primarySede = userSedeRaw;
+    if (primarySede.toLowerCase() === "surco") {
+      primarySede = "Santiago de Surco";
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     let accesosExtra: { sede: string; hasta: string }[] = [];
-
     try {
       if (user.sedeTemporal && user.sedeTemporal.startsWith("[")) {
-        accesosExtra = JSON.parse(user.sedeTemporal).filter((x: any) => new Date(x.hasta) >= today);
-      } else if (user.sedeTemporal && user.sedeTemporal !== "Ninguna" && hasValidTemporary) {
-        accesosExtra = [{ sede: user.sedeTemporal, hasta: user.sedeTemporalHasta || "" }];
+        accesosExtra = JSON.parse(user.sedeTemporal).filter((x: any) => {
+          if (!x || !x.sede || x.sede === "Ninguna") return false;
+          if (!x.hasta) return true;
+          return new Date(x.hasta) >= today;
+        });
+      } else if (
+        user.sedeTemporal &&
+        user.sedeTemporal !== "Ninguna" &&
+        user.sedeTemporal !== "[]"
+      ) {
+        if (!user.sedeTemporalHasta || new Date(user.sedeTemporalHasta) >= today) {
+          accesosExtra = [{ sede: user.sedeTemporal, hasta: user.sedeTemporalHasta || "" }];
+        }
       }
     } catch {
       // Ignorar fallo de parseo JSON si el valor no es un arreglo
     }
 
     // Si su sede temporal válida es "Todas", le damos acceso completo
+    if (accesosExtra.some((x) => x.sede.toLowerCase().includes("todas"))) return db;
 
-    if (accesosExtra.some((x) => x.sede === "Todas")) return db;
+    const authorizedSedesList = [primarySede, ...accesosExtra.map((x) => x.sede)]
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
 
-    const userSedeLower = userSedeRaw.toLowerCase();
-    const locs = db.locations.filter((l) => {
-      const lSedeLower = (l.sede || "Sede Principal").toLowerCase();
-      if (
-        lSedeLower === userSedeLower ||
-        lSedeLower.includes(userSedeLower) ||
-        userSedeLower.includes(lSedeLower)
-      )
-        return true;
-      if (
-        accesosExtra.some(
-          (x) =>
-            x.sede.toLowerCase().includes(lSedeLower) || lSedeLower.includes(x.sede.toLowerCase()),
-        )
-      )
-        return true;
+    const matchesAuthorizedSede = (sedeName?: string) => {
+      if (!sedeName) return false;
+      const target = sedeName.trim().toLowerCase();
+      const normalizedTarget = target === "surco" ? "santiago de surco" : target;
+
+      return authorizedSedesList.some((auth) => {
+        const normalizedAuth = auth === "surco" ? "santiago de surco" : auth;
+        return (
+          normalizedTarget === normalizedAuth ||
+          normalizedTarget.includes(normalizedAuth) ||
+          normalizedAuth.includes(normalizedTarget)
+        );
+      });
+    };
+
+    const locs = db.locations.filter((l) => matchesAuthorizedSede(l.sede));
+    const locIds = new Set(locs.map((l) => l.id));
+
+    const eqs = db.equipment.filter((e) => e.ubicacionId && locIds.has(e.ubicacionId));
+    const eqIds = new Set(eqs.map((e) => e.id));
+
+    const movs = db.movements.filter(
+      (m) => eqIds.has(m.equipoId) || locIds.has(m.origenId) || locIds.has(m.destinoId),
+    );
+
+    const maints = db.maintenance.filter((m) => eqIds.has(m.equipoId));
+    const incs = db.incidents.filter((i) => eqIds.has(i.activoId));
+    const alts = db.alertas.filter((a) => eqIds.has(a.activoId));
+
+    const users = db.users.filter((u) => {
+      if (u.id === user.id) return true;
+      if (u.sede && matchesAuthorizedSede(u.sede)) return true;
+      try {
+        if (u.sedeTemporal && u.sedeTemporal.startsWith("[")) {
+          const arr = JSON.parse(u.sedeTemporal);
+          return arr.some((x: any) => x?.sede && matchesAuthorizedSede(x.sede));
+        } else if (u.sedeTemporal && u.sedeTemporal !== "Ninguna" && u.sedeTemporal !== "[]") {
+          return matchesAuthorizedSede(u.sedeTemporal);
+        }
+      } catch {}
       return false;
     });
 
-    const locIds = new Set(locs.map((l) => l.id));
-
-    const eqs = db.equipment.filter((e) => locIds.has(e.ubicacionId));
-
-    const eqIds = new Set(eqs.map((e) => e.id));
-
     return {
       ...db,
-
       locations: locs,
-
       equipment: eqs,
-
-      movements: db.movements.filter((m) => eqIds.has(m.equipoId)),
-
-      maintenance: db.maintenance.filter((m) => eqIds.has(m.equipoId)),
-
-      incidents: db.incidents.filter((i) => eqIds.has(i.activoId)),
-      alertas: db.alertas.filter((a) => eqIds.has(a.activoId)),
+      movements: movs,
+      maintenance: maints,
+      incidents: incs,
+      alertas: alts,
+      users,
     };
   }, [db, user]);
 
@@ -1144,7 +1206,7 @@ export function BioAssetProvider({ children }: { children: ReactNode }) {
     })(),
 
     equipmentById: (id) => {
-      const e = db.equipment.find((x) => x.id === id);
+      const e = filteredDb.equipment.find((x) => x.id === id);
       if (!e) return undefined;
       return {
         ...e,

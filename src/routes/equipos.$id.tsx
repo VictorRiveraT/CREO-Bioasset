@@ -155,15 +155,26 @@ function DetalleEquipo() {
     );
   }
 
-  if (!equipo) {
+  const isGlobalUser =
+    user?.email === "admin@bioasset.pe" ||
+    (user?.sede || "").toLowerCase().includes("todas");
+
+  const isAuthorizedLocation =
+    isGlobalUser ||
+    !equipo?.ubicacionId ||
+    db.locations.some((l) => l.id === equipo.ubicacionId);
+
+  if (!equipo || !isAuthorizedLocation) {
     return (
-      <AppShell title="Equipo no encontrado">
-        <p className="text-muted-foreground mb-4">
-          El equipo solicitado no existe o no tiene permisos para verlo.
-        </p>
-        <Button asChild variant="outline">
-          <Link to="/equipos">Volver a equipos</Link>
-        </Button>
+      <AppShell title="Equipo no disponible">
+        <div className="py-12 text-center">
+          <p className="text-muted-foreground mb-4 text-base">
+            El equipo solicitado no existe o pertenece a una sede a la cual no tiene permisos de acceso.
+          </p>
+          <Button asChild variant="outline">
+            <Link to="/equipos">Volver a inventario</Link>
+          </Button>
+        </div>
       </AppShell>
     );
   }
