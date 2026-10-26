@@ -18,7 +18,6 @@ import {
   ChevronsRight,
   Filter,
   Activity,
-  Layers,
 } from "lucide-react";
 import { AppShell } from "@/components/bioasset/AppShell";
 import { MaintenanceDialog } from "@/components/bioasset/dialogs";
@@ -125,34 +124,6 @@ function MantenimientoPage() {
     set.add("De baja");
     return Array.from(set);
   }, [db.maintenance, resultadosMantenimiento]);
-
-  // Contadores / Estadísticas rápidas para las tarjetas interactivas
-  const stats = useMemo(() => {
-    const list = db.maintenance || [];
-    let pendientes = 0;
-    let urgentes = 0;
-    let completados = 0;
-
-    list.forEach((m) => {
-      if (isCompletado(m.resultado)) {
-        completados++;
-      } else {
-        pendientes++;
-      }
-
-      const days = getDaysUntilNext(m.proximaFecha);
-      if (days !== null && days <= 30) {
-        urgentes++;
-      }
-    });
-
-    return {
-      total: list.length,
-      pendientes,
-      urgentes,
-      completados,
-    };
-  }, [db.maintenance]);
 
   // Filtrado y Ordenamiento inteligente
   const filteredRows = useMemo(() => {
@@ -294,7 +265,7 @@ function MantenimientoPage() {
   return (
     <AppShell
       title="Mantenimiento"
-      description={`${db.maintenance?.length || 0} registros de mantenimiento en el sistema`}
+      description={`${filteredRows.length} registros de mantenimiento`}
       actions={
         canEdit("mantenimiento") && (
           <MaintenanceDialog
@@ -307,99 +278,6 @@ function MantenimientoPage() {
         )
       }
     >
-      {/* Tarjetas de Resumen Visual y Filtro Rápido */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
-        <button
-          type="button"
-          onClick={() => {
-            setResultadoFilter("todos");
-            setProximidadFilter("todos");
-          }}
-          className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
-            resultadoFilter === "todos" && proximidadFilter === "todos"
-              ? "bg-primary/10 border-primary shadow-xs"
-              : "bg-card hover:bg-muted/40 border-border"
-          }`}
-        >
-          <div className="flex items-center justify-between text-muted-foreground mb-1">
-            <span className="text-xs font-medium">Total Registros</span>
-            <Layers className="size-4 text-primary" />
-          </div>
-          <div className="text-2xl font-bold tracking-tight text-foreground">{stats.total}</div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Historial completo</p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setResultadoFilter("En progreso");
-            setProximidadFilter("todos");
-          }}
-          className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
-            resultadoFilter === "En progreso"
-              ? "bg-amber-500/15 border-amber-500 shadow-xs"
-              : "bg-card hover:bg-muted/40 border-border"
-          }`}
-        >
-          <div className="flex items-center justify-between text-amber-700 dark:text-amber-400 mb-1">
-            <span className="text-xs font-medium">En curso / Pendientes</span>
-            <Clock className="size-4 text-amber-600 animate-pulse" />
-          </div>
-          <div className="text-2xl font-bold tracking-tight text-amber-700 dark:text-amber-400">
-            {stats.pendientes}
-          </div>
-          <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 mt-0.5">
-            Prioridad de atención
-          </p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setProximidadFilter("urgentes");
-            setResultadoFilter("todos");
-          }}
-          className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
-            proximidadFilter === "urgentes"
-              ? "bg-rose-500/15 border-rose-500 shadow-xs"
-              : "bg-card hover:bg-muted/40 border-border"
-          }`}
-        >
-          <div className="flex items-center justify-between text-rose-700 dark:text-rose-400 mb-1">
-            <span className="text-xs font-medium">Próximos / Vencidos</span>
-            <AlertTriangle className="size-4 text-rose-600" />
-          </div>
-          <div className="text-2xl font-bold tracking-tight text-rose-700 dark:text-rose-400">
-            {stats.urgentes}
-          </div>
-          <p className="text-[11px] text-rose-700/80 dark:text-rose-400/80 mt-0.5">Vencen en ≤ 30 días</p>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setResultadoFilter("Completado");
-            setProximidadFilter("todos");
-          }}
-          className={`text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
-            resultadoFilter === "Completado"
-              ? "bg-emerald-500/15 border-emerald-500 shadow-xs"
-              : "bg-card hover:bg-muted/40 border-border"
-          }`}
-        >
-          <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 mb-1">
-            <span className="text-xs font-medium">Completados</span>
-            <CheckCircle2 className="size-4 text-emerald-600" />
-          </div>
-          <div className="text-2xl font-bold tracking-tight text-emerald-700 dark:text-emerald-400">
-            {stats.completados}
-          </div>
-          <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">
-            Archivados al final
-          </p>
-        </button>
-      </div>
-
       {/* Panel de Filtros y Ordenamiento */}
       <Card className="shadow-[var(--shadow-card)]">
         <CardContent className="p-4 space-y-3">
