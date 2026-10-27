@@ -21,14 +21,14 @@ export const Route = createFileRoute("/configuracion")({
 });
 
 function ConfiguracionPage() {
-  const { theme, setTheme, isAdmin, isBiomedico } = useBio();
+  const { theme, setTheme, isAdmin, isBiomedico, user } = useBio();
   const [sendingReport, setSendingReport] = useState(false);
 
   const handleSendDailyReport = async () => {
     setSendingReport(true);
     try {
       await fetchApi("/alertas/trigger-daily", { method: "POST" });
-      toast.success("Reporte diario enviado exitosamente a tu correo electrónico.");
+      toast.success(`Reporte diario enviado exitosamente a ${user?.email || "tu correo"}.`);
     } catch (err: any) {
       toast.error(err.message || "Error al enviar el reporte diario.");
     } finally {
