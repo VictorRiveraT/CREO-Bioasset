@@ -87,7 +87,7 @@ function ConfiguracionPage() {
               <div className="space-y-0.5">
                 <Label className="text-base">Reporte Diario Consolidado</Label>
                 <p className="text-sm text-muted-foreground">
-                  Envía el resumen operativo de KPIs, alertas y mantenimientos a tu correo.
+                  Programado automáticamente todos los días a las 05:00 a. m. (hora Perú / UTC-5) para administradores y biomédicos. También puedes enviar una copia de prueba inmediata:
                 </p>
               </div>
               <Button

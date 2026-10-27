@@ -20,6 +20,7 @@ builder.Services.AddCors();
 builder.Services.AddDbContext<AlertasDb>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
 builder.Services.AddHostedService<RabbitMqListener>();
+builder.Services.AddHostedService<DailyReportSchedulerService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
@@ -272,6 +273,68 @@ public class RabbitMqListener : BackgroundService {
             }
         } catch (Exception e) {
             Console.WriteLine($"Error processing message: {e.Message}");
+        }
+    }
+}
+
+public class DailyReportSchedulerService : BackgroundService {
+    private readonly IServiceProvider _sp;
+
+    public DailyReportSchedulerService(IServiceProvider sp) {
+        _sp = sp;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+        Console.WriteLine("[DailyReportScheduler] Servicio de reporte diario automático iniciado (Programado para las 05:00 AM - Hora Perú / UTC-5).");
+
+        while (!stoppingToken.IsCancellationRequested) {
+            try {
+                // Hora actual en Perú (UTC-5)
+                var utcNow = DateTime.UtcNow;
+                var peruOffset = TimeSpan.FromHours(-5);
+                var peruNow = utcNow.Add(peruOffset);
+
+                // Calcular la próxima ocurrencia de las 5:00 AM
+                var next5Am = peruNow.Date.AddHours(5);
+                if (peruNow >= next5Am) {
+                    next5Am = next5Am.AddDays(1);
+                }
+
+                var delay = next5Am - peruNow;
+                Console.WriteLine($"[DailyReportScheduler] Próximo reporte diario programado para las 05:00 AM: {next5Am:yyyy-MM-dd HH:mm:ss} (en {delay.TotalHours:F1} horas).");
+
+                await Task.Delay(delay, stoppingToken);
+
+                // Ejecutar envío a todos los administradores y biomédicos activos
+                Console.WriteLine("[DailyReportScheduler] ¡Son las 05:00 AM! Generando y enviando reportes diarios...");
+                using var scope = _sp.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AlertasDb>();
+                var conn = db.Database.GetDbConnection();
+                if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync(stoppingToken);
+
+                var userIds = new List<string>();
+                using (var cmd = conn.CreateCommand()) {
+                    cmd.CommandText = "SELECT Id FROM auth.Usuarios WHERE Activo = 1 AND LOWER(Rol) IN ('admin', 'biomedico', 'administrador')";
+                    using var reader = await cmd.ExecuteReaderAsync(stoppingToken);
+                    while (await reader.ReadAsync(stoppingToken)) {
+                        userIds.Add(reader.GetGuid(0).ToString());
+                    }
+                }
+
+                foreach (var uid in userIds) {
+                    try {
+                        await DailyReportTrigger.Trigger(db, uid);
+                        Console.WriteLine($"[DailyReportScheduler] Reporte diario enviado al usuario {uid}.");
+                    } catch (Exception ex) {
+                        Console.WriteLine($"[DailyReportScheduler] Error enviando reporte a {uid}: {ex.Message}");
+                    }
+                }
+            } catch (TaskCanceledException) {
+                break;
+            } catch (Exception ex) {
+                Console.WriteLine($"[DailyReportScheduler] Error en ciclo de ejecución: {ex.Message}");
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+            }
         }
     }
 }
