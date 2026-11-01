@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://interspheral-ireland-nonspecially.ngrok-free.dev/api/:path*"
+      "destination": "http://20.3.97.219:8080/api/:path*"
     }
   ]
 }
