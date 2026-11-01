@@ -389,6 +389,58 @@ using (var scope = app.Services.CreateScope()) {
     }
     try {
         dbContext.Database.ExecuteSqlRaw(@"
+            IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'inventario')
+            BEGIN
+                EXEC('CREATE SCHEMA [inventario]');
+            END;
+            IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'inventario' AND t.name = 'Ubicaciones')
+            BEGIN
+                CREATE TABLE [inventario].[Ubicaciones] (
+                    [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+                    [Nombre] NVARCHAR(255) NOT NULL,
+                    [Descripcion] NVARCHAR(MAX) NULL,
+                    [Activo] BIT NOT NULL DEFAULT 1,
+                    [Sede] NVARCHAR(100) NOT NULL DEFAULT 'Sede Principal',
+                    [Piso] NVARCHAR(100) NOT NULL DEFAULT 'Piso 1'
+                );
+            END;
+            IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'inventario' AND t.name = 'Activos')
+            BEGIN
+                CREATE TABLE [inventario].[Activos] (
+                    [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+                    [Codigo] NVARCHAR(100) NOT NULL,
+                    [Nombre] NVARCHAR(255) NOT NULL,
+                    [Categoria] NVARCHAR(100) NOT NULL,
+                    [Marca] NVARCHAR(100) NOT NULL,
+                    [Modelo] NVARCHAR(100) NOT NULL,
+                    [Serie] NVARCHAR(100) NOT NULL,
+                    [UbicacionId] UNIQUEIDENTIFIER NOT NULL,
+                    [Estado] NVARCHAR(50) NOT NULL,
+                    [FechaAdquisicion] NVARCHAR(50) NULL,
+                    [ProximoMantenimiento] NVARCHAR(50) NULL,
+                    [Criticidad] NVARCHAR(50) NOT NULL DEFAULT 'Media',
+                    [activo] BIT NOT NULL DEFAULT 1
+                );
+            END;
+            IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'inventario' AND t.name = 'Movimientos')
+            BEGIN
+                CREATE TABLE [inventario].[Movimientos] (
+                    [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+                    [EquipoId] UNIQUEIDENTIFIER NOT NULL,
+                    [OrigenId] UNIQUEIDENTIFIER NULL,
+                    [DestinoId] UNIQUEIDENTIFIER NOT NULL,
+                    [Fecha] NVARCHAR(50) NOT NULL,
+                    [UsuarioId] UNIQUEIDENTIFIER NOT NULL,
+                    [Motivo] NVARCHAR(255) NOT NULL,
+                    [Observaciones] NVARCHAR(MAX) NULL
+                );
+            END;
+        ");
+    } catch (Exception e) {
+        Console.WriteLine($"[Inventario Init Tables Error]: {e.Message}");
+    }
+    try {
+        dbContext.Database.ExecuteSqlRaw(@"
             IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'Sede' AND Object_ID = Object_ID(N'[inventario].[Ubicaciones]'))
             BEGIN
                 ALTER TABLE [inventario].[Ubicaciones] ADD Sede NVARCHAR(MAX) NULL

@@ -79,6 +79,7 @@ app.MapPut("/alertas/{id}", [Authorize] async (Guid id, Alerta dto, AlertasDb db
 });
 
 app.MapPost("/trigger-daily", [Authorize(Roles = "admin,biomedico")] async (AlertasDb db, HttpContext ctx) => {
+    try {
     string? userIdStr = ctx.Request.Query["userId"].FirstOrDefault();
     
     if (string.IsNullOrEmpty(userIdStr) && ctx.User?.Identity?.IsAuthenticated == true) {
@@ -100,6 +101,10 @@ app.MapPost("/trigger-daily", [Authorize(Roles = "admin,biomedico")] async (Aler
     }
     
     return Results.BadRequest(new { error = "No se pudo determinar el usuario para enviar el reporte." });
+    } catch (Exception ex) {
+        Console.WriteLine($"[trigger-daily Error] {ex}");
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
 });
 
 using (var scope = app.Services.CreateScope()) { 
@@ -110,6 +115,27 @@ using (var scope = app.Services.CreateScope()) {
         relationalCreator.EnsureCreated();
         relationalCreator.CreateTables();
     } catch {}
+    try {
+        dbContext.Database.ExecuteSqlRaw(@"
+            IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'alertas')
+            BEGIN
+                EXEC('CREATE SCHEMA [alertas]');
+            END;
+            IF NOT EXISTS (SELECT * FROM sys.tables t JOIN sys.schemas s ON t.schema_id = s.schema_id WHERE s.name = 'alertas' AND t.name = 'Alertas')
+            BEGIN
+                CREATE TABLE [alertas].[Alertas] (
+                    [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+                    [activo_id] UNIQUEIDENTIFIER NOT NULL,
+                    [Tipo] NVARCHAR(100) NOT NULL,
+                    [Mensaje] NVARCHAR(MAX) NOT NULL,
+                    [Severidad] NVARCHAR(50) NOT NULL,
+                    [Estado] NVARCHAR(50) NOT NULL
+                );
+            END;
+        ");
+    } catch (Exception ex) {
+        Console.WriteLine($"[AlertasDb Init Error]: {ex.Message}");
+    }
 }
 app.Run();
 
@@ -416,77 +442,81 @@ public class DailyReportTrigger {
         }
         
         // 3. Query Active Alerts
-        using var cmdAlerts = conn.CreateCommand();
-        cmdAlerts.CommandText = @"
-            SELECT a.Mensaje, a.Severidad, e.Nombre, u.Nombre, e.Id, a.Tipo
-            FROM alertas.Alertas a
-            JOIN inventario.Activos e ON a.activo_id = e.Id
-            JOIN inventario.Ubicaciones u ON e.UbicacionId = u.Id
-            WHERE a.Estado = 'Activa'
-        " + (userSede == "Todas" ? "" : " AND u.Sede = @sede ") +
-        " ORDER BY CASE WHEN a.Severidad = 'Alta' THEN 1 WHEN a.Severidad = 'Media' THEN 2 ELSE 3 END";
-            
-        if (userSede != "Todas") {
-            var pSede = cmdAlerts.CreateParameter(); pSede.ParameterName = "@sede"; pSede.Value = userSede; cmdAlerts.Parameters.Add(pSede);
-        }
-        
         var alertsHtml = "";
         int totalAlertas = 0;
         int alertasAltas = 0;
         int alertasMedias = 0;
         int alertasBajas = 0;
-        
-        using (var reader = await cmdAlerts.ExecuteReaderAsync()) {
-            while (await reader.ReadAsync()) {
-                totalAlertas++;
-                var msg = reader.GetString(0);
-                var sev = reader.GetString(1);
-                var eq = reader.GetString(2);
-                var ubi = reader.GetString(3);
-                var activoId = reader.GetGuid(4);
-                var tipoAlert = reader.IsDBNull(5) ? "Mantenimiento" : reader.GetString(5);
+
+        try {
+            using var cmdAlerts = conn.CreateCommand();
+            cmdAlerts.CommandText = @"
+                SELECT a.Mensaje, a.Severidad, e.Nombre, u.Nombre, e.Id, a.Tipo
+                FROM alertas.Alertas a
+                JOIN inventario.Activos e ON a.activo_id = e.Id
+                JOIN inventario.Ubicaciones u ON e.UbicacionId = u.Id
+                WHERE a.Estado = 'Activa'
+            " + (userSede == "Todas" ? "" : " AND u.Sede = @sede ") +
+            " ORDER BY CASE WHEN a.Severidad = 'Alta' THEN 1 WHEN a.Severidad = 'Media' THEN 2 ELSE 3 END";
                 
-                if (sev == "Alta") alertasAltas++;
-                else if (sev == "Media") alertasMedias++;
-                else alertasBajas++;
-                
-                var eqUrl = $"{frontendUrl}/equipos/{activoId}";
-                
-                var isAlta = sev == "Alta";
-                var isBaja = sev == "Baja";
-                var color = isAlta ? "#ef4444" : (isBaja ? "#3b82f6" : "#f59e0b");
-                var badgeBg = isAlta ? "#fee2e2" : (isBaja ? "#dbeafe" : "#fef3c7");
-                
-                alertsHtml += $@"
-                <div style='background-color: #ffffff; border: 1px solid #e5e7eb; border-left: 4px solid {color}; border-radius: 8px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);'>
-                    <table width='100%' cellpadding='0' cellspacing='0' border='0'>
-                        <tr>
-                            <td valign='top'>
-                                <div style='margin-bottom: 6px;'>
-                                    <a href='{eqUrl}' style='color: #111827; text-decoration: none; font-size: 15px; font-weight: 700;'>
-                                        {eq}
-                                    </a>
-                                </div>
-                                <p style='margin: 0 0 10px 0; color: #4b5563; font-size: 13px; line-height: 1.5;'>{msg}</p>
-                                <div>
-                                    <span style='background-color: #f3f4f6; color: #374151; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; margin-right: 6px;'>Ubicación: {ubi}</span>
-                                    <span style='background-color: #f3f4f6; color: #374151; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;'>Categoría: {tipoAlert}</span>
-                                </div>
-                            </td>
-                            <td valign='top' align='right' width='110'>
-                                <span style='background-color: {badgeBg}; color: {color}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; margin-bottom: 10px;'>
-                                    {sev}
-                                </span>
-                                <div>
-                                    <a href='{eqUrl}' style='display: inline-block; background-color: #f9fafb; border: 1px solid #d1d5db; color: #2563eb; text-decoration: none; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 4px;'>
-                                        Ver Equipo &rarr;
-                                    </a>
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
-                </div>";
+            if (userSede != "Todas") {
+                var pSede = cmdAlerts.CreateParameter(); pSede.ParameterName = "@sede"; pSede.Value = userSede; cmdAlerts.Parameters.Add(pSede);
             }
+            
+            using (var reader = await cmdAlerts.ExecuteReaderAsync()) {
+                while (await reader.ReadAsync()) {
+                    totalAlertas++;
+                    var msg = reader.GetString(0);
+                    var sev = reader.GetString(1);
+                    var eq = reader.GetString(2);
+                    var ubi = reader.GetString(3);
+                    var activoId = reader.GetGuid(4);
+                    var tipoAlert = reader.IsDBNull(5) ? "Mantenimiento" : reader.GetString(5);
+                    
+                    if (sev == "Alta") alertasAltas++;
+                    else if (sev == "Media") alertasMedias++;
+                    else alertasBajas++;
+                    
+                    var eqUrl = $"{frontendUrl}/equipos/{activoId}";
+                    
+                    var isAlta = sev == "Alta";
+                    var isBaja = sev == "Baja";
+                    var color = isAlta ? "#ef4444" : (isBaja ? "#3b82f6" : "#f59e0b");
+                    var badgeBg = isAlta ? "#fee2e2" : (isBaja ? "#dbeafe" : "#fef3c7");
+                    
+                    alertsHtml += $@"
+                    <div style='background-color: #ffffff; border: 1px solid #e5e7eb; border-left: 4px solid {color}; border-radius: 8px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);'>
+                        <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                            <tr>
+                                <td valign='top'>
+                                    <div style='margin-bottom: 6px;'>
+                                        <a href='{eqUrl}' style='color: #111827; text-decoration: none; font-size: 15px; font-weight: 700;'>
+                                            {eq}
+                                        </a>
+                                    </div>
+                                    <p style='margin: 0 0 10px 0; color: #4b5563; font-size: 13px; line-height: 1.5;'>{msg}</p>
+                                    <div>
+                                        <span style='background-color: #f3f4f6; color: #374151; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; margin-right: 6px;'>Ubicación: {ubi}</span>
+                                        <span style='background-color: #f3f4f6; color: #374151; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;'>Categoría: {tipoAlert}</span>
+                                    </div>
+                                </td>
+                                <td valign='top' align='right' width='110'>
+                                    <span style='background-color: {badgeBg}; color: {color}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; text-transform: uppercase; display: inline-block; margin-bottom: 10px;'>
+                                        {sev}
+                                    </span>
+                                    <div>
+                                        <a href='{eqUrl}' style='display: inline-block; background-color: #f9fafb; border: 1px solid #d1d5db; color: #2563eb; text-decoration: none; font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 4px;'>
+                                            Ver Equipo &rarr;
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>";
+                }
+            }
+        } catch (Exception ex) {
+            Console.WriteLine($"Error fetching active alerts: {ex.Message}");
         }
         
         if (totalAlertas == 0) {
